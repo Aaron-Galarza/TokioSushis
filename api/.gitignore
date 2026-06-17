@@ -1,0 +1,14 @@
+# Dependencias locales (si se instalaran por separado)
+node_modules/
+
+# Código compilado de TypeScript
+dist/
+
+# Variables de entorno locales del backend
+.env
+
+# Logs de error de Node
+npm-debug.log*
+
+# Archivos de caché de TypeScript
+*.tsbuildinfo
