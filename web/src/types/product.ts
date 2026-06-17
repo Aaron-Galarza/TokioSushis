@@ -11,4 +11,6 @@ export interface Product {
   featured: boolean;
   order: number;
   addons?: Addon[]; 
+  controlStock?: boolean;
+  stock?: number
 }

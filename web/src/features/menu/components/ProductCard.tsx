@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Plus, Image as ImageIcon, Star } from 'lucide-react';
+import { Plus, Image as ImageIcon, Star, PackageX } from 'lucide-react'; // 👈 Sumamos PackageX por estética
 import { useCartStore } from '@/stores/cart.store';
 import { formatPrice } from '@/lib/format';
 import type { Product } from '@/types';
@@ -18,13 +18,15 @@ export const ProductCard = ({ product, isStoreOpen, priority = false }: ProductC
   const [imageError, setImageError] = useState(false);
 
   const handleAddClick = () => {
-    // Al tocar agregar, mandamos el producto limpio. Los extras se eligen en el carrito.
     addItem(product, 1, []);
   };
 
-  const isButtonDisabled = !isStoreOpen || !product.available;
+  // 🔽 NUEVA REGLA: Si controla stock y es menor o igual a 0, está agotado
+  const isOutOfStock = product.controlStock === true && (product.stock ?? 0) <= 0;
 
-  // 👇 EL PATOVICA: Verificamos que sea un string y que parezca una URL o ruta válida
+  // El botón se deshabilita si el local está cerrado, si el producto no está disponible o si no hay stock
+  const isButtonDisabled = !isStoreOpen || !product.available || isOutOfStock;
+
   const isValidImage = typeof product.image === 'string' && 
     (product.image.startsWith('http') || product.image.startsWith('/'));
 
@@ -37,6 +39,13 @@ export const ProductCard = ({ product, isStoreOpen, priority = false }: ProductC
         </div>
       )}
 
+      {/* 🔽 BADGE VISUAL DE SIN STOCK (OPCIONAL - SOBRE LA IMAGEN) */}
+      {isOutOfStock && (
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-red-600/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
+          Agotado
+        </div>
+      )}
+
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-primary/25">
         {!imageError && isValidImage ? (
           <>
@@ -45,7 +54,7 @@ export const ProductCard = ({ product, isStoreOpen, priority = false }: ProductC
               alt={product.title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover transition-transform duration-700 group-hover:scale-110"
+              className={`object-cover transition-transform duration-700 group-hover:scale-110 ${isOutOfStock ? 'grayscale opacity-50' : ''}`} // Se pone gris si no hay stock
               onError={() => setImageError(true)}
               priority={priority}
             />
@@ -76,8 +85,18 @@ export const ProductCard = ({ product, isStoreOpen, priority = false }: ProductC
                 : 'bg-secondary text-primary shadow-[0_6px_16px_rgba(249,239,188,0.18)] hover:bg-secondary/90'
             }`}
           >
-            <Plus className="h-4 w-4" />
-            Agregar
+            {/* 🔽 CAMBIA EL ICONO Y TEXTO SEGÚN EL ESTADO */}
+            {isOutOfStock ? (
+              <>
+                <PackageX className="h-4 w-4" />
+                Sin Stock
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Agregar
+              </>
+            )}
           </button>
         </div>
       </div>
