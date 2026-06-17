@@ -22,6 +22,9 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
       if (!product) throw new Error(`Producto ${item.productId} no encontrado`)
  
         if (product.controlStock) {
+          if (product.stock <= 0) {
+            throw new AppError(400, `El producto "${product.title}" se encuentra agotado`)
+          }
           const nuevoStock = Math.max(0, product.stock - item.quantity)
 
           product.stock = nuevoStock
