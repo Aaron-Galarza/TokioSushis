@@ -7,6 +7,8 @@ export interface iProducto extends Document {
   image?: string;
   category: mongoose.Types.ObjectId;
   active: boolean;
+  controlStock:boolean;
+  stock:number
 }
 
 const ProductoSchema = new Schema<iProducto>({
@@ -36,6 +38,15 @@ const ProductoSchema = new Schema<iProducto>({
     type: Boolean,
     default: true,
     index: true,
+  },
+  controlStock: {
+    type: Boolean,
+    default: false
+  },
+  stock: {
+    type: Number,
+    default: 0,
+    min: 0
   },
 }, {
   timestamps: true,

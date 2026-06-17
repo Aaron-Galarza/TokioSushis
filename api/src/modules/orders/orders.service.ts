@@ -21,6 +21,13 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
       const product = await ProductService.viewById(item.productId)
       if (!product) throw new Error(`Producto ${item.productId} no encontrado`)
  
+        if (product.controlStock) {
+          const nuevoStock = Math.max(0, product.stock - item.quantity)
+
+          product.stock = nuevoStock
+          await product.save()
+        }
+
       let addons: iCartAddon[] = []
       if (item.addons && item.addons.length > 0) {
         addons = await Promise.all(
