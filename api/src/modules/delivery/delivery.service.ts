@@ -1,15 +1,16 @@
-import { calculateDistanceKm } from '../../utils/distance';
-import { ConfigModel } from '../Schedules/Schedule.module';
+import { calculateDelivery as calculateTariff } from '../deliveryTariffs/deliveryTariff.service';
 
+// Delega al tarifario dinámico (zonas especiales + rangos km + plus lluvia).
+// Mantiene la misma firma de retorno que usaban orders.service y el controller.
 export const calculateDelivery = async (lat: number, lng: number) => {
-  const config = await ConfigModel.getOrCreateConfig();
-  const pricePerKm = config.pricePerKm ?? 0;
-  const distanceKm = await calculateDistanceKm(lat, lng);
-  const deliveryCost = Math.ceil(distanceKm * pricePerKm);
-
+  const result = await calculateTariff(lat, lng);
   return {
-    distanceKm,
-    pricePerKm,
-    deliveryCost,
+    distanceKm:   result.distanceKm,
+    deliveryCost: result.total,
+    breakdown: {
+      baseCost:      result.baseCost,
+      rainSurcharge: result.rainSurcharge,
+      appliedZone:   result.appliedZone,
+    },
   };
 };

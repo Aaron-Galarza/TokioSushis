@@ -8,6 +8,7 @@ import categoriaRoutes from '../modules/categorias/categorias.routes'
 import configRoutes from '../modules/Schedules/Schedule.routes'
 import analyticsRoutes from '../modules/analytics/analytics.routes'
 import deliveryRoutes from '../modules/delivery/delivery.routes'
+import deliveryTariffRoutes from '../modules/deliveryTariffs/deliveryTariff.routes'
 import galleryRoutes from '../modules/gallery/gallery.routes'
 
 const router = Router();
@@ -19,7 +20,8 @@ router.use('/users', userRouters)
 router.use('/config', configRoutes)
 router.use('/analytics', analyticsRoutes)
 router.use('/delivery', deliveryRoutes)
-router.use('/gallery', galleryRoutes) 
+router.use('/delivery-tariffs', deliveryTariffRoutes)
+router.use('/gallery', galleryRoutes)
 
 // Aliases legacy para no cortar el flujo actual mientras se migra el front/Postman.
 router.use('/productos', productRoutes);
