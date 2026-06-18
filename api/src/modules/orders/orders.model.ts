@@ -29,6 +29,7 @@ export interface iOrder extends Document {
     address?: string;
   };
   items: iCartItem[];
+  notes?: string;
   couponCode?: string;
   discountPercent: number;
   subtotal: number;
@@ -71,6 +72,12 @@ const OrderSchema = new Schema<iOrder>({
     address: { type: String },
   },
   items: { type: [CartItemSchema], required: true },
+  notes: { 
+    type: String, 
+    trim: true,
+    maxlength: [300, 'Las notas no pueden superar los 300 caracteres'], // 👈 Límite de caracteres
+    default: ''
+  },
   couponCode: { type: String },
   discountPercent: { type: Number, default: 0, min: 0 },
   subtotal: { type: Number, required: true, min: 0 },

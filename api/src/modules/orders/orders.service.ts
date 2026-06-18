@@ -93,6 +93,16 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     }
     total += deliveryCost
   }
+
+  let sanitizedNotes = '';
+  if (orderData.notes && typeof orderData.notes === 'string') {
+    sanitizedNotes = orderData.notes
+      .trim()
+      .substring(0, 300) // Cortamos rústicamente a un máximo de 300 caracteres
+      .replace(/<[^>]*>/g, '') // Barremos cualquier etiqueta HTML sospechosa (anti-XSS)
+      // Filtramos caracteres raros manteniendo texto en español y puntuación básica
+      .replace(/[^a-zA-Z0-9\s.,!¡?¿()\-áéíóúñÁÉÍÓÚÑ]/g, ''); 
+  }
  
   const newOrder = new OrderModel({
     customer:      orderData.customer,
@@ -104,7 +114,8 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     subtotal:      subTotal,
     deliveryCost,
     delivery,
-    total:         Math.max(0, total)
+    total:         Math.max(0, total),
+    notes:         sanitizedNotes
   })
  
   const saved = await newOrder.save()

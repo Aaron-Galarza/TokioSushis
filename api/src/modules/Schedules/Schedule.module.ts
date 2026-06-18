@@ -14,6 +14,7 @@ export interface IConfig extends Document {
   pricePerKm: number;
   dailySchedule: IDaySchedule[];
   isAllClose: boolean;
+  banner: string;
 }
 
 const dayScheduleSchema = new Schema<IDaySchedule>({
@@ -30,6 +31,7 @@ const configSchema = new Schema<IConfig>({
   pricePerKm: { type: Number, default: 0, min: 0 },
   dailySchedule: [dayScheduleSchema],
   isAllClose: { type: Boolean, default: false },
+  banner: { type: String, default: '' },
 }, { timestamps: true });
 
 configSchema.statics.getOrCreateConfig = async function () {
@@ -40,6 +42,7 @@ configSchema.statics.getOrCreateConfig = async function () {
       isEmergencyClosed: false,
       emergencyMessage: '',
       pricePerKm: Number(process.env.PRICE_PER_KM ?? 0),
+      banner:'',
       dailySchedule: [
         { day: 'Domingo', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
         { day: 'Lunes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },

@@ -51,3 +51,17 @@ export const updateSchedule = async (req: Request, res: Response) => {
         return sendError(res, 'Error al actualizar los horarios')
     }
 }
+
+export const updateBanner = async (req: Request, res: Response) => {
+    try {
+        const { banner } = req.body;
+        if (typeof banner !== 'string') {
+            return sendError(res, 'El campo banner debe ser una URL en formato string', 400);
+        }
+
+        const config = await ConfigService.updateBanner(banner);
+        return sendSucces(res, config);
+    } catch (error) {
+        return sendError(res, 'Error al actualizar el banner principal');
+    }
+};
