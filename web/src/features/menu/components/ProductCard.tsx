@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
-import { Plus, Image as ImageIcon, Star, PackageX } from 'lucide-react';
+import { Plus, PackageX } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
 import { formatPrice } from '@/lib/format';
 import type { Product } from '@/types';
@@ -13,87 +12,57 @@ interface ProductCardProps {
   priority?: boolean;
 }
 
-export const ProductCard = ({ product, isStoreOpen, priority = false }: ProductCardProps) => {
+export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
   const addItem = useCartStore((state) => state.addItem);
   const [imageError, setImageError] = useState(false);
-
-  const handleAddClick = () => {
-    addItem(product, 1, []);
-  };
 
   const isOutOfStock = product.controlStock === true && (product.stock ?? 0) <= 0;
   const isButtonDisabled = !isStoreOpen || !product.available || isOutOfStock;
 
-  const isValidImage = typeof product.image === 'string' &&
+  const isValidImage =
+    typeof product.image === 'string' &&
     (product.image.startsWith('http') || product.image.startsWith('/'));
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-card shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.5)] hover:border-white/20">
-      {product.featured && (
-        <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full border border-primary/30 bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-black">
-          <Star className="h-3 w-3 fill-current" />
-          Destacado
-        </div>
-      )}
+    <article className="flex items-center gap-4 rounded-2xl border border-white/8 bg-[#141414] px-4 py-3.5 transition-all hover:border-white/15 hover:bg-[#1A1A1A]">
 
-      {isOutOfStock && (
-        <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-red-600/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
-          Agotado
-        </div>
-      )}
-
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-zinc-800">
-        {!imageError && isValidImage ? (
-          <>
-            <Image
-              src={product.image}
-              alt={product.title}
-              fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className={`object-cover transition-transform duration-700 group-hover:scale-110 ${isOutOfStock ? 'grayscale opacity-50' : ''}`}
-              onError={() => setImageError(true)}
-              priority={priority}
-            />
-            <div className="absolute inset-0 bg-black/30" />
-          </>
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20">
-            <ImageIcon className="mb-2 h-8 w-8" />
-            <span className="text-xs font-medium">Sin imagen</span>
-          </div>
-        )}
+      {/* Text content */}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-semibold text-white text-sm leading-snug truncate">{product.title}</h3>
+        <p className="mt-0.5 text-xs text-white/45 line-clamp-2 leading-relaxed">{product.description}</p>
+        <p className="mt-2 font-bold text-primary text-base">{formatPrice(product.price)}</p>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-heading text-lg font-semibold leading-tight text-white">{product.title}</h3>
-        <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-white/50">{product.description}</p>
-
-        <div className="flex-1" />
-
-        <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-          <strong className="text-xl font-black text-primary">{formatPrice(product.price)}</strong>
-          <button
-            onClick={handleAddClick}
-            disabled={isButtonDisabled}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all duration-300 active:scale-95 ${
-              isButtonDisabled
-                ? 'cursor-not-allowed border border-white/20 bg-white/5 text-white/30'
-                : 'bg-white text-primary shadow-[0_4px_12px_rgba(197,168,111,0.15)] hover:bg-white/90'
-            }`}
-          >
-            {isOutOfStock ? (
-              <>
-                <PackageX className="h-4 w-4" />
-                Sin Stock
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" />
-                Agregar
-              </>
-            )}
-          </button>
+      {/* Image + button */}
+      <div className="relative shrink-0">
+        <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-zinc-800">
+          {!imageError && isValidImage ? (
+            <img
+              src={product.image}
+              alt={product.title}
+              className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale opacity-50' : ''}`}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white/20 text-2xl">
+              🍣
+            </div>
+          )}
         </div>
+
+        {/* + button overlaid at bottom-right of image */}
+        <button
+          onClick={() => !isButtonDisabled && addItem(product, 1, [])}
+          disabled={isButtonDisabled}
+          className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${
+            isButtonDisabled
+              ? 'bg-zinc-700 text-white/30 cursor-not-allowed'
+              : 'bg-primary text-black hover:bg-primary/90'
+          }`}
+          aria-label={isOutOfStock ? 'Sin stock' : 'Agregar al carrito'}
+        >
+          {isOutOfStock ? <PackageX className="w-3.5 h-3.5" /> : <Plus className="w-4 h-4" />}
+        </button>
       </div>
     </article>
   );

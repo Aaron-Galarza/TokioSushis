@@ -6,7 +6,8 @@ export const useStoreStatus = () => {
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [message, setMessage] = useState<string>('');
   const [pricePerKm, setPricePerKm] = useState<number>(0);
-  
+  const [banner, setBanner] = useState<string>('');
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +27,7 @@ export const useStoreStatus = () => {
           setIsOpen(statusData.isOpen);
           setMessage(statusData.message || '');
           setPricePerKm(statusData.pricePerKm || 0);
+          setBanner(statusData.banner || '');
           
           // Disparamos la acción de Zustand para guardar el valor para el Bloque 3
           if (statusData.pricePerKm !== undefined && setStorePricePerKm) {
@@ -51,11 +53,12 @@ export const useStoreStatus = () => {
     };
   }, [setStorePricePerKm]);
 
-  return { 
-    isOpen, 
-    message, 
-    pricePerKm, 
-    loading, 
-    error 
+  return {
+    isOpen,
+    message,
+    pricePerKm,
+    banner,
+    loading,
+    error,
   };
 };

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { BarChart3, ShoppingBag, Utensils, Tag, Settings, ArrowLeft } from 'lucide-react';
+import { BarChart3, ShoppingBag, Utensils, Tag, Settings, ArrowLeft, Images } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 
 const NAV = [
@@ -11,6 +11,7 @@ const NAV = [
   { href: '/admin/orders', label: 'Pedidos', icon: ShoppingBag },
   { href: '/admin/products', label: 'Menú', icon: Utensils },
   { href: '/admin/coupons', label: 'Cupones', icon: Tag },
+  { href: '/admin/gallery', label: 'Galería', icon: Images },
   { href: '/admin/config', label: 'Configuración', icon: Settings },
 ];
 

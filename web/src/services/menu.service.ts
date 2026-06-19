@@ -51,33 +51,32 @@ export const menuService = {
     }
   },
 
-  // 3. OBTENER ESTADO DEL LOCAL (Abierto/Cerrado y Precio por Km)
-  getStoreStatus: async (): Promise<{ isOpen: boolean; message: string; pricePerKm?: number }> => {
+  // 3. OBTENER ESTADO DEL LOCAL (Abierto/Cerrado, Precio por Km y Banner)
+  getStoreStatus: async (): Promise<{ isOpen: boolean; message: string; pricePerKm?: number; banner?: string }> => {
     try {
       const response = await fetch(`${API_URL}/config/status`);
-      
-      // 👇 En vez de hacer un "throw", atajamos el problema en silencio
+
       if (!response.ok) {
         console.warn('⚠️ Ruta /api/config/status falló. Usando estado abierto por defecto.');
-        return { isOpen: true, message: '', pricePerKm: 0 };
+        return { isOpen: true, message: '', pricePerKm: 0, banner: '' };
       }
-      
+
       const json = await response.json();
-      
+
       if (json.success && json.data) {
         return {
           isOpen: json.data.isOpen ?? true,
           message: json.data.message ?? '',
-          pricePerKm: json.data.pricePerKm ?? 0
+          pricePerKm: json.data.pricePerKm ?? 0,
+          banner: json.data.banner ?? '',
         };
       }
-      
-      return { isOpen: true, message: '', pricePerKm: 0 };
+
+      return { isOpen: true, message: '', pricePerKm: 0, banner: '' };
 
     } catch (error) {
-      // Si el backend directamente está apagado, también lo atajamos en silencio
       console.warn('⚠️ No se pudo conectar al backend de configuración. Local abierto por defecto.');
-      return { isOpen: true, message: '', pricePerKm: 0 };
+      return { isOpen: true, message: '', pricePerKm: 0, banner: '' };
     }
   }
 };
