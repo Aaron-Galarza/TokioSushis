@@ -30,7 +30,7 @@ export const FeaturedBannerVisual = ({
 }: FeaturedBannerVisualProps) => {
   return (
     <div className="relative">
-      <article className="relative h-[320px] overflow-hidden rounded-3xl border border-white/10 bg-background sm:h-[360px]">
+      <article className="relative h-[320px] overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 sm:h-[360px]">
         {!hasImageError && currentProduct.image ? (
           <>
             <Image
@@ -40,27 +40,27 @@ export const FeaturedBannerVisual = ({
               sizes="(max-width: 1024px) 100vw, 42vw"
               className="object-cover transition-transform duration-700 hover:scale-105"
               onError={() => onImageError(currentProduct.id)}
-              priority // <--- ¡Acá está la solución para el LCP!
+              priority
             />
-            <div className="absolute inset-0 bg-black/35" />
+            <div className="absolute inset-0 bg-black/40" />
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/35">
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 text-white/20">
             <ImageIcon className="h-12 w-12" />
           </div>
         )}
 
-        <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-secondary/55 bg-secondary/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+        <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-primary/55 bg-primary/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-black">
           <Star className="h-3.5 w-3.5 fill-current" />
           La mas nueva
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between p-5">
           <div>
-            <h3 className="font-heading text-2xl font-bold text-white drop-shadow-sm">
+            <h3 className="font-heading text-2xl font-semibold text-white drop-shadow-sm">
               {currentProduct.title}
             </h3>
-            <p className="text-lg font-black text-secondary">{formatPrice(currentProduct.price)}</p>
+            <p className="text-lg font-black text-primary">{formatPrice(currentProduct.price)}</p>
           </div>
         </div>
       </article>
@@ -69,14 +69,14 @@ export const FeaturedBannerVisual = ({
         <>
           <button
             onClick={onPrev}
-            className="absolute -left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-background/90 text-white/80 transition-all duration-300 hover:border-white/40 hover:text-white active:scale-95"
+            className="absolute -left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/90 text-white/80 transition-all duration-300 hover:border-white/40 hover:text-white active:scale-95"
             aria-label="Producto anterior"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={onNext}
-            className="absolute -right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-background/90 text-white/80 transition-all duration-300 hover:border-white/40 hover:text-white active:scale-95"
+            className="absolute -right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/90 text-white/80 transition-all duration-300 hover:border-white/40 hover:text-white active:scale-95"
             aria-label="Producto siguiente"
           >
             <ChevronRight className="h-5 w-5" />
@@ -92,7 +92,7 @@ export const FeaturedBannerVisual = ({
               onClick={() => onSelect(index)}
               aria-label={`Ir al destacado ${index + 1}`}
               className={`h-2.5 rounded-full transition-all duration-300 ${
-                index === safeIndex ? 'w-8 bg-secondary' : 'w-2.5 bg-white/30 hover:bg-white/55'
+                index === safeIndex ? 'w-8 bg-primary' : 'w-2.5 bg-white/30 hover:bg-white/55'
               }`}
             />
           ))}

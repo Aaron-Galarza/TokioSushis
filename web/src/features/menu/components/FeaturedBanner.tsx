@@ -63,19 +63,19 @@ export const FeaturedBanner = ({ products, isStoreOpen }: FeaturedBannerProps) =
   };
 
   return (
-    <section className="mb-7 animate-in rounded-3xl border border-white/10 bg-primary/70 p-5 shadow-[0_24px_52px_rgba(0,0,0,0.42)] fade-in duration-500 sm:p-8">
+    <section className="mb-7 animate-in rounded-3xl border border-white/10 bg-zinc-900/60 p-5 shadow-[0_24px_52px_rgba(0,0,0,0.5)] fade-in duration-500 sm:p-8">
       <div className="grid gap-7 lg:grid-cols-[1.08fr_1fr] lg:items-center">
         <div className="space-y-5">
-          <span className="inline-flex items-center gap-2 rounded-full border border-secondary/35 bg-secondary/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
             <Flame className="h-3.5 w-3.5" />
             Hot & Fast Delivery
           </span>
 
-          <h2 className="max-w-[14ch] font-heading text-4xl font-bold leading-[1.03] text-white sm:text-5xl">
+          <h2 className="max-w-[14ch] font-heading text-4xl font-semibold leading-[1.1] text-white sm:text-5xl">
             Autenticas Artesanales directo a tu puerta.
           </h2>
 
-          <p className="max-w-xl text-base leading-relaxed text-white/70">
+          <p className="max-w-xl text-base leading-relaxed text-white/60">
             {currentProduct.description}. Preparado al momento, con ingredientes frescos y despacho
             rapido para que llegue en su punto.
           </p>
@@ -87,7 +87,7 @@ export const FeaturedBanner = ({ products, isStoreOpen }: FeaturedBannerProps) =
               className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition-all duration-300 active:scale-95 ${
                 isButtonDisabled
                   ? 'cursor-not-allowed border border-white/15 bg-white/10 text-white/50'
-                  : 'bg-secondary text-primary shadow-[0_6px_16px_rgba(249,239,188,0.18)] hover:bg-secondary/90'
+                  : 'bg-primary text-black shadow-[0_6px_16px_rgba(197,168,111,0.2)] hover:bg-primary/90'
               }`}
             >
               <Plus className="h-4 w-4" />
@@ -103,7 +103,7 @@ export const FeaturedBanner = ({ products, isStoreOpen }: FeaturedBannerProps) =
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-5 border-t border-white/10 pt-4 text-sm text-white/60">
+          <div className="flex flex-wrap items-center gap-5 border-t border-white/10 pt-4 text-sm text-white/50">
             <span>35-50 min</span>
             <span>Efectivo / MPago</span>
             <span>Delivery & Take Away</span>
@@ -111,8 +111,8 @@ export const FeaturedBanner = ({ products, isStoreOpen }: FeaturedBannerProps) =
               href="https://www.instagram.com/americanway"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/20 text-white/65 transition-all hover:border-secondary/35 hover:text-secondary active:scale-95"
-              aria-label="Instagram American Way"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/20 text-white/60 transition-all hover:border-primary/35 hover:text-primary active:scale-95"
+              aria-label="Instagram"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -133,8 +133,8 @@ export const FeaturedBanner = ({ products, isStoreOpen }: FeaturedBannerProps) =
               href="https://wa.me/5491123456789"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/20 text-white/65 transition-all hover:border-secondary/35 hover:text-secondary active:scale-95"
-              aria-label="WhatsApp American Way"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/20 text-white/60 transition-all hover:border-primary/35 hover:text-primary active:scale-95"
+              aria-label="WhatsApp"
             >
               <MessageCircle className="h-4 w-4" />
             </a>

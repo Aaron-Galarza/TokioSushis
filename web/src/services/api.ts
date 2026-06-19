@@ -64,7 +64,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (isBrowser() && error.response?.status === 401) {
+    // Obtenemos la URL de la request original para saber a dónde estábamos llamando
+    const originalRequestUrl = error.config?.url || '';
+
+    // Si es 401 Y la petición NO era la de login, forzamos cierre de sesión
+    if (
+      isBrowser() && 
+      error.response?.status === 401 && 
+      !originalRequestUrl.includes('/users/login')
+    ) {
       try {
         const { useAuthStore } = await loadAuthStoreModule();
         useAuthStore.getState().logout();

@@ -34,7 +34,7 @@ export const AddressMap = () => {
       });
 
       const customMarker = document.createElement('div');
-      customMarker.className = 'w-5 h-5 bg-primary rounded-full shadow-[0_0_20px_rgba(249,239,188,0.8)] border-[3px] border-black';
+      customMarker.className = 'w-5 h-5 bg-primary rounded-full shadow-[0_0_20px_rgba(197,168,111,0.6)] border-[3px] border-black';
 
       marker.current = new mapboxgl.Marker(customMarker)
         .setLngLat([deliveryCoordinates.lng, deliveryCoordinates.lat])

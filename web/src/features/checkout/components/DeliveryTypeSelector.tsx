@@ -19,7 +19,7 @@ export const DeliveryTypeSelector = () => {
         onClick={() => handleTypeChange('delivery')}
         className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-300 ${
           deliveryType === 'delivery'
-            ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(249,239,188,0.1)]'
+            ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(197,168,111,0.12)]'
             : 'border-white/5 bg-zinc-900/50 hover:border-white/10 hover:bg-zinc-900'
         }`}
       >
@@ -49,7 +49,7 @@ export const DeliveryTypeSelector = () => {
         onClick={() => handleTypeChange('pickup')}
         className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-300 ${
           deliveryType === 'pickup'
-            ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(249,239,188,0.1)]'
+            ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(197,168,111,0.12)]'
             : 'border-white/5 bg-zinc-900/50 hover:border-white/10 hover:bg-zinc-900'
         }`}
       >
