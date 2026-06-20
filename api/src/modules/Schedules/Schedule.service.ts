@@ -42,8 +42,8 @@ export const checkStoreStatus = async () => {
 
   if (!todaySchedule || !todaySchedule.isStoreOpen) {
     return {
+      ...baseResponse,
       isOpen: false,
-      isEmergencyClosed: false,
       message: 'Hoy el local permanece cerrado',
       schedule: todaySchedule ?? null,
     };
@@ -52,8 +52,8 @@ export const checkStoreStatus = async () => {
   const isOpen = config.isOpen && currentTime >= todaySchedule.openTime && currentTime <= todaySchedule.closeTime;
 
   return {
+    ...baseResponse,
     isOpen,
-    isEmergencyClosed: false,
     message: isOpen ? 'Estamos cocinando!' : `Abrimos a las ${todaySchedule.openTime}`,
     schedule: todaySchedule,
   };
