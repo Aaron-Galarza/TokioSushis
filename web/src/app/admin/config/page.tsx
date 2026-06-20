@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   AlertCircle, Power, Clock, CheckCircle,
-  CloudRain, Sun, Plus, Trash2, MapPin, Route, Truck, Loader2, ImageIcon,
+  CloudRain, Sun, Plus, Trash2, MapPin, Route, Loader2, ImageIcon,
 } from 'lucide-react';
 import api from '@/services/api';
 
@@ -53,8 +53,6 @@ export default function ConfigPage() {
   const [rainSaved, setRainSaved] = useState(false);
   const [ranges, setRanges] = useState<KmRange[]>([]);
   const [zones, setZones] = useState<SpecialZone[]>([]);
-  const [pricePerKm, setPricePerKm] = useState('0');
-  const [priceSaved, setPriceSaved] = useState(false);
 
   // ── Range form ───────────────────────────────────────────────
   const [newRange, setNewRange] = useState({ maxKm: '', price: '' });
@@ -76,7 +74,6 @@ export default function ConfigPage() {
         setEmergencyClosed(c.isEmergencyClosed ?? false);
         setBannerUrl(c.banner ?? '');
         setBannerInput(c.banner ?? '');
-        setPricePerKm(String(c.pricePerKm ?? 0));
         if (c.dailySchedule?.length) setSchedule(c.dailySchedule);
 
         const d = deliveryRes.data.data;
@@ -157,12 +154,6 @@ export default function ConfigPage() {
   const deleteZone = async (id: string) => {
     const res = await api.delete(`/delivery/config/zones/${id}`);
     setZones(res.data.data.data);
-  };
-
-  const savePricePerKm = async () => {
-    await api.put('/config/delivery', { pricePerKm: Number(pricePerKm) });
-    setPriceSaved(true);
-    setTimeout(() => setPriceSaved(false), 2500);
   };
 
   if (loading) {
@@ -527,29 +518,6 @@ export default function ConfigPage() {
           )}
         </div>
 
-        {/* Precio Base por KM */}
-        <div className="bg-[#161616] rounded-xl p-6 border border-[#2A2A2A]">
-          <div className="flex items-center gap-2 mb-4">
-            <Truck className="w-5 h-5 text-primary" />
-            <h2 className="text-white text-xl">Precio Base por KM</h2>
-          </div>
-          <div className="space-y-3">
-            <label className="text-muted-foreground text-sm block">Precio por kilómetro ($)</label>
-            <input
-              type="number"
-              value={pricePerKm}
-              onChange={(e) => { setPricePerKm(e.target.value); setPriceSaved(false); }}
-              min={0}
-              className="bg-[#0A0A0A] text-white px-4 py-3 rounded-lg border border-[#2A2A2A] focus:outline-none focus:border-primary text-sm w-full"
-            />
-            <button
-              onClick={savePricePerKm}
-              className="w-full bg-primary hover:bg-primary/90 text-black py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-semibold"
-            >
-              {priceSaved ? <><CheckCircle className="w-4 h-4" /> Guardado</> : 'Guardar'}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

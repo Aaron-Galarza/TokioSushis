@@ -2,7 +2,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 export interface DeliveryCostData {
   distanceKm: number;
-  pricePerKm: number;
   deliveryCost: number;
 }
 
@@ -38,7 +37,6 @@ export const deliveryService = {
         success: true,
         data: {
           distanceKm: json.data.distanceKm,
-          pricePerKm: json.data.pricePerKm,
           deliveryCost: json.data.deliveryCost,
         },
       };

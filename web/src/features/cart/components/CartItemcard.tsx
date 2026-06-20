@@ -83,7 +83,7 @@ export const CartItemCard = ({ item, index }: CartItemCardProps) => {
       {/* SECCIÓN SUPERIOR: Info Principal */}
       <div className="flex gap-3">
         {/* Thumbnail del producto */}
-        <div className="relative shrink-0 w-16 h-16 bg-zinc-950 rounded-xl overflow-hidden border border-white/10 ring-1 ring-white/5">
+        <div className="relative shrink-0 w-20 h-20 bg-zinc-950 rounded-xl overflow-hidden border border-white/10 ring-1 ring-white/5">
           {!imageError && imageSrc ? (
             <img
               src={imageSrc}

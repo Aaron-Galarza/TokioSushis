@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Receipt } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CheckCircle, Receipt } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
 import { useDelivery } from '@/features/checkout/hooks/useDelivery';
 import { formatPrice } from '@/lib/format';
@@ -165,20 +165,20 @@ export default function CheckoutPage() {
         {/* Customer info */}
         <section>
           <h2 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3 px-1">Tus datos</h2>
-          <div className="bg-zinc-900/60 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
+          <div className="bg-[#161616] border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
             <input
               type="text"
               placeholder="Nombre"
               value={name}
               onChange={e => setName(e.target.value)}
-              className="bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm w-full"
+              className="bg-[#0A0A0A] border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm w-full"
             />
             <input
               type="tel"
               placeholder="Teléfono"
               value={phone}
               onChange={e => setPhone(e.target.value)}
-              className="bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm w-full"
+              className="bg-[#0A0A0A] border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm w-full"
             />
           </div>
         </section>
@@ -194,7 +194,7 @@ export default function CheckoutPage() {
                 className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-sm transition-all ${
                   paymentMethod === method
                     ? 'bg-primary text-black'
-                    : 'bg-zinc-900 border border-white/10 text-white/60 hover:text-white'
+                    : 'bg-[#1A1A1A] border border-white/10 text-white/60 hover:text-white'
                 }`}
               >
                 {PAYMENT_LABELS[method]}
@@ -206,28 +206,29 @@ export default function CheckoutPage() {
         {/* Coupon */}
         <section>
           <h2 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3 px-1">Cupón (opcional)</h2>
-          <div className="bg-zinc-900/60 border border-white/10 rounded-2xl p-4 flex flex-col gap-2">
+          <div className="bg-[#161616] border border-white/10 rounded-2xl p-4 flex flex-col gap-2">
             <div className="flex gap-2">
               <input
                 type="text"
                 placeholder="Código de cupón"
                 value={couponCode}
                 onChange={e => handleCouponInput(e.target.value)}
-                className="flex-1 bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm"
+                className="flex-1 bg-[#0A0A0A] border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm"
               />
               <button
                 onClick={validateCoupon}
                 disabled={couponLoading || !couponCode.trim()}
-                className="bg-zinc-700 text-white font-bold px-4 rounded-xl text-sm hover:bg-zinc-600 disabled:opacity-40 transition-colors"
+                className="bg-primary/20 border border-primary/30 text-primary font-bold px-4 rounded-xl text-sm hover:bg-primary/30 disabled:opacity-40 transition-colors"
               >
                 {couponLoading ? '...' : 'Aplicar'}
               </button>
             </div>
             {couponError && <p className="text-red-400 text-xs">{couponError}</p>}
             {coupon && (
-              <p className="text-green-400 text-xs">
-                ✓ Cupón aplicado: {coupon.discountPercent}% de descuento
-              </p>
+              <div className="flex items-center gap-2 text-green-400 text-xs">
+                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Cupón aplicado: <span className="font-bold">{coupon.discountPercent}% de descuento</span></span>
+              </div>
             )}
           </div>
         </section>
@@ -237,7 +238,7 @@ export default function CheckoutPage() {
           <h2 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3 px-1 flex items-center gap-2">
             <Receipt className="w-4 h-4" /> Resumen de pago
           </h2>
-          <div className="bg-zinc-900/60 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
+          <div className="bg-[#161616] border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex flex-col gap-3 pb-3 border-b border-white/10">
               {items.map((item, index) => (
                 <div key={index} className="flex flex-col gap-1">

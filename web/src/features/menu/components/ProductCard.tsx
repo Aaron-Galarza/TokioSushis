@@ -35,7 +35,7 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
 
       {/* Image + button */}
       <div className="relative shrink-0">
-        <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-zinc-800">
+        <div className="w-[88px] h-[88px] rounded-xl overflow-hidden bg-zinc-800">
           {!imageError && isValidImage ? (
             <img
               src={product.image}
@@ -54,10 +54,10 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
         <button
           onClick={() => !isButtonDisabled && addItem(product, 1, [])}
           disabled={isButtonDisabled}
-          className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${
+          className={`absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${
             isButtonDisabled
               ? 'bg-zinc-700 text-white/30 cursor-not-allowed'
-              : 'bg-primary text-black hover:bg-primary/90'
+              : 'bg-white text-primary hover:scale-110'
           }`}
           aria-label={isOutOfStock ? 'Sin stock' : 'Agregar al carrito'}
         >

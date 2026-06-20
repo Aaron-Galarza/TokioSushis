@@ -10,5 +10,4 @@ export interface SystemConfig {
 export interface StoreStatus {
   isOpen: boolean;
   message?: string;
-pricePerKm: number
 }

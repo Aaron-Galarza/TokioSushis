@@ -81,10 +81,11 @@ export const ProductList = ({
     return (
       <div className="space-y-3">
         {cat && (
-          <div className="mb-4 pl-3 border-l-2 border-primary">
-            <h2 className="font-heading text-xl font-semibold text-white uppercase tracking-wide">
+          <div className="mb-4">
+            <h2 className="font-heading text-xl font-semibold text-white uppercase tracking-wide mb-2">
               {cat.name}
             </h2>
+            <div className="h-[2px] w-16 bg-primary rounded-full" />
           </div>
         )}
         {products.map((p) => (
@@ -103,10 +104,11 @@ export const ProductList = ({
           if (catProducts.length === 0) return null;
           return (
             <div key={category.id}>
-              <div className="mb-4 pl-3 border-l-2 border-primary">
-                <h2 className="font-heading text-xl font-semibold text-white uppercase tracking-wide">
+              <div className="mb-4">
+                <h2 className="font-heading text-xl font-semibold text-white uppercase tracking-wide mb-2">
                   {category.name}
                 </h2>
+                <div className="h-[2px] w-16 bg-primary rounded-full" />
               </div>
               <div className="space-y-3">
                 {catProducts.map((p) => (

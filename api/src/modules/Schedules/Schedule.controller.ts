@@ -20,20 +20,6 @@ export const closeStore = async (req: Request, res: Response) => {
     }
 }
 
-export const updateDelivery = async (req: Request, res: Response) => {
-    try {
-        const { pricePerKm } = req.body
-        if (typeof pricePerKm !== 'number' || pricePerKm < 0) {
-            return sendError(res, 'pricePerKm debe ser un numero positivo', 400)
-        }
-
-        const config = await ConfigService.updateDelivery(pricePerKm)
-        return sendSucces(res, config)
-    } catch (error) {
-        return sendError(res, 'Error al actualizar el costo de envio')
-    }
-}
-
 export const updateSchedule = async (req: Request, res: Response) => {
     try {
         const raw = req.body?.dailySchedule ?? req.body?.schedule ?? req.body

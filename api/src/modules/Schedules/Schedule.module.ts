@@ -11,7 +11,6 @@ export interface IConfig extends Document {
   isOpen: boolean;
   isEmergencyClosed: boolean;
   emergencyMessage: string;
-  pricePerKm: number;
   dailySchedule: IDaySchedule[];
   isAllClose: boolean;
   banner: string;
@@ -28,7 +27,6 @@ const configSchema = new Schema<IConfig>({
   isOpen: { type: Boolean, default: true },
   isEmergencyClosed: { type: Boolean, default: false },
   emergencyMessage: { type: String, default: '' },
-  pricePerKm: { type: Number, default: 0, min: 0 },
   dailySchedule: [dayScheduleSchema],
   isAllClose: { type: Boolean, default: false },
   banner: { type: String, default: '' },
@@ -41,7 +39,6 @@ configSchema.statics.getOrCreateConfig = async function () {
       isOpen: true,
       isEmergencyClosed: false,
       emergencyMessage: '',
-      pricePerKm: Number(process.env.PRICE_PER_KM ?? 0),
       banner:'',
       dailySchedule: [
         { day: 'Domingo', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },

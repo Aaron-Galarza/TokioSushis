@@ -9,8 +9,7 @@ export const checkStoreStatus = async () => {
 
   const baseResponse = {
     isEmergencyClosed,
-    pricePerKm: config.pricePerKm ?? 0,
-    banner: config.banner ?? '', // 👈 Adjuntamos el banner en todas las respuestas públicas
+    banner: config.banner ?? '',
   };
 
   if (isEmergencyClosed) {
@@ -47,7 +46,6 @@ export const checkStoreStatus = async () => {
       isEmergencyClosed: false,
       message: 'Hoy el local permanece cerrado',
       schedule: todaySchedule ?? null,
-      pricePerKm: config.pricePerKm ?? 0,
     };
   }
 
@@ -58,7 +56,6 @@ export const checkStoreStatus = async () => {
     isEmergencyClosed: false,
     message: isOpen ? 'Estamos cocinando!' : `Abrimos a las ${todaySchedule.openTime}`,
     schedule: todaySchedule,
-    pricePerKm: config.pricePerKm ?? 0,
   };
 };
 
@@ -75,12 +72,6 @@ export const closeStore = async (): Promise<IConfig | null> => {
   const nextStatus = !(config.isEmergencyClosed || config.isAllClose);
   config.isEmergencyClosed = nextStatus;
   config.isAllClose = nextStatus;
-  return await config.save();
-};
-
-export const updateDelivery = async (pricePerKm: number): Promise<IConfig> => {
-  const config = await ConfigModel.getOrCreateConfig();
-  config.pricePerKm = pricePerKm;
   return await config.save();
 };
 

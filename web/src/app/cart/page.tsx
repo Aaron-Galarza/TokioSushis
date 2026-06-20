@@ -78,7 +78,7 @@ export default function CartPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4 shadow-md backdrop-blur mt-2">
+        <section className="rounded-2xl border border-white/10 bg-[#161616] p-4 shadow-md mt-2">
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col pl-1">
               <span className="text-xs text-white/50 font-semibold uppercase tracking-wider">Total Final</span>
@@ -89,7 +89,7 @@ export default function CartPage() {
 
             <Link
               href="/checkout"
-              className="flex-1 bg-primary text-white font-extrabold text-base sm:text-lg py-3.5 px-5 rounded-xl hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
+              className="flex-1 bg-primary text-black font-extrabold text-base sm:text-lg py-3.5 px-5 rounded-xl hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
             >
               Continuar
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

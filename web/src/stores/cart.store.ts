@@ -24,7 +24,6 @@ interface CartState {
   deliveryCoordinates: { lat: number; lng: number } | null;
   distanceKm: number;
   deliveryCost: number;
-  pricePerKm: number;
 
   addItem: (product: Product, quantity: number, addons: CartAddon[]) => void;
   removeItem: (index: number) => void;
@@ -38,7 +37,6 @@ interface CartState {
   clearCoupon: () => void;
   setDeliveryAddress: (address: string, coords: { lat: number; lng: number }) => void;
   setDeliveryCost: (cost: number, distanceKm: number) => void;
-  setPricePerKm: (price: number) => void;
   clearDelivery: () => void;
 
   getTotals: () => { subtotal: number; discount: number; total: number; itemCount: number; };
@@ -55,7 +53,6 @@ export const useCartStore = create<CartState>()(
       deliveryCoordinates: null,
       distanceKm: 0,
       deliveryCost: 0,
-      pricePerKm: 0,
 
       addItem: (product, quantity, addons) => set((state) => {
         const idx = state.items.findIndex(i => i.product.id === product.id && areSameAddons(i.addons, addons));
@@ -132,7 +129,6 @@ export const useCartStore = create<CartState>()(
       clearCoupon: () => set({ coupon: null }),
       setDeliveryAddress: (addr, coords) => set({ deliveryAddress: addr, deliveryCoordinates: coords }),
       setDeliveryCost: (cost, dist) => set({ deliveryCost: cost, distanceKm: dist }),
-      setPricePerKm: (price) => set({ pricePerKm: price }),
       clearDelivery: () => set({ deliveryAddress: '', deliveryCoordinates: null, distanceKm: 0, deliveryCost: 0 }),
 
       getTotals: () => {
