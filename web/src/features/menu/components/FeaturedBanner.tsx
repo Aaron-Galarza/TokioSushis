@@ -2,7 +2,6 @@
 
 import { Search, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import type { Category } from '@/types';
 
 interface HeroProps {
   banner: string;
@@ -10,9 +9,6 @@ interface HeroProps {
   loading: boolean;
   searchQuery: string;
   onSearch: (q: string) => void;
-  categories: Category[];
-  selectedCategory: string | null;
-  onSelectCategory: (id: string | null) => void;
 }
 
 export const FeaturedBanner = ({
@@ -21,9 +17,6 @@ export const FeaturedBanner = ({
   loading,
   searchQuery,
   onSearch,
-  categories,
-  selectedCategory,
-  onSelectCategory,
 }: HeroProps) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
@@ -36,21 +29,11 @@ export const FeaturedBanner = ({
     return () => clearTimeout(t);
   }, [localSearch, onSearch, searchQuery]);
 
-  const handleCategoryClick = (id: string | null) => {
-    onSelectCategory(id);
-    const el = document.getElementById('product-list-top');
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 20, behavior: 'smooth' });
-  };
-
   return (
-    <section className="relative w-full min-h-[480px] flex flex-col items-center justify-center overflow-hidden">
+    <section className="relative w-full min-h-[440px] flex flex-col items-center justify-center overflow-hidden">
       {/* Background image */}
       {banner ? (
-        <img
-          src={banner}
-          alt="Tokyo Sushi"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <img src={banner} alt="Tokyo Sushi" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-zinc-900" />
       )}
@@ -59,8 +42,7 @@ export const FeaturedBanner = ({
       <div className="absolute inset-0 bg-black/65" />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-4 pt-10 pb-8 w-full max-w-xl">
-
+      <div className="relative z-10 flex flex-col items-center text-center px-4 pt-10 pb-4 w-full max-w-xl">
         {/* Logo circle */}
         <div className="w-24 h-24 rounded-full border-2 border-primary/40 bg-black/60 flex items-center justify-center mb-5 shadow-[0_0_32px_rgba(197,168,111,0.2)]">
           <span className="font-heading italic text-primary text-2xl font-bold leading-tight tracking-wider">T</span>
@@ -77,9 +59,7 @@ export const FeaturedBanner = ({
         {/* Status badge */}
         {!loading && (
           <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold mb-6 ${
-            isOpen
-              ? 'border-green-500/40 bg-green-500/10 text-green-400'
-              : 'border-red-500/40 bg-red-500/10 text-red-400'
+            isOpen ? 'border-green-500/40 bg-green-500/10 text-green-400' : 'border-red-500/40 bg-red-500/10 text-red-400'
           }`}>
             <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-green-500' : 'bg-red-500'}`} />
             {isOpen ? 'ABIERTO AHORA' : 'CERRADO'}
@@ -87,7 +67,7 @@ export const FeaturedBanner = ({
         )}
 
         {/* Search */}
-        <div className="relative w-full mb-5">
+        <div className="relative w-full mb-2">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
           <input
             type="text"
@@ -104,33 +84,6 @@ export const FeaturedBanner = ({
               <X className="w-4 h-4" />
             </button>
           )}
-        </div>
-
-        {/* Category chips */}
-        <div className="flex items-center gap-2 flex-wrap justify-center">
-          <button
-            onClick={() => handleCategoryClick(null)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-semibold uppercase tracking-wide transition-all active:scale-95 ${
-              selectedCategory === null
-                ? 'bg-primary text-black border-primary shadow-[0_4px_12px_rgba(197,168,111,0.3)]'
-                : 'bg-black/40 border-white/15 text-white/60 hover:border-white/30 hover:text-white backdrop-blur-sm'
-            }`}
-          >
-            Todas
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => handleCategoryClick(cat.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-semibold uppercase tracking-wide transition-all active:scale-95 ${
-                selectedCategory === cat.id
-                  ? 'bg-primary text-black border-primary shadow-[0_4px_12px_rgba(197,168,111,0.3)]'
-                  : 'bg-black/40 border-white/15 text-white/60 hover:border-white/30 hover:text-white backdrop-blur-sm'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
         </div>
       </div>
     </section>
