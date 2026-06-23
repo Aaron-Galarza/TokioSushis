@@ -2,22 +2,14 @@
 
 import { useRef, useState, useEffect } from 'react';
 import type { Category } from '@/types';
-import { Utensils, Flame, Grid3x3, Droplet, Soup, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Grid3x3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getCategoryIcon } from '@/lib/categoryIcons';
 
 interface CategoryFilterProps {
   categories: Category[];
   selectedCategory: string | null;
   onSelectCategory: (id: string | null) => void;
 }
-
-const getCategoryIcon = (categoryName: string) => {
-  const name = categoryName.toLowerCase();
-  if (name.includes('tabla')) return Utensils;
-  if (name.includes('wok')) return Flame;
-  if (name.includes('salsa') || name.includes('extra')) return Droplet;
-  if (name.includes('variado')) return Grid3x3;
-  return Soup;
-};
 
 export const CategoryFilter = ({
   categories,
