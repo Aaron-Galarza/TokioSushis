@@ -102,13 +102,13 @@ export const patchRain = (isRaining: boolean, extraRain: number) =>
   api.patch('/delivery/config/rain', { isRaining, extraRain });
 
 export const addKmRange = (maxKm: number, price: number) =>
-  api.post('/delivery/config/ranges', { maxKm, price }).then(r => r.data.data ?? []);
+  api.post('/delivery/config/ranges', { maxKm, price }).then(r => r.data.data?.data ?? []);
 
 export const deleteKmRange = (id: string) =>
-  api.delete(`/delivery/config/ranges/${id}`).then(r => r.data.data ?? []);
+  api.delete(`/delivery/config/ranges/${id}`).then(r => r.data.data?.data ?? []);
 
 export const addSpecialZone = (payload: Record<string, any>) =>
-  api.post('/delivery/config/zones', payload).then(r => r.data.data ?? []);
+  api.post('/delivery/config/zones', payload).then(r => r.data.data?.data ?? []);
 
 export const deleteSpecialZone = (id: string) =>
-  api.delete(`/delivery/config/zones/${id}`).then(r => r.data.data ?? []);
+  api.delete(`/delivery/config/zones/${id}`).then(r => r.data.data?.data ?? []);
