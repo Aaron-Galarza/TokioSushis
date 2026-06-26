@@ -15,7 +15,7 @@ export interface OrderDeliveryDetails {
 }
 
 export interface Order {
-  id: string; // Identificador único de la orden
+  id: string;
   customer: OrderCustomer;
   items: CartItem[];
   deliveryType: 'pickup' | 'delivery';
@@ -26,6 +26,6 @@ export interface Order {
   discountPercent: number;
   total: number;
   delivery?: OrderDeliveryDetails;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-  createdAt: string; // Para organizar por fecha/hora
+  status: 'pending' | 'in-preparation' | 'ready' | 'delivered' | 'cancelled'; 
+  createdAt: string;
 }
