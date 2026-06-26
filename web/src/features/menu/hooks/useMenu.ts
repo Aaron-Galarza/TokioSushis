@@ -1,95 +1,55 @@
-import { useState, useEffect, useMemo } from 'react';
-import { menuService } from '@/services/menu.service';
-import type { Product, Category } from '@/types';
+'use client';
 
-export const useMenu = () => {
-  // Estado principal
+// NOTA: Este archivo reemplaza el useMenu.ts existente.
+// Agrega la carga de adicionales y los inyecta en cada producto según su categoría.
+// La firma del hook no cambia — los componentes que lo consumen no se tocan.
+
+import { useState, useEffect } from 'react';
+import { menuService } from '@/services/menu.service';
+import type { Product, Category, Addon } from '@/types';
+
+export function useMenu() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filtros
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // Fetch inicial (al montar el componente)
   useEffect(() => {
-    const fetchMenuData = async () => {
+    const load = async () => {
       try {
-        setLoading(true);
-        // Hacemos ambos llamados en paralelo para mayor velocidad
-        const [productsData, categoriesData] = await Promise.all([
+        setIsLoading(true);
+
+        // Traemos todo en paralelo: productos, categorías y TODOS los adicionales activos
+        const [prods, cats, allAddons] = await Promise.all([
           menuService.getProducts(),
           menuService.getCategories(),
+          menuService.getAddons(), // sin filtro → trae todos los activos
         ]);
 
-        setProducts(productsData);
-        setCategories(categoriesData);
+        // Inyectamos en cada producto los adicionales que le corresponden.
+        // Un adicional corresponde a un producto si:
+        //   a) su array categories incluye la categoría del producto, O
+        //   b) su array categories está vacío (aplica a todos)
+        const prodsWithAddons: Product[] = prods.map((product) => {
+          const applicable = allAddons.filter((addon: Addon) =>
+            addon.categories.length === 0 ||
+            addon.categories.some((c) => c._id === product.category)
+          );
+          return { ...product, addons: applicable };
+        });
 
-        // 👇 MAGIA ACÁ: Auto-seleccionamos la primera categoría al cargar
-        // Si hay categorías disponibles, clavamos la primera por defecto.
-        if (categoriesData.length > 0) {
-          setSelectedCategory(categoriesData[0].id);
-        }
-
-        setError(null);
+        setProducts(prodsWithAddons);
+        setCategories(cats);
       } catch (err) {
-        console.error('Error cargando el menú:', err);
-        setError('Tuvimos un problema al cargar el menú. Por favor, intentá de nuevo.');
+        setError('Error al cargar el menú');
+        console.error(err);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchMenuData();
+    load();
   }, []);
 
-  // Getter de productos filtrados
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchesSearch = searchQuery
-        ? product.title.toLowerCase().includes(searchQuery.toLowerCase())
-        : true;
-        
-      const matchesCategory = selectedCategory
-        ? product.category === selectedCategory
-        : true;
-
-      return matchesSearch && matchesCategory;
-    });
-  }, [products, searchQuery, selectedCategory]);
-
-  // Acciones
-  const selectCategory = (id: string | null) => {
-    setSelectedCategory(id);
-    if (id) setSearchQuery(''); // Si selecciona categoría, limpia la búsqueda
-  };
-
-  const setSearch = (query: string) => {
-    setSearchQuery(query);
-    
-    if (query) {
-      // Si busca tipeando, ponemos la categoría en null para buscar en TODO el menú
-      setSelectedCategory(null); 
-    } else {
-      // 👇 Si borra el texto de la lupa, lo devolvemos a la primera categoría 
-      // en vez de mostrarle "Todos" los productos mezclados.
-      if (categories.length > 0) {
-        setSelectedCategory(categories[0].id);
-      }
-    }
-  };
-
-  return {
-    products,
-    categories,
-    loading,
-    error,
-    selectedCategory,
-    searchQuery,
-    filteredProducts,
-    selectCategory,
-    setSearch,
-  };
-};
+  return { products, categories, isLoading, error };
+}

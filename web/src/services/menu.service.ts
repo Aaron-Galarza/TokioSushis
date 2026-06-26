@@ -3,29 +3,26 @@ import type { Product, Category, Addon } from '@/types';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api';
 
 export const menuService = {
-  
- // 1. OBTENER PRODUCTOS
+
+  // 1. OBTENER PRODUCTOS
   getProducts: async (): Promise<Product[]> => {
     try {
       const response = await fetch(`${API_URL}/products`);
       if (!response.ok) throw new Error('Error al obtener productos');
-      
+
       const json = await response.json();
-      
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
-      // 👇 ACÁ ESTÁ LA CLAVE: agregamos ", index: number" al lado de item
       return json.data.map((item: any, index: number) => ({
         ...item,
-        id: item._id, 
+        id: item._id,
         available: item.available ?? true,
-        featured: item.featured ?? (index === 0), // Ahora sí reconoce el index
-        category: typeof item.category === 'object' ? item.category._id : item.category
+        featured: item.featured ?? (index === 0),
+        category: typeof item.category === 'object' ? item.category._id : item.category,
       }));
-
     } catch (error) {
       console.error('Error fetching products:', error);
-      return []; 
+      return [];
     }
   },
 
@@ -34,24 +31,49 @@ export const menuService = {
     try {
       const response = await fetch(`${API_URL}/categories`);
       if (!response.ok) throw new Error('Error al obtener categorías');
-      
+
       const json = await response.json();
-      
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
-      // Mapeamos _id a id
       return json.data.map((item: any) => ({
         ...item,
-        id: item._id
+        id: item._id,
       }));
-
     } catch (error) {
       console.error('Error fetching categories:', error);
       return [];
     }
   },
 
-  // 3. OBTENER ESTADO DEL LOCAL (Abierto/Cerrado y Banner)
+  // 3. OBTENER ADICIONALES — opcionalmente filtrados por categoryId
+  // El backend ya soporta GET /addons?category=<id>
+  // Si categories está vacío en el adicional, el backend lo devuelve igual (aplica a todos)
+  getAddons: async (categoryId?: string): Promise<Addon[]> => {
+    try {
+      const url = categoryId
+        ? `${API_URL}/addons?category=${categoryId}`
+        : `${API_URL}/addons`;
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Error al obtener adicionales');
+
+      const json = await response.json();
+      if (!json.success) throw new Error(json.error || 'Error en la API');
+
+      return json.data.map((item: any) => ({
+        id: item._id,
+        name: item.title,             // el backend guarda "title", el front usa "name"
+        price: item.price,
+        active: item.active,
+        categories: item.categories ?? [], // array populado: [{ _id, name, active }]
+      }));
+    } catch (error) {
+      console.error('Error fetching addons:', error);
+      return [];
+    }
+  },
+
+  // 4. OBTENER ESTADO DEL LOCAL
   getStoreStatus: async (): Promise<{ isOpen: boolean; message: string; banner?: string }> => {
     try {
       const response = await fetch(`${API_URL}/config/status`);
@@ -72,10 +94,9 @@ export const menuService = {
       }
 
       return { isOpen: true, message: '', banner: '' };
-
     } catch (error) {
       console.warn('⚠️ No se pudo conectar al backend de configuración. Local abierto por defecto.');
       return { isOpen: true, message: '', banner: '' };
     }
-  }
+  },
 };
