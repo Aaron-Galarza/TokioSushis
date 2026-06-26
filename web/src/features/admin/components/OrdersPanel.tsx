@@ -1,10 +1,12 @@
 import { OrderRow } from './OrdersRows';
 import type { SF } from '../hooks/useAdminOrders';
 
+// 🏷️ Agregamos la pestaña 'delivered' para reflejar el cambio del hook
 const STABS: { key: SF; label: string; dot: string }[] = [
   { key: 'pending', label: 'Pendientes', dot: 'bg-yellow-400' },
   { key: 'in-preparation', label: 'En Proceso', dot: 'bg-blue-400' },
   { key: 'completed', label: 'Terminados', dot: 'bg-green-400' },
+  { key: 'delivered', label: 'Entregados', dot: 'bg-emerald-500' }, // <- Nueva solapa
   { key: 'cancelled', label: 'Cancelados', dot: 'bg-red-500' },
 ];
 
@@ -23,7 +25,8 @@ export function OrdersPanel({ sFilter, setSFilter, oCounts, filteredOrders, expa
     <>
       <div className="flex gap-2 flex-wrap mb-4">
         {STABS.map(st => {
-          const count = oCounts[st.key]; const isA = sFilter === st.key;
+          const count = oCounts[st.key]; 
+          const isA = sFilter === st.key;
           return (
             <button key={st.key} onClick={() => setSFilter(st.key)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 ${isA ? 'bg-primary text-black' : 'border border-white/15 text-white/40 hover:text-white hover:border-white/30'}`}>

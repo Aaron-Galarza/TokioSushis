@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { fetchAdminOrders, updateOrderStatus as apiUpdateStatus } from '@/services/admin.service';
 
-export type SF = 'pending' | 'in-preparation' | 'completed' | 'cancelled';
+// 🔥 Sumamos 'delivered' a los filtros válidos del Frontend
+export type SF = 'pending' | 'in-preparation' | 'completed' | 'delivered' | 'cancelled';
 
 export function useAdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -21,15 +22,18 @@ export function useAdminOrders() {
     return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
   }, [reload]);
 
+  // 📊 Contadores limpios 1:1 mapeados con la DB
   const oCounts = useMemo(() => ({
     pending:          orders.filter(o => o.status === 'pending').length,
     'in-preparation': orders.filter(o => o.status === 'in-preparation').length,
-    completed:        orders.filter(o => o.status === 'ready' || o.status === 'delivered').length,
+    completed:        orders.filter(o => o.status === 'ready').length, // 📦 Solo listos/terminados
+    delivered:        orders.filter(o => o.status === 'delivered').length, // 🏁 Entregados
     cancelled:        orders.filter(o => o.status === 'cancelled').length,
   }), [orders]);
 
+  // 🎯 Filtro estricto sin mezclas raras
   const filteredOrders = useMemo(() => orders.filter(o => {
-    if (sFilter === 'completed') return o.status === 'ready' || o.status === 'delivered';
+    if (sFilter === 'completed') return o.status === 'ready';
     return o.status === sFilter;
   }), [orders, sFilter]);
 
