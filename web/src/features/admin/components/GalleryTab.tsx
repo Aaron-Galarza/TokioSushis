@@ -29,15 +29,20 @@ export function GalleryTab() {
         : (
           <div className="max-h-[500px] overflow-y-auto overscroll-contain scrollbar-none">
             <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-              {images.map(img => (
-                <div key={img._id} className="group relative rounded-xl overflow-hidden aspect-square bg-zinc-900 border border-white/10">
-                  <img src={img.url} alt={img.filename} className="w-full h-full object-cover" />
+              {images.map((img: any) => (
+                // 🔥 FIX: Usamos img.url como key única y segura para React
+                <div key={img.url} className="group relative rounded-xl overflow-hidden aspect-square bg-zinc-900 border border-white/10">
+                  {/* FIX: Usamos img.name como fallback semántico de alt text */}
+                  <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                  
                   <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2">
-                    <button onClick={() => copyUrl(img._id, img.url)} className="flex items-center gap-1.5 bg-primary text-black text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
-                      {copiedId === img._id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {copiedId === img._id ? 'Copiado' : 'Copiar URL'}
+                    {/* 🔥 Usamos img.name para identificar el id en el copiado y borrado */}
+                    <button onClick={() => copyUrl(img.name, img.url)} className="flex items-center gap-1.5 bg-primary text-black text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
+                      {copiedId === img.name ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copiedId === img.name ? 'Copiado' : 'Copiar URL'}
                     </button>
-                    <button onClick={() => remove(img._id)} className="flex items-center gap-1 bg-red-600/80 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
+                    
+                    <button onClick={() => remove(img.name)} className="flex items-center gap-1 bg-red-600/80 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
                       <X className="w-3 h-3" />Eliminar
                     </button>
                   </div>

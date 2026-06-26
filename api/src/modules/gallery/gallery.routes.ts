@@ -7,6 +7,6 @@ const router = Router();
 router.get('/', GalleryController.list);
 
 // POST /api/gallery/upload -> Sube una imagen (espera la clave "image" en el form-data)
-router.post('/upload', GalleryController.uploadMiddleware, GalleryController.upload);
+router.post('/', GalleryController.uploadMiddleware, GalleryController.upload);
 
 export default router;
