@@ -9,6 +9,9 @@ export const fetchAdminOrders = () =>
 export const updateOrderStatus = (id: string, status: string) =>
   api.put(`/orders/admin/${id}`, { status });
 
+export const createAdminOrder = (payload: Record<string, any>) =>
+  api.post('/orders', payload).then(r => r.data);
+
 // ── Analytics ───────────────────────────────────────────────────────────────
 export const fetchAnalytics = (range: AdminRange) =>
   api.get(`/analytics?range=${range}`).then(r => r.data.data);

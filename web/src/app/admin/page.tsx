@@ -1,11 +1,11 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { BarChart3, ShoppingBag, Utensils, Tag, Settings, ImageIcon } from 'lucide-react';
 import { useAdminOrders } from '@/features/admin/hooks/useAdminOrders';
 import { useAdminCoupons } from '@/features/admin/hooks/useAdminCoupons';
+import { useAdminMenu } from '@/features/admin/hooks/useAdminMenu';
 import { OverviewTab } from '@/features/admin/components/OverviewTab';
 import { OrdersTab } from '@/features/admin/components/OrdersTab';
 import { MenuTab } from '@/features/admin/components/MenuTab';
@@ -17,11 +17,11 @@ type Tab = 'overview' | 'orders' | 'menu' | 'coupons' | 'gallery' | 'config';
 
 const NAVT = [
   { k: 'overview' as Tab, l: 'Vista General', I: BarChart3 },
-  { k: 'orders' as Tab, l: 'Pedidos', I: ShoppingBag },
-  { k: 'menu' as Tab, l: 'Menú', I: Utensils },
-  { k: 'coupons' as Tab, l: 'Cupones', I: Tag },
-  { k: 'gallery' as Tab, l: 'Galería', I: ImageIcon },
-  { k: 'config' as Tab, l: 'Configuración', I: Settings },
+  { k: 'orders'   as Tab, l: 'Pedidos',       I: ShoppingBag },
+  { k: 'menu'     as Tab, l: 'Menú',          I: Utensils },
+  { k: 'coupons'  as Tab, l: 'Cupones',       I: Tag },
+  { k: 'gallery'  as Tab, l: 'Galería',       I: ImageIcon },
+  { k: 'config'   as Tab, l: 'Configuración', I: Settings },
 ];
 
 export default function AdminPage() {
@@ -30,9 +30,7 @@ export default function AdminPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [tab, setTab] = useState<Tab>('overview');
 
-  // 🛡️ GUARD DE PROTECCIÓN CONTRA TOKENS EXPIRADOS O ACCESOS DIRECTOS
   useEffect(() => {
-    // Si no está autenticado o el token físicamente no existe en el store
     if (!isAuthenticated || !token) {
       router.replace('/login');
     } else {
@@ -40,13 +38,19 @@ export default function AdminPage() {
     }
   }, [isAuthenticated, token, router]);
 
-  // Ejecutamos condicionalmente los hooks de datos sólo si pasamos la barrera de auth.
-  // Evitamos llamadas cruzadas que devuelvan 403 antes de la redirección.
-  const ordersHook = useAdminOrders();
+  const ordersHook  = useAdminOrders();
   const couponsHook = useAdminCoupons();
+  const menuHook    = useAdminMenu();
+
+  // Cargar productos y addons cuando se entra a la pestaña orders
+  useEffect(() => {
+    if (tab === 'orders' && menuHook.products.length === 0) {
+      menuHook.reload();
+    }
+  }, [tab]);
+
   const pendingCount = ordersHook?.oCounts?.pending ?? 0;
 
-  // Render vacío o un loader de transición limpio con la estética de TokioSushis
   if (checkingAuth) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center bg-[#0A0A0A] min-h-screen text-white/40">
@@ -63,11 +67,13 @@ export default function AdminPage() {
           const isA = tab === k;
           return (
             <button key={k} onClick={() => setTab(k)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all active:scale-95 ${isA ? 'bg-primary text-black' : 'border border-white/15 text-white/50 hover:text-white hover:border-white/30'}`}>
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all active:scale-95
+                ${isA ? 'bg-primary text-black' : 'border border-white/15 text-white/50 hover:text-white hover:border-white/30'}`}>
               <I className="w-3.5 h-3.5" />
               {l}
               {k === 'orders' && pendingCount > 0 && (
-                <span className={`text-[10px] font-bold ml-0.5 px-1.5 py-0.5 rounded-full ${isA ? 'bg-black/20 text-black' : 'bg-yellow-400/20 text-yellow-400'}`}>
+                <span className={`text-[10px] font-bold ml-0.5 px-1.5 py-0.5 rounded-full
+                  ${isA ? 'bg-black/20 text-black' : 'bg-yellow-400/20 text-yellow-400'}`}>
                   {pendingCount}
                 </span>
               )}
@@ -79,7 +85,7 @@ export default function AdminPage() {
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-6xl mx-auto p-5 md:p-6">
           {tab === 'overview' && <OverviewTab />}
-          {tab === 'orders'   && <OrdersTab hook={ordersHook} />}
+          {tab === 'orders'   && <OrdersTab hook={ordersHook} menu={menuHook} />}
           {tab === 'menu'     && <MenuTab />}
           {tab === 'coupons'  && <CouponsTab hook={couponsHook} />}
           {tab === 'gallery'  && <GalleryTab />}
