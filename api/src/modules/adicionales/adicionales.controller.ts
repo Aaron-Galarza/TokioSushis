@@ -14,10 +14,10 @@ export const getAdicionales = async (req: Request, res: Response) => {
 
 export const getActiveAdicionales = async (req: Request, res: Response) => {
   try {
-    const categoryId = req.query.category as string | undefined;
+    const categoryId = req.query.category as string | undefined
     const adicionales = categoryId
       ? await AdicionalService.viewByCategory(categoryId)
-      : await AdicionalService.viewActive();
+      : await AdicionalService.viewActive()
     return sendSucces(res, adicionales)
   } catch (error) {
     return sendError(res, 'Error al obtener los adicionales', 500)
@@ -26,12 +26,12 @@ export const getActiveAdicionales = async (req: Request, res: Response) => {
 
 export const createAdicional = async (req: Request, res: Response) => {
   try {
-    if (req.body.category) {
-      const categoriaValida = await CategoriaService.findById(req.body.category)
-      if (!categoriaValida) return sendError(res, 'Categoría no encontrada', 404)
-      if (!categoriaValida.active) return sendError(res, 'La categoría está inactiva', 400)
+    const categories: string[] = req.body.categories ?? []
+    for (const id of categories) {
+      const cat = await CategoriaService.findById(id)
+      if (!cat) return sendError(res, `Categoría no encontrada: ${id}`, 404)
+      if (!cat.active) return sendError(res, `La categoría está inactiva: ${cat.name}`, 400)
     }
-
     const adicional = await AdicionalService.create(req.body)
     return sendSucces(res, adicional, 201)
   } catch (error) {
@@ -41,15 +41,14 @@ export const createAdicional = async (req: Request, res: Response) => {
 
 export const updateAdicional = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
-
-    if (req.body.category) {
-      const categoriaValida = await CategoriaService.findById(req.body.category)
-      if (!categoriaValida) return sendError(res, 'Categoría no encontrada', 404)
-      if (!categoriaValida.active) return sendError(res, 'La categoría está inactiva', 400)
+    const id = req.params.id as string
+    const categories: string[] = req.body.categories ?? []
+    for (const catId of categories) {
+      const cat = await CategoriaService.findById(catId)
+      if (!cat) return sendError(res, `Categoría no encontrada: ${catId}`, 404)
+      if (!cat.active) return sendError(res, `La categoría está inactiva: ${cat.name}`, 400)
     }
-
-    const adicional = await AdicionalService.modify(id as string, req.body)
+    const adicional = await AdicionalService.modify(id, req.body)
     if (!adicional) return sendError(res, 'Adicional no encontrado', 404)
     return sendSucces(res, adicional)
   } catch (error) {
@@ -59,8 +58,8 @@ export const updateAdicional = async (req: Request, res: Response) => {
 
 export const toggleActiveAdicional = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
-    const adicional = await AdicionalService.toggleActive(id as string)
+    const id = req.params.id as string
+    const adicional = await AdicionalService.toggleActive(id)
     if (!adicional) return sendError(res, 'Adicional no encontrado', 404)
     return sendSucces(res, adicional)
   } catch (error) {
@@ -70,8 +69,8 @@ export const toggleActiveAdicional = async (req: Request, res: Response) => {
 
 export const deleteAdicional = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
-    const result = await AdicionalService.deleteById(id as string)
+    const id = req.params.id as string
+    const result = await AdicionalService.deleteById(id)
     if (!result) return sendError(res, 'Adicional no encontrado', 404)
     return sendSucces(res, result)
   } catch (error) {
