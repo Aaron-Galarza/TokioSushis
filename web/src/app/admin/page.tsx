@@ -1,7 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/auth.store';
+import { useState, useEffect, useRef } from 'react';
 import { BarChart3, ShoppingBag, Utensils, Tag, Settings, ImageIcon } from 'lucide-react';
 import { useAdminOrders } from '@/features/admin/hooks/useAdminOrders';
 import { useAdminCoupons } from '@/features/admin/hooks/useAdminCoupons';
@@ -25,40 +23,22 @@ const NAVT = [
 ];
 
 export default function AdminPage() {
-  const router = useRouter();
-  const { isAuthenticated, token } = useAuthStore();
-  const [checkingAuth, setCheckingAuth] = useState(true);
   const [tab, setTab] = useState<Tab>('overview');
-
-  useEffect(() => {
-    if (!isAuthenticated || !token) {
-      router.replace('/login');
-    } else {
-      setCheckingAuth(false);
-    }
-  }, [isAuthenticated, token, router]);
-
   const ordersHook  = useAdminOrders();
   const couponsHook = useAdminCoupons();
   const menuHook    = useAdminMenu();
 
-  // Cargar productos y addons cuando se entra a la pestaña orders
+  // Cargamos el menú una sola vez cuando se entra a "orders" por primera vez.
+  // El ref evita recargas y mantiene el array de dependencias en tamaño constante.
+  const ordersMenuLoaded = useRef(false);
   useEffect(() => {
-    if (tab === 'orders' && menuHook.products.length === 0) {
+    if (tab === 'orders' && !ordersMenuLoaded.current) {
+      ordersMenuLoaded.current = true;
       menuHook.reload();
     }
-  }, [tab]);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pendingCount = ordersHook?.oCounts?.pending ?? 0;
-
-  if (checkingAuth) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-[#0A0A0A] min-h-screen text-white/40">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-        <p className="text-xs font-bold tracking-widest uppercase">Verificando Credenciales...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -81,7 +61,6 @@ export default function AdminPage() {
           );
         })}
       </nav>
-
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-6xl mx-auto p-5 md:p-6">
           {tab === 'overview' && <OverviewTab />}
