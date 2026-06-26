@@ -19,24 +19,28 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     orderData.items.map(async (item: any) => {
  
       const product = await ProductService.viewById(item.productId)
-      if (!product) throw new Error(`Producto ${item.productId} no encontrado`)
+      if (!product) throw new AppError(404, `Producto ${item.productId} no encontrado`)
  
-        if (product.controlStock) {
-          if (product.stock <= 0) {
-            throw new AppError(400, `El producto "${product.title}" se encuentra agotado`)
-          }
-          const nuevoStock = Math.max(0, product.stock - item.quantity)
-
-          product.stock = nuevoStock
-          await product.save()
+      // 🔥 FIX CRÍTICO DE STOCK: Validación real en el servidor
+      if (product.controlStock) {
+        if (product.stock <= 0) {
+          throw new AppError(400, `El producto "${product.title}" se encuentra agotado`)
         }
+        if (item.quantity > product.stock) {
+          throw new AppError(400, `Stock insuficiente para "${product.title}". Disponibles: ${product.stock}, solicitados: ${item.quantity}`)
+        }
+        
+        // Descontamos el stock de forma exacta
+        product.stock -= item.quantity
+        await product.save()
+      }
 
       let addons: iCartAddon[] = []
       if (item.addons && item.addons.length > 0) {
         addons = await Promise.all(
           item.addons.map(async (a: any) => {
             const adicional = await AdicionalService.viewById(a.addonId)
-            if (!adicional) throw new Error(`Adicional ${a.addonId} no encontrado`)
+            if (!adicional) throw new AppError(404, `Adicional ${a.addonId} no encontrado`)
             const addonName = adicional.title ?? 'Adicional'
             return {
               addonId:  a.addonId,
@@ -58,7 +62,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
       }
     })
   )
- 
+
   const subTotal = items.reduce((acc, item) => {
     const itemTotal   = item.price * item.quantity
     const addonsTotal = (item.addons || []).reduce((a, addon) => a + addon.price * addon.quantity, 0)
@@ -69,7 +73,14 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   let discountPercent = 0
   if (orderData.couponCode) {
     const coupon = await CouponService.search(orderData.couponCode)
-    if (!coupon) throw new Error('El cupon ingresado no es valido')
+    if (!coupon) throw new AppError(404, 'El cupón ingresado no es válido o ya no existe')
+    
+    // 🔥 CRUCES DE REGLAS DE NEGOCIO REALES EN BACKEND
+    const couponError = CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType);
+    if (couponError) {
+      throw new AppError(400, couponError);
+    }
+    
     discountPercent = coupon.discountPercent
     const discount = (subTotal * discountPercent) / 100
     total = subTotal - discount
@@ -81,7 +92,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   if (orderData.deliveryType === 'delivery') {
     const coordinates = orderData.delivery?.coordinates
     if (typeof coordinates?.lat !== 'number' || typeof coordinates?.lng !== 'number') {
-      throw new AppError(400, 'Las coordenadas son obligatorias para envios')
+      throw new AppError(400, 'Las coordenadas son obligatorias para envíos')
     }
 
     const deliveryCalculation = await calculateDelivery(coordinates.lat, coordinates.lng)
@@ -98,9 +109,8 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   if (orderData.notes && typeof orderData.notes === 'string') {
     sanitizedNotes = orderData.notes
       .trim()
-      .substring(0, 300) // Cortamos rústicamente a un máximo de 300 caracteres
-      .replace(/<[^>]*>/g, '') // Barremos cualquier etiqueta HTML sospechosa (anti-XSS)
-      // Filtramos caracteres raros manteniendo texto en español y puntuación básica
+      .substring(0, 300)
+      .replace(/<[^>]*>/g, '')
       .replace(/[^a-zA-Z0-9\s.,!¡?¿()\-áéíóúñÁÉÍÓÚÑ]/g, ''); 
   }
  
@@ -128,7 +138,6 @@ export const getAllOrders = async (): Promise<iOrder[]> => {
 }
 
 export const getOrdersRange = async (range: 'hoy' | 'ayer' | 'semana' | 'mes'): Promise<iOrder[]> => {
- 
   const today = argDate();                  
   let start: Date;
   let end: Date | null = null;
@@ -148,9 +157,8 @@ export const getOrdersRange = async (range: 'hoy' | 'ayer' | 'semana' | 'mes'): 
     }
  
     case 'semana': {
-      // Lunes de esta semana
       const d = new Date(today + 'T12:00:00Z');
-      const dow = d.getUTCDay();             // 0=dom, 1=lun...
+      const dow = d.getUTCDay();             
       d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
       start = argToUTC(d.toISOString().slice(0, 10));
       break;
@@ -184,16 +192,30 @@ export const update = async (
  
   if (!updatedOrder) return null;
  
-  console.log(`[PEDIDO] Pedido ${updatedOrder._id} actualizado a "${newStatus}"`);
+  console.log(`[PEDIDO] Pedido ${updatedOrder._id} actualizado de "${oldStatus}" a "${newStatus}"`);
  
-  // Pedido se entrega ahora → sumar a analytics
+  // 📈 Pedido se entrega ahora → sumar a analytics
   if (oldStatus !== 'delivered' && newStatus === 'delivered') {
     await updateAnalyticsOnDelivery(updatedOrder);
   }
  
-  // Pedido estaba entregado y se revierte → restar de analytics (con protección)
+  // 📉 Pedido estaba entregado y se revierte o cancela → restar de analytics
   if (oldStatus === 'delivered' && newStatus !== 'delivered') {
     await revertAnalyticsOnDelivery(updatedOrder);
+  }
+
+  // 🔄 REVERSIÓN DE STOCK SI SE CANCELA EL PEDIDO
+  // Evitamos devolver stock doble validando que el estado anterior no haya sido ya cancelado
+  if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {
+    console.log(`[STOCK] Devolviendo stock por cancelacion del pedido ${updatedOrder._id}`);
+    for (const item of oldOrder.items) {
+      const product = await ProductService.viewById(item.productId);
+      if (product && product.controlStock) {
+        product.stock += item.quantity;
+        await product.save();
+        console.log(`   -> Repuesto "${product.title}": +${item.quantity} unidades (Nuevo Stock: ${product.stock})`);
+      }
+    }
   }
  
   return updatedOrder;
