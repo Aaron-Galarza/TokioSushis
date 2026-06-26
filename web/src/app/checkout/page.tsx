@@ -1,21 +1,22 @@
 'use client';
-
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Receipt } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useCheckout } from '@/features/checkout/hooks/useCheckout';
 import { DeliveryTypeSelector } from '@/features/checkout/components/DeliveryTypeSelector';
-import { AddressAutocomplete } from '@/features/checkout/components/AddressAutocomplete';
+import { CheckoutAddressAdapter } from '@/features/checkout/components/CheckoutAddressAdapter';
 import { DeliveryCostPreview } from '@/features/checkout/components/DeliveryCostPreview';
 import { AddressMap } from '@/features/checkout/components/AddressMap';
 import { CheckoutForm } from '@/features/checkout/components/CheckoutForm';
 import { CouponSection } from '@/features/checkout/components/CouponSection';
 import { SummarySection } from '@/features/checkout/components/SummarySection';
 
-const PAYMENT_LABELS: Record<string, string> = { cash: 'Efectivo', transfer: 'Transferencia', mercadopago: 'Mercado Pago' };
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  transfer: 'Transferencia',
+  mercadopago: 'Mercado Pago',
+};
 
 export default function CheckoutPage() {
-  const router = useRouter();
   const {
     items, deliveryType, coupon, isDeliveryLoading,
     name, setName, phone, setPhone,
@@ -24,15 +25,6 @@ export default function CheckoutPage() {
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,
     subtotal, discount, total,
   } = useCheckout();
-
-  if (items.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <p className="text-white/50 mb-4">Tu pedido está vacío</p>
-        <button onClick={() => router.push('/cart')} className="text-primary font-bold">Volver al carrito</button>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans">
@@ -56,7 +48,7 @@ export default function CheckoutPage() {
           <section className="animate-in fade-in slide-in-from-top-2 duration-300">
             <h2 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3 px-1">¿A dónde lo enviamos?</h2>
             <div className="flex flex-col gap-2">
-              <AddressAutocomplete />
+              <CheckoutAddressAdapter />
               <DeliveryCostPreview />
               <AddressMap />
             </div>
@@ -73,7 +65,11 @@ export default function CheckoutPage() {
           <div className="flex gap-2">
             {Object.entries(PAYMENT_LABELS).map(([method, label]) => (
               <button key={method} onClick={() => setPaymentMethod(method as any)}
-                className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-sm transition-all ${paymentMethod === method ? 'bg-primary text-black' : 'bg-[#1A1A1A] border border-white/10 text-white/60 hover:text-white'}`}>
+                className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-sm transition-all
+                  ${paymentMethod === method
+                    ? 'bg-primary text-black'
+                    : 'bg-[#1A1A1A] border border-white/10 text-white/60 hover:text-white'
+                  }`}>
                 {label}
               </button>
             ))}
@@ -111,8 +107,14 @@ export default function CheckoutPage() {
         )}
 
         <section className="mt-2">
-          <button onClick={handleConfirmOrder} disabled={isConfirmDisabled}
-            className={`w-full py-4 px-6 rounded-xl font-extrabold text-lg flex items-center justify-center gap-2 transition-all duration-300 ${isConfirmDisabled ? 'bg-zinc-800 text-white/30 cursor-not-allowed' : 'bg-primary text-black hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(197,168,111,0.2)]'}`}>
+          <button
+            onClick={handleConfirmOrder}
+            disabled={isConfirmDisabled}
+            className={`w-full py-4 px-6 rounded-xl font-extrabold text-lg flex items-center justify-center gap-2 transition-all duration-300
+              ${isConfirmDisabled
+                ? 'bg-zinc-800 text-white/30 cursor-not-allowed'
+                : 'bg-primary text-black hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(197,168,111,0.2)]'
+              }`}>
             {submitting ? 'Enviando pedido...' : isDeliveryLoading ? 'Calculando envío...' : 'Confirmar Pedido'}
             {!isConfirmDisabled && <CheckCircle2 className="w-5 h-5" />}
           </button>

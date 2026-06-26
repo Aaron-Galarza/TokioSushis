@@ -1,27 +1,38 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import { MapPin, Loader2, Search, X } from 'lucide-react';
 import { useAddressSearch, AddressResult } from '@/features/checkout/hooks/useAddressSearch';
-import { useCartStore } from '@/stores/cart.store';
 
-export const AddressAutocomplete = () => {
-  const deliveryAddress = useCartStore((state) => state.deliveryAddress);
-  const setDeliveryAddress = useCartStore((state) => state.setDeliveryAddress);
-  const clearDelivery = useCartStore((state) => state.clearDelivery);
+interface Props {
+  value: string;
+  onChange: (result: AddressResult) => void;
+  onClear: () => void;
+  placeholder?: string;
+}
 
-  const [inputValue, setInputValue] = useState(deliveryAddress || '');
-  const [isOpen, setIsOpen] = useState(false);
-  const [isSelected, setIsSelected] = useState(!!deliveryAddress);
+// Componente controlado: no toca el cartStore directamente.
+// Puede usarse desde checkout (pasándole el store) o desde el admin (pasándole estado local).
+export const AddressAutocomplete = ({
+  value,
+  onChange,
+  onClear,
+  placeholder = "Ingresá tu calle y altura (ej: Av. Sarmiento 2500)",
+}: Props) => {
+  const [inputValue, setInputValue]   = useState(value || '');
+  const [isOpen, setIsOpen]           = useState(false);
+  const [isSelected, setIsSelected]   = useState(!!value);
+  const dropdownRef                   = useRef<HTMLDivElement>(null);
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Pasamos query vacío si ya está seleccionado para evitar re-búsquedas innecesarias
   const { results, loading } = useAddressSearch(isSelected ? '' : inputValue);
 
+  // Sincronizar si el padre limpia el valor
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    if (!value) { setInputValue(''); setIsSelected(false); }
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -30,54 +41,44 @@ export const AddressAutocomplete = () => {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInputValue(value);
+    setInputValue(e.target.value);
     setIsOpen(true);
-
-    if (isSelected) {
-      setIsSelected(false);
-      clearDelivery();
-    }
+    if (isSelected) { setIsSelected(false); onClear(); }
   };
 
   const handleSelect = (result: AddressResult) => {
     setInputValue(result.placeName);
     setIsSelected(true);
     setIsOpen(false);
-    
-    // Impactamos directo en el Zustand Store con la lat y lng que ya vienen en el objeto
-    setDeliveryAddress(result.placeName, { lat: result.lat, lng: result.lng });
+    onChange(result);
   };
 
   const handleClear = () => {
     setInputValue('');
     setIsSelected(false);
-    clearDelivery();
+    onClear();
   };
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <div className="relative">
         <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-white/50">
-          {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          ) : (
-            <Search className="w-5 h-5" />
-          )}
+          {loading
+            ? <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            : <Search className="w-5 h-5" />}
         </div>
         <input
           type="text"
           value={inputValue}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
-          placeholder="Ingresá tu calle y altura (ej: Av. Sarmiento 2500)"
+          placeholder={placeholder}
           className="w-full bg-zinc-900/80 border border-white/10 rounded-xl py-3.5 pl-10 pr-10 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all shadow-sm"
         />
         {inputValue && (
           <button
             onClick={handleClear}
             className="absolute inset-y-0 right-3 flex items-center text-white/40 hover:text-white/90 transition-colors"
-            aria-label="Limpiar dirección"
           >
             <X className="w-4 h-4" />
           </button>
@@ -91,12 +92,11 @@ export const AddressAutocomplete = () => {
               <Loader2 className="w-4 h-4 animate-spin" /> Buscando direcciones...
             </div>
           ) : results.length > 0 ? (
-            <ul className="max-h-60 overflow-y-auto custom-scrollbar">
+            <ul className="max-h-60 overflow-y-auto">
               {results.map((result, index) => {
-                const parts = result.placeName.split(',');
-                const mainText = parts[0];
+                const parts       = result.placeName.split(',');
+                const mainText    = parts[0];
                 const secondaryText = parts.slice(1).join(',').trim();
-
                 return (
                   <li key={`${result.lat}-${result.lng}-${index}`}>
                     <button
@@ -105,13 +105,9 @@ export const AddressAutocomplete = () => {
                     >
                       <MapPin className="w-4 h-4 text-primary shrink-0 group-hover:scale-110 transition-transform" />
                       <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-semibold text-white/90 truncate">
-                          {mainText}
-                        </span>
+                        <span className="text-sm font-semibold text-white/90 truncate">{mainText}</span>
                         {secondaryText && (
-                          <span className="text-xs text-white/50 truncate">
-                            {secondaryText}
-                          </span>
+                          <span className="text-xs text-white/50 truncate">{secondaryText}</span>
                         )}
                       </div>
                     </button>
@@ -120,7 +116,7 @@ export const AddressAutocomplete = () => {
               })}
             </ul>
           ) : (
-            <div className="p-4 text-center text-sm text-white/60 bg-zinc-900/50">
+            <div className="p-4 text-center text-sm text-white/60">
               No encontramos esa dirección, intentá con más detalle
             </div>
           )}
