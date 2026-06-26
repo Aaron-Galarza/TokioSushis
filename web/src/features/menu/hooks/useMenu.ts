@@ -1,35 +1,31 @@
 'use client';
 
-// NOTA: Este archivo reemplaza el useMenu.ts existente.
-// Agrega la carga de adicionales y los inyecta en cada producto según su categoría.
-// La firma del hook no cambia — los componentes que lo consumen no se tocan.
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { menuService } from '@/services/menu.service';
 import type { Product, Category, Addon } from '@/types';
 
 export function useMenu() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const load = async () => {
       try {
-        setIsLoading(true);
+        setLoading(true);
 
-        // Traemos todo en paralelo: productos, categorías y TODOS los adicionales activos
         const [prods, cats, allAddons] = await Promise.all([
           menuService.getProducts(),
           menuService.getCategories(),
-          menuService.getAddons(), // sin filtro → trae todos los activos
+          menuService.getAddons(),
         ]);
 
-        // Inyectamos en cada producto los adicionales que le corresponden.
-        // Un adicional corresponde a un producto si:
-        //   a) su array categories incluye la categoría del producto, O
-        //   b) su array categories está vacío (aplica a todos)
+        // Inyectar en cada producto los adicionales que le corresponden:
+        // a) el array categories del addon incluye la categoría del producto, O
+        // b) el array categories está vacío (aplica a todos)
         const prodsWithAddons: Product[] = prods.map((product) => {
           const applicable = allAddons.filter((addon: Addon) =>
             addon.categories.length === 0 ||
@@ -44,12 +40,44 @@ export function useMenu() {
         setError('Error al cargar el menú');
         console.error(err);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
     load();
   }, []);
 
-  return { products, categories, isLoading, error };
+  const filteredProducts = useMemo(() => {
+    let result = products;
+
+    if (selectedCategory) {
+      result = result.filter((p) => p.category === selectedCategory);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [products, selectedCategory, searchQuery]);
+
+  const selectCategory = (id: string | null) => setSelectedCategory(id);
+  const setSearch = (q: string) => setSearchQuery(q);
+
+  return {
+    products,
+    categories,
+    loading,
+    error,
+    selectedCategory,
+    filteredProducts,
+    selectCategory,
+    setSearch,
+    searchQuery,
+  };
 }
