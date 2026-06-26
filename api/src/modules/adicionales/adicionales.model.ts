@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface iAdicional extends Document {
   title: string;
   price: number;
-  category?: mongoose.Types.ObjectId;
+  categories?: mongoose.Types.ObjectId[];
   active: boolean;
 }
 
@@ -18,10 +18,12 @@ const AdicionalSchema = new Schema<iAdicional>({
     required: [true, 'El precio es obligatorio'],
     min: 0,
   },
-  category: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Categoria',
-    default: null,
+  categories: {
+    type: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Categoria'
+    }],
+    default: [],
     index: true,
   },
   active: {

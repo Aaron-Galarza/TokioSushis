@@ -1,28 +1,34 @@
 import { iAdicional, AdicionalModel } from './adicionales.model';
 
-const ACTIVE_SELECT = 'title price category active';
+// 🔥 Actualizamos la proyección de category a categories
+const ACTIVE_SELECT = 'title price categories active';
 const CATEGORY_POPULATE = 'name active';
 
 export const viewAll = async (): Promise<iAdicional[]> => {
-  return await AdicionalModel.find().populate('category', CATEGORY_POPULATE);
+  return await AdicionalModel.find().populate('categories', CATEGORY_POPULATE);
 };
 
-// Returns all active adicionales (admin / no filter context)
 export const viewActive = async (): Promise<iAdicional[]> => {
   return await AdicionalModel.find({ active: true })
     .select(ACTIVE_SELECT)
-    .populate('category', CATEGORY_POPULATE)
+    .populate('categories', CATEGORY_POPULATE)
     .lean() as iAdicional[];
 };
 
-// Returns adicionales that belong to a specific category OR apply to all (category: null)
+/**
+ * 🔥 Trae los adicionales activos que correspondan a la categoría solicitada
+ * O aquellos que apliquen a todas las categorías (array categories vacío)
+ */
 export const viewByCategory = async (categoryId: string): Promise<iAdicional[]> => {
   return await AdicionalModel.find({
     active: true,
-    $or: [{ category: categoryId }, { category: null }],
+    $or: [
+      { categories: categoryId },          // Si el ID está incluido en el array
+      { categories: { $size: 0 } }         // O si el array está vacío (Aplica a todas)
+    ],
   })
     .select(ACTIVE_SELECT)
-    .populate('category', CATEGORY_POPULATE)
+    .populate('categories', CATEGORY_POPULATE)
     .lean() as iAdicional[];
 };
 
