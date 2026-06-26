@@ -15,7 +15,8 @@ export function MenuTab() {
 
   return (
     <div className="space-y-5">
-      {/* Categories */}
+
+      {/* ── Categorías ── */}
       <AdminCard>
         <h2 className="font-semibold text-white text-sm mb-4">Categorías del Menú</h2>
         <div className="flex gap-2 mb-4">
@@ -45,10 +46,12 @@ export function MenuTab() {
         </div>
       </AdminCard>
 
-      {/* Addons */}
+      {/* ── Adicionales ── */}
       <AdminCard>
         <h2 className="font-semibold text-white text-sm mb-4">Adicionales</h2>
-        <div className="flex gap-2 mb-4">
+
+        {/* Fila nombre + precio + botón */}
+        <div className="flex gap-2 mb-3">
           <AdminInput placeholder="Nombre" value={aForm.title} onChange={e => setAForm(p => ({ ...p, title: e.target.value }))} />
           <AdminInput type="number" placeholder="Precio" value={aForm.price} onChange={e => setAForm(p => ({ ...p, price: e.target.value }))} className="w-28" />
           <button onClick={saveAddon} className="bg-primary text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all whitespace-nowrap">
@@ -56,25 +59,71 @@ export function MenuTab() {
           </button>
           {aEditId && <button onClick={cancelAddon} className="bg-white/5 text-white/50 px-3 py-2 rounded-lg text-sm">✕</button>}
         </div>
-        <div className="flex flex-col gap-2 max-h-60 overflow-y-auto overscroll-contain scrollbar-none">
-          {addons.map(a => (
-            <div key={a._id} className="flex items-center justify-between bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3">
-              <p className={`font-semibold text-sm ${a.active ? 'text-white' : 'text-white/40 line-through'}`}>
-                {a.title || a.name} — <span className="text-primary">${a.price?.toLocaleString('es-AR')}</span>
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => toggleAddon(a._id)} className={`text-xs px-2 py-1 rounded-lg ${a.active ? 'bg-white/5 text-white/50 hover:text-white' : 'bg-green-900/50 text-green-300 hover:bg-green-900'}`}>
-                  {a.active ? 'Desactivar' : 'Activar'}
+
+        {/* Selector de categorías (chips multi-toggle) */}
+        <div className="mb-4">
+          <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
+            Categorías asociadas
+            <span className="normal-case ml-1 text-white/20">(vacío = aplica a todas)</span>
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {cats.filter(c => c.active).map(c => {
+              const selected = aForm.categories.includes(c._id);
+              return (
+                <button
+                  key={c._id}
+                  type="button"
+                  onClick={() =>
+                    setAForm(p => ({
+                      ...p,
+                      categories: selected
+                        ? p.categories.filter((id: string) => id !== c._id)
+                        : [...p.categories, c._id],
+                    }))
+                  }
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all
+                    ${selected
+                      ? 'bg-primary text-black border-primary'
+                      : 'bg-white/5 text-white/40 border-white/10 hover:border-white/30 hover:text-white/70'
+                    }`}
+                >
+                  {c.name}
                 </button>
-                <button onClick={() => editAddon(a)} className="text-xs text-white/40 hover:text-white px-2 py-1 bg-white/5 rounded-lg">Editar</button>
-                <button onClick={() => removeAddon(a._id)} className="text-xs text-red-400/60 hover:text-red-300 px-2 py-1 bg-white/5 rounded-lg">Borrar</button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Lista de adicionales */}
+        <div className="flex flex-col gap-2 max-h-60 overflow-y-auto overscroll-contain scrollbar-none">
+          {addons.map(a => {
+            const catLabels: string[] = (a.categories ?? []).map((c: any) =>
+              typeof c === 'object' ? c.name : (cats.find((mc: any) => mc._id === c)?.name ?? c)
+            );
+            return (
+              <div key={a._id} className="flex items-center justify-between bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3">
+                <div className="flex flex-col min-w-0">
+                  <p className={`font-semibold text-sm ${a.active ? 'text-white' : 'text-white/40 line-through'}`}>
+                    {a.title || a.name} — <span className="text-primary">${a.price?.toLocaleString('es-AR')}</span>
+                  </p>
+                  <p className="text-[11px] text-white/30 truncate">
+                    {catLabels.length > 0 ? catLabels.join(', ') : <span className="italic text-white/20">Todas las categorías</span>}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => toggleAddon(a._id)} className={`text-xs px-2 py-1 rounded-lg ${a.active ? 'bg-white/5 text-white/50 hover:text-white' : 'bg-green-900/50 text-green-300 hover:bg-green-900'}`}>
+                    {a.active ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button onClick={() => editAddon(a)} className="text-xs text-white/40 hover:text-white px-2 py-1 bg-white/5 rounded-lg">Editar</button>
+                  <button onClick={() => removeAddon(a._id)} className="text-xs text-red-400/60 hover:text-red-300 px-2 py-1 bg-white/5 rounded-lg">Borrar</button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </AdminCard>
 
-      {/* Products */}
+      {/* ── Productos ── */}
       <div className="grid md:grid-cols-[2fr_3fr] gap-5">
         <AdminCard>
           <h2 className="font-semibold text-white text-sm mb-4">{pEditId ? 'Editar Producto' : 'Nuevo Producto'}</h2>
@@ -136,6 +185,7 @@ export function MenuTab() {
           </div>
         </AdminCard>
       </div>
+
     </div>
   );
 }
