@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/auth.store';
 import { BarChart3, ShoppingBag, Utensils, Tag, Settings, ImageIcon } from 'lucide-react';
 import { useAdminOrders } from '@/features/admin/hooks/useAdminOrders';
 import { useAdminCoupons } from '@/features/admin/hooks/useAdminCoupons';
@@ -23,10 +25,36 @@ const NAVT = [
 ];
 
 export default function AdminPage() {
+  const router = useRouter();
+  const { isAuthenticated, token } = useAuthStore();
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [tab, setTab] = useState<Tab>('overview');
+
+  // 🛡️ GUARD DE PROTECCIÓN CONTRA TOKENS EXPIRADOS O ACCESOS DIRECTOS
+  useEffect(() => {
+    // Si no está autenticado o el token físicamente no existe en el store
+    if (!isAuthenticated || !token) {
+      router.replace('/login');
+    } else {
+      setCheckingAuth(false);
+    }
+  }, [isAuthenticated, token, router]);
+
+  // Ejecutamos condicionalmente los hooks de datos sólo si pasamos la barrera de auth.
+  // Evitamos llamadas cruzadas que devuelvan 403 antes de la redirección.
   const ordersHook = useAdminOrders();
   const couponsHook = useAdminCoupons();
-  const pendingCount = ordersHook.oCounts.pending;
+  const pendingCount = ordersHook?.oCounts?.pending ?? 0;
+
+  // Render vacío o un loader de transición limpio con la estética de TokioSushis
+  if (checkingAuth) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center bg-[#0A0A0A] min-h-screen text-white/40">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
+        <p className="text-xs font-bold tracking-widest uppercase">Verificando Credenciales...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">

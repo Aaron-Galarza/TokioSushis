@@ -67,10 +67,12 @@ api.interceptors.response.use(
     // Obtenemos la URL de la request original para saber a dónde estábamos llamando
     const originalRequestUrl = error.config?.url || '';
 
-    // Si es 401 Y la petición NO era la de login, forzamos cierre de sesión
+    // 🛡️ Caza tanto el 401 como el 403 para evitar loops y errores en cascada en el admin
+    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+
     if (
       isBrowser() && 
-      error.response?.status === 401 && 
+      isAuthError && 
       !originalRequestUrl.includes('/users/login')
     ) {
       try {
