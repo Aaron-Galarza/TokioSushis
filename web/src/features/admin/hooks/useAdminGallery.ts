@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { fetchGallery, uploadImage, deleteGalleryImage } from '@/services/admin.service';
 
-interface GImg { _id: string; url: string; filename: string }
+interface GImg { id: string; name: string; url: string; createdAt: string; bytes: number; }
 
 export function useAdminGallery() {
   const [images, setImages] = useState<GImg[]>([]);
@@ -33,7 +33,7 @@ export function useAdminGallery() {
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar?')) return;
     await deleteGalleryImage(id);
-    setImages(prev => prev.filter(i => i._id !== id));
+    await reload(); // recarga desde el servidor en vez de filtrar localmente
   };
 
   const copyUrl = async (id: string, url: string) => {

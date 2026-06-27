@@ -1,12 +1,11 @@
 import { Router } from 'express';
+import { isAdmin } from '../../middlewares/auth.middleware';
 import * as GalleryController from './gallery.controller';
 
 const router = Router();
 
-// GET /api/gallery -> Lista las imágenes ordenadas por nombre
-router.get('/', GalleryController.list);
-
-// POST /api/gallery/upload -> Sube una imagen (espera la clave "image" en el form-data)
-router.post('/', GalleryController.uploadMiddleware, GalleryController.upload);
+router.get('/',     GalleryController.list);
+router.post('/',    isAdmin, GalleryController.uploadMiddleware, GalleryController.upload);
+router.delete('/:id', isAdmin, GalleryController.remove);
 
 export default router;
