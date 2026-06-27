@@ -105,7 +105,7 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
       $inc: {
         total: order.total,
         entregados: 1,
-        ...(order.paymentMethod === 'Efectivo'
+        ...(order.paymentMethod === 'Efectivo' || order.paymentMethod === 'cash'
           ? { efectivo: order.total }
           : { trans: order.total }),
         ...incUpdates,
@@ -139,8 +139,10 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
 
   const safeTotal      = Math.min(order.total, daily.total);
   const safeEntregados = Math.min(1, daily.entregados);
-  const safeEfectivo   = order.paymentMethod === 'Efectivo' ? Math.min(order.total, daily.efectivo) : 0;
-  const safeTrans      = order.paymentMethod !== 'Efectivo' ? Math.min(order.total, daily.trans) : 0;
+
+  const isEfectivo   = order.paymentMethod === 'Efectivo' || order.paymentMethod === 'cash';
+  const safeEfectivo = isEfectivo ? Math.min(order.total, daily.efectivo) : 0;
+  const safeTrans    = !isEfectivo ? Math.min(order.total, daily.trans) : 0;
 
   await DailyAnalyticsModel.findOneAndUpdate(
     { date },
