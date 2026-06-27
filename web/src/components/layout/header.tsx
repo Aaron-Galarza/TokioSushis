@@ -25,12 +25,19 @@ export function Header() {
           <Lock size={18} strokeWidth={2} />
         </button>
 
-        {/* Centro: Logo */}
+        {/* Centro: Logo + texto */}
         <button
           onClick={() => router.push('/')}
-          className="group flex flex-1 items-center justify-center gap-2 px-4 transition-opacity hover:opacity-80"
+          className="group flex flex-1 items-center justify-center gap-2.5 px-4 transition-opacity hover:opacity-80"
           aria-label="Ir al inicio"
         >
+          <img
+            src="/tokyoSushis.webp"
+            alt="Tokio Sushis"
+            width={32}
+            height={32}
+            className="h-8 w-auto object-contain"
+          />
           <span className="font-heading italic text-xl font-semibold tracking-widest text-primary">
             TOKIO SUSHIS
           </span>
@@ -49,6 +56,7 @@ export function Header() {
             </span>
           )}
         </button>
+
       </div>
     </header>
   );

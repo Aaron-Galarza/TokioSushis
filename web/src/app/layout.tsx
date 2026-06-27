@@ -21,6 +21,9 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: "Tokio Sushis | Delivery & Menú",
+  icons: {
+    icon: '/tokyoSushis.webp',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
