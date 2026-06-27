@@ -4,11 +4,9 @@ import { DeliveryConfigModel } from './delivery.model';
 import { sendError, sendSucces } from '../../utils/response';
 import { AppError } from '../../utils/AppError';
 
-// ─── ENDPOINT PÚBLICO (Checkout Frontend) ─────────────────────────
 export const calculate = async (req: Request, res: Response) => {
   try {
     const { lat, lng } = req.body;
-    // Forzamos el casteo numérico explícito antes de enviarlo al servicio
     const delivery = await DeliveryService.calculateDelivery(Number(lat), Number(lng));
     return sendSucces(res, delivery);
   } catch (error) {
@@ -22,7 +20,6 @@ export const calculate = async (req: Request, res: Response) => {
   }
 };
 
-// ─── ENDPOINTS ADMIN (Configuración) ──────────────────────────────
 export const getConfig = async (req: Request, res: Response) => {
   try {
     const config = await DeliveryConfigModel.getOrCreateConfig();
@@ -34,14 +31,11 @@ export const getConfig = async (req: Request, res: Response) => {
 
 export const updateConfig = async (req: Request, res: Response) => {
   try {
-    const { kmRanges, specialZones, extraRain, isRaining } = req.body;
+    const { kmRanges, extraRain, isRaining } = req.body;
     const config = await DeliveryConfigModel.getOrCreateConfig();
-
-    if (kmRanges !== undefined) config.kmRanges = kmRanges;
-    if (specialZones !== undefined) config.specialZones = specialZones;
-    if (typeof extraRain === 'number') config.extraRain = extraRain;
-    if (typeof isRaining === 'boolean') config.isRaining = isRaining;
-
+    if (kmRanges  !== undefined)           config.kmRanges  = kmRanges;
+    if (typeof extraRain === 'number')     config.extraRain = extraRain;
+    if (typeof isRaining === 'boolean')    config.isRaining = isRaining;
     const saved = await config.save();
     return sendSucces(res, { data: saved, message: 'Configuración actualizada' });
   } catch {
@@ -55,34 +49,11 @@ export const toggleRain = async (req: Request, res: Response) => {
     const config = await DeliveryConfigModel.getOrCreateConfig();
     config.isRaining = isRaining;
     if (typeof extraRain === 'number') config.extraRain = extraRain;
-    
     const saved = await config.save();
     return sendSucces(res, { data: { isRaining: saved.isRaining, extraRain: saved.extraRain }, message: 'Estado de lluvia actualizado' });
   } catch {
     return sendError(res, 'Error al actualizar el estado de lluvia');
   }
-};
-
-// ─── CRUD DE LISTAS ──────────────────────────────────────────────────────────
-export const addZone = async (req: Request, res: Response) => {
-  try {
-    const config = await DeliveryConfigModel.getOrCreateConfig();
-    config.specialZones.push(req.body);
-    const saved = await config.save();
-    return sendSucces(res, { data: saved.specialZones, message: 'Zona agregada' });
-  } catch { return sendError(res, 'Error al agregar la zona'); }
-};
-
-export const deleteZone = async (req: Request, res: Response) => {
-  try {
-    const config = await DeliveryConfigModel.getOrCreateConfig();
-    // Forzamos String(req.params.id) para quitar el warning de string[] o Buffer de Express
-    const zone = config.specialZones.id(String(req.params.id));
-    if (!zone) return sendError(res, 'Zona no encontrada', 404);
-    zone.deleteOne();
-    const saved = await config.save();
-    return sendSucces(res, { data: saved.specialZones, message: 'Zona eliminada' });
-  } catch { return sendError(res, 'Error al eliminar la zona'); }
 };
 
 export const addRange = async (req: Request, res: Response) => {
@@ -97,7 +68,6 @@ export const addRange = async (req: Request, res: Response) => {
 export const deleteRange = async (req: Request, res: Response) => {
   try {
     const config = await DeliveryConfigModel.getOrCreateConfig();
-    // Forzamos String(req.params.id) para que Mongoose lo reconozca sin chillar tipos
     const range = config.kmRanges.id(String(req.params.id));
     if (!range) return sendError(res, 'Rango no encontrado', 404);
     range.deleteOne();
