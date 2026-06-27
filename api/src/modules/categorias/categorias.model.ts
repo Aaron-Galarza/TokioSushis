@@ -4,6 +4,7 @@ export interface iCategoria extends Document {
   name: string;
   order: number;
   active: boolean;
+  icon?: string;
 }
 
 const CategoriaSchema = new Schema<iCategoria>({
@@ -21,6 +22,10 @@ const CategoriaSchema = new Schema<iCategoria>({
   active: {
     type: Boolean,
     default: true,
+  },
+  icon: {
+    type: String,
+    default: '',
   },
 }, { timestamps: true });
 

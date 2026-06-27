@@ -6,7 +6,7 @@ export const viewAll = async (): Promise<iCategoria[]> => {
 
 export const viewActive = async (): Promise<iCategoria[]> => {
   return await CategoriaModel.find({ active: true })
-    .select('_id name order active')
+    .select('_id name order active icon')
     .sort({ order: 1, name: 1 })
     .lean();
 };

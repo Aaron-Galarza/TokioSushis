@@ -1,8 +1,52 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AdminCard } from './ui/AdminCard';
 import { AdminInput, AdminTextarea, AdminSelect } from './ui/AdminInput';
 import { useAdminMenu } from '../hooks/useAdminMenu';
+import { CATEGORY_ICON_OPTIONS, getCategoryIcon } from '@/lib/categoryIcons';
 
+// ── Mini modal de selección de ícono ────────────────────────────────────────
+function IconPickerModal({
+  selected,
+  onSelect,
+  onClose,
+}: {
+  selected: string;
+  onSelect: (name: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-5 w-80 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-white text-sm font-semibold">Elegir ícono</p>
+          <button onClick={onClose} className="text-white/30 hover:text-white text-xs">✕</button>
+        </div>
+        <div className="grid grid-cols-5 gap-2">
+          {CATEGORY_ICON_OPTIONS.map(({ name, icon: Icon }) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => { onSelect(name); onClose(); }}
+              className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all
+                ${selected === name
+                  ? 'bg-primary/20 border-primary/50 text-primary'
+                  : 'bg-[#0A0A0A] border-white/5 text-white/40 hover:border-white/20 hover:text-white/70'
+                }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-[9px] truncate w-full text-center">{name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MenuTab ─────────────────────────────────────────────────────────────────
 export function MenuTab() {
   const {
     products, cats, addons, reload,
@@ -11,7 +55,12 @@ export function MenuTab() {
     aForm, setAForm, aEditId, saveAddon, editAddon, toggleAddon, removeAddon, cancelAddon,
   } = useAdminMenu();
 
+  const [showIconPicker, setShowIconPicker] = useState(false);
+
   useEffect(() => { reload(); }, [reload]);
+
+  // Ícono actual del form
+  const SelectedIcon = cForm.icon ? getCategoryIcon('', cForm.icon) : null;
 
   return (
     <div className="space-y-5">
@@ -20,37 +69,73 @@ export function MenuTab() {
       <AdminCard>
         <h2 className="font-semibold text-white text-sm mb-4">Categorías del Menú</h2>
         <div className="flex gap-2 mb-4">
-          <AdminInput placeholder="Nombre de categoría" value={cForm.name} onChange={e => setCForm(p => ({ ...p, name: e.target.value }))} />
-          <AdminInput type="number" placeholder="Orden" value={cForm.order} onChange={e => setCForm(p => ({ ...p, order: e.target.value }))} className="w-24" />
-          <button onClick={saveCat} className="bg-primary text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all whitespace-nowrap">
+          <AdminInput
+            placeholder="Nombre de categoría"
+            value={cForm.name}
+            onChange={e => setCForm(p => ({ ...p, name: e.target.value }))}
+          />
+          <AdminInput
+            type="number"
+            placeholder="Orden"
+            value={cForm.order}
+            onChange={e => setCForm(p => ({ ...p, order: e.target.value }))}
+            className="w-24"
+          />
+          {/* Botón selector de ícono */}
+          <button
+            type="button"
+            onClick={() => setShowIconPicker(true)}
+            title="Elegir ícono"
+            className={`w-10 h-10 rounded-lg border flex items-center justify-center shrink-0 transition-all
+              ${cForm.icon
+                ? 'bg-primary/15 border-primary/40 text-primary'
+                : 'bg-white/5 border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
+              }`}
+          >
+            {SelectedIcon
+              ? <SelectedIcon className="w-4 h-4" />
+              : <span className="text-xs">🖼</span>
+            }
+          </button>
+          <button
+            onClick={saveCat}
+            className="bg-primary text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all whitespace-nowrap"
+          >
             {cEditId ? 'Guardar' : 'Crear'}
           </button>
-          {cEditId && <button onClick={cancelCat} className="bg-white/5 text-white/50 px-3 py-2 rounded-lg text-sm">✕</button>}
+          {cEditId && (
+            <button onClick={cancelCat} className="bg-white/5 text-white/50 px-3 py-2 rounded-lg text-sm">✕</button>
+          )}
         </div>
+
         <div className="flex flex-col gap-2 max-h-60 overflow-y-auto overscroll-contain scrollbar-none">
-          {cats.map(c => (
-            <div key={c._id} className="flex items-center justify-between bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3">
-              <div>
-                <p className={`font-semibold text-sm ${c.active ? 'text-white' : 'text-white/40 line-through'}`}>{c.name}</p>
-                <p className="text-white/30 text-xs">Orden: {c.order}</p>
+          {cats.map(c => {
+            const CatIcon = getCategoryIcon(c.name, c.icon);
+            return (
+              <div key={c._id} className="flex items-center justify-between bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <CatIcon className="w-4 h-4 text-primary shrink-0" />
+                  <div>
+                    <p className={`font-semibold text-sm ${c.active ? 'text-white' : 'text-white/40 line-through'}`}>{c.name}</p>
+                    <p className="text-white/30 text-xs">Orden: {c.order}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => toggleCat(c._id)} className={`text-xs px-2 py-1 rounded-lg ${c.active ? 'bg-white/5 text-white/50 hover:text-white' : 'bg-green-900/50 text-green-300 hover:bg-green-900'}`}>
+                    {c.active ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button onClick={() => editCat(c)} className="text-xs text-white/40 hover:text-white px-2 py-1 bg-white/5 rounded-lg">Editar</button>
+                  <button onClick={() => removeCat(c._id)} className="text-xs text-red-400/60 hover:text-red-300 px-2 py-1 bg-white/5 rounded-lg">Borrar</button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => toggleCat(c._id)} className={`text-xs px-2 py-1 rounded-lg ${c.active ? 'bg-white/5 text-white/50 hover:text-white' : 'bg-green-900/50 text-green-300 hover:bg-green-900'}`}>
-                  {c.active ? 'Desactivar' : 'Activar'}
-                </button>
-                <button onClick={() => editCat(c)} className="text-xs text-white/40 hover:text-white px-2 py-1 bg-white/5 rounded-lg">Editar</button>
-                <button onClick={() => removeCat(c._id)} className="text-xs text-red-400/60 hover:text-red-300 px-2 py-1 bg-white/5 rounded-lg">Borrar</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </AdminCard>
 
       {/* ── Adicionales ── */}
       <AdminCard>
         <h2 className="font-semibold text-white text-sm mb-4">Adicionales</h2>
-
-        {/* Fila nombre + precio + botón */}
         <div className="flex gap-2 mb-3">
           <AdminInput placeholder="Nombre" value={aForm.title} onChange={e => setAForm(p => ({ ...p, title: e.target.value }))} />
           <AdminInput type="number" placeholder="Precio" value={aForm.price} onChange={e => setAForm(p => ({ ...p, price: e.target.value }))} className="w-28" />
@@ -59,8 +144,6 @@ export function MenuTab() {
           </button>
           {aEditId && <button onClick={cancelAddon} className="bg-white/5 text-white/50 px-3 py-2 rounded-lg text-sm">✕</button>}
         </div>
-
-        {/* Selector de categorías (chips multi-toggle) */}
         <div className="mb-4">
           <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
             Categorías asociadas
@@ -73,14 +156,12 @@ export function MenuTab() {
                 <button
                   key={c._id}
                   type="button"
-                  onClick={() =>
-                    setAForm(p => ({
-                      ...p,
-                      categories: selected
-                        ? p.categories.filter((id: string) => id !== c._id)
-                        : [...p.categories, c._id],
-                    }))
-                  }
+                  onClick={() => setAForm(p => ({
+                    ...p,
+                    categories: selected
+                      ? p.categories.filter((id: string) => id !== c._id)
+                      : [...p.categories, c._id],
+                  }))}
                   className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all
                     ${selected
                       ? 'bg-primary text-black border-primary'
@@ -93,8 +174,6 @@ export function MenuTab() {
             })}
           </div>
         </div>
-
-        {/* Lista de adicionales */}
         <div className="flex flex-col gap-2 max-h-60 overflow-y-auto overscroll-contain scrollbar-none">
           {addons.map(a => {
             const catLabels: string[] = (a.categories ?? []).map((c: any) =>
@@ -185,6 +264,15 @@ export function MenuTab() {
           </div>
         </AdminCard>
       </div>
+
+      {/* Modal de selección de ícono */}
+      {showIconPicker && (
+        <IconPickerModal
+          selected={cForm.icon}
+          onSelect={icon => setCForm(p => ({ ...p, icon }))}
+          onClose={() => setShowIconPicker(false)}
+        />
+      )}
 
     </div>
   );
