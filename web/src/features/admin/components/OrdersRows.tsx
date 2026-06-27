@@ -1,36 +1,56 @@
-import { Clock, User, Phone, MapPin, Banknote, CreditCard, Bike, XCircle, Printer, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, User, Phone, MapPin, Banknote, CreditCard, Bike, XCircle, Printer, ChevronDown, ChevronUp, ArrowRight, Pencil, Check } from 'lucide-react';
 import { generateComandaHTML } from '../utils/generateComandaHTML';
+import { updateOrderDeliveryCost } from '@/services/admin.service';
 
 interface ORProps {
   order: any;
   expanded: boolean;
   onToggle: () => void;
   onStatus: (id: string, s: string) => void;
+  onRefresh?: () => void;
 }
 
 const SDOT: Record<string, string> = {
-  pending:        'bg-yellow-400',
+  pending:          'bg-yellow-400',
   'in-preparation': 'bg-blue-400',
-  ready:          'bg-green-400',
-  delivered:      'bg-emerald-500',
-  cancelled:      'bg-red-500',
+  ready:            'bg-green-400',
+  delivered:        'bg-emerald-500',
+  cancelled:        'bg-red-500',
 };
 
 const SNX: Record<string, { l: string; v: string }> = {
-  pending:          { l: 'Iniciar proceso',  v: 'in-preparation' },
-  'in-preparation': { l: 'Marcar listo',     v: 'ready' },
-  ready:            { l: 'Entregado',        v: 'delivered' },
+  pending:          { l: 'Iniciar proceso', v: 'in-preparation' },
+  'in-preparation': { l: 'Marcar listo',    v: 'ready' },
+  ready:            { l: 'Entregado',       v: 'delivered' },
 };
 
-export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
-  const dot   = SDOT[order.status] || 'bg-zinc-600';
-  const num   = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
-  const dt    = new Date(order.createdAt);
+export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORProps) {
+  const dot     = SDOT[order.status] || 'bg-zinc-600';
+  const num     = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
+  const dt      = new Date(order.createdAt);
   const dateStr = dt.toLocaleDateString('es-AR');
   const timeStr = dt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-
   const isDelivery = order.deliveryType === 'delivery';
   const payMethod  = order.paymentMethod;
+
+  // Estado local para edición del costo de envío
+  const [editingCost, setEditingCost] = useState(false);
+  const [costInput, setCostInput]     = useState(String(order.deliveryCost ?? 0));
+  const [savingCost, setSavingCost]   = useState(false);
+
+  const handleSaveCost = async () => {
+    const val = Number(costInput);
+    if (isNaN(val) || val < 0) return;
+    setSavingCost(true);
+    try {
+      await updateOrderDeliveryCost(order._id, val);
+      setEditingCost(false);
+      onRefresh?.();
+    } finally {
+      setSavingCost(false);
+    }
+  };
 
   const handlePrint = () => {
     const htmlContent = generateComandaHTML(order);
@@ -47,15 +67,10 @@ export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
 
       {/* ── Header ── */}
       <div className="flex items-start gap-3 p-4">
-
-        {/* Dot de estado */}
         <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${dot}`} />
 
-        {/* Info principal — clickeable para expandir */}
         <button className="flex-1 text-left min-w-0" onClick={onToggle}>
           <div className="flex justify-between items-start gap-4">
-
-            {/* Izquierda: nombre, teléfono, hora */}
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
                 <User className="w-4 h-4 text-primary shrink-0" />
@@ -71,8 +86,6 @@ export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
                 {dateStr} — {timeStr}
               </div>
             </div>
-
-            {/* Derecha: total, delivery, pago */}
             <div className="flex flex-col items-end gap-1 shrink-0">
               <span className="text-primary font-bold text-lg leading-none">
                 ${order.total?.toLocaleString('es-AR')}
@@ -81,9 +94,7 @@ export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
                 {isDelivery
                   ? <Bike className="w-3.5 h-3.5 text-blue-400" />
                   : <MapPin className="w-3.5 h-3.5 text-green-400" />}
-                <span className="text-xs text-white/40">
-                  {isDelivery ? 'Delivery' : 'Retiro'}
-                </span>
+                <span className="text-xs text-white/40">{isDelivery ? 'Delivery' : 'Retiro'}</span>
               </div>
               <div className="flex items-center gap-1">
                 {payMethod === 'cash'
@@ -97,7 +108,6 @@ export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
           </div>
         </button>
 
-        {/* Botones de acción verticales */}
         <div className="flex flex-col gap-2 shrink-0">
           <button
             onClick={e => { e.stopPropagation(); handlePrint(); }}
@@ -151,6 +161,59 @@ export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
             </div>
           )}
 
+          {/* Costo de envío editable — solo para delivery */}
+          {isDelivery && (
+            <div className="flex items-center gap-2 bg-[#111] border border-white/5 rounded-lg px-3 py-2">
+              <Bike className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span className="text-white/40 text-xs flex-1">Costo de envío</span>
+              {editingCost ? (
+                <>
+                  <span className="text-white/40 text-xs">$</span>
+                  <input
+                    type="number"
+                    value={costInput}
+                    onChange={e => setCostInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveCost(); }}
+                    className="w-24 bg-[#0A0A0A] border border-primary/40 rounded px-2 py-0.5 text-xs text-white focus:outline-none text-right"
+                    min={0}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveCost}
+                    disabled={savingCost}
+                    className="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary transition-all disabled:opacity-50"
+                    title="Guardar"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { setEditingCost(false); setCostInput(String(order.deliveryCost ?? 0)); }}
+                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/40 transition-all"
+                    title="Cancelar"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-white text-xs font-semibold">
+                    ${(order.deliveryCost ?? 0).toLocaleString('es-AR')}
+                  </span>
+                  {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                    <button
+                      onClick={() => setEditingCost(true)}
+                      className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/30 hover:text-white transition-all"
+                      title="Editar costo"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Notas */}
           {order.notes && (
             <div className="bg-[#222] rounded-lg px-3 py-2">
@@ -176,7 +239,6 @@ export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
                 {SNX[order.status].l}
               </button>
             )}
-
             {order.status !== 'cancelled' && order.status !== 'delivered' && (
               <button
                 onClick={() => onStatus(order._id, 'cancelled')}
@@ -186,7 +248,6 @@ export function OrderRow({ order, expanded, onToggle, onStatus }: ORProps) {
                 Cancelar pedido
               </button>
             )}
-
             {order.status === 'cancelled' && (
               <span className="text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-md ml-auto uppercase tracking-wider">
                 Pedido Cancelado

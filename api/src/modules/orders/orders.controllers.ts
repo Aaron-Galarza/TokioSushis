@@ -18,7 +18,6 @@ export const createOrder = async (req: Request, res: Response) => {
       const message = error.statusCode === 503 ? 'No pudimos calcular el envio en este momento' : error.message
       return sendError(res, message, error.statusCode)
     }
-
     const esErrorDeNegocio = error?.message && !error.message.includes('Cannot')
     if (esErrorDeNegocio) return sendError(res, error.message, 400)
     console.error(`[ERROR] createOrder - ${error?.message}`)
@@ -48,18 +47,23 @@ export const getOrdersRange = async (req: Request, res: Response) => {
 
 export const updateStatusOrder = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
-    const { status } = req.body
+    const id = req.params.id as string
+    const { status, deliveryCost } = req.body
 
-    if (!validOrderStatus.includes(status as OrderStatus)) {
+    // Validar status si viene
+    if (status !== undefined && !validOrderStatus.includes(status as OrderStatus)) {
       return sendError(res, 'Estado no valido para la orden')
     }
 
-    const order = await OrderService.update(id as string, status)
+    // Validar deliveryCost si viene
+    if (deliveryCost !== undefined && (typeof deliveryCost !== 'number' || deliveryCost < 0)) {
+      return sendError(res, 'Costo de envío inválido', 400)
+    }
 
+    const order = await OrderService.update(id, status, deliveryCost)
     if (!order) return sendError(res, 'Pedido no encontrado', 404)
 
-    getIO().to('admins').emit('order-updated', { id, status })
+    if (status) getIO().to('admins').emit('order-updated', { id, status })
     return sendSucces(res, order, 200)
   } catch (error: any) {
     console.error(`[ERROR] updateStatusOrder - ${error?.message}`)

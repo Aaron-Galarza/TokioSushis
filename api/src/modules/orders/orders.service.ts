@@ -175,48 +175,65 @@ export const getOrdersRange = async (range: 'hoy' | 'ayer' | 'semana' | 'mes'): 
   return await OrderModel.find({ createdAt: filter }).lean().sort({ createdAt: -1 });
 }
 
+// Reemplazar la función update en orders.service.ts
+
 export const update = async (
   id: string,
-  newStatus: OrderStatus
+  newStatus: OrderStatus,
+  newDeliveryCost?: number   // ← nuevo parámetro opcional
 ): Promise<iOrder | null> => {
   const oldOrder = await OrderModel.findById(id);
   if (!oldOrder) return null;
- 
+
   const oldStatus = oldOrder.status;
- 
+
+  // Construir el objeto de actualización dinámicamente
+  const updateData: Record<string, any> = {};
+  if (newStatus !== undefined) updateData.status = newStatus;
+
+  // Si viene un nuevo costo de envío, recalcular el total
+  if (newDeliveryCost !== undefined) {
+    updateData.deliveryCost = newDeliveryCost;
+    // total = subtotal - descuento + nuevo costo envío
+    const discount = (oldOrder.subtotal * oldOrder.discountPercent) / 100;
+    updateData.total = Math.max(0, oldOrder.subtotal - discount + newDeliveryCost);
+  }
+
   const updatedOrder = await OrderModel.findByIdAndUpdate(
     id,
-    { status: newStatus },
+    updateData,
     { returnDocument: 'after' }
   );
- 
+
   if (!updatedOrder) return null;
- 
-  console.log(`[PEDIDO] Pedido ${updatedOrder._id} actualizado de "${oldStatus}" a "${newStatus}"`);
- 
-  // 📈 Pedido se entrega ahora → sumar a analytics
-  if (oldStatus !== 'delivered' && newStatus === 'delivered') {
+
+  if (newStatus) {
+    console.log(`[PEDIDO] Pedido ${updatedOrder._id} actualizado de "${oldStatus}" a "${newStatus}"`);
+  }
+  if (newDeliveryCost !== undefined) {
+    console.log(`[PEDIDO] Costo de envío actualizado a $${newDeliveryCost} → Total: $${updatedOrder.total}`);
+  }
+
+  // Analytics: entrega
+  if (newStatus && oldStatus !== 'delivered' && newStatus === 'delivered') {
     await updateAnalyticsOnDelivery(updatedOrder);
   }
- 
-  // 📉 Pedido estaba entregado y se revierte o cancela → restar de analytics
-  if (oldStatus === 'delivered' && newStatus !== 'delivered') {
+  if (newStatus && oldStatus === 'delivered' && newStatus !== 'delivered') {
     await revertAnalyticsOnDelivery(updatedOrder);
   }
 
-  // 🔄 REVERSIÓN DE STOCK SI SE CANCELA EL PEDIDO
-  // Evitamos devolver stock doble validando que el estado anterior no haya sido ya cancelado
-  if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {
+  // Stock: cancelación
+  if (newStatus && oldStatus !== 'cancelled' && newStatus === 'cancelled') {
     console.log(`[STOCK] Devolviendo stock por cancelacion del pedido ${updatedOrder._id}`);
     for (const item of oldOrder.items) {
       const product = await ProductService.viewById(item.productId);
       if (product && product.controlStock) {
         product.stock += item.quantity;
         await product.save();
-        console.log(`   -> Repuesto "${product.title}": +${item.quantity} unidades (Nuevo Stock: ${product.stock})`);
+        console.log(`   -> Repuesto "${product.title}": +${item.quantity} (Nuevo Stock: ${product.stock})`);
       }
     }
   }
- 
+
   return updatedOrder;
 };
