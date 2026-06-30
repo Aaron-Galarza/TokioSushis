@@ -31,8 +31,21 @@ export const createOrderSchema = z.object({
   deliveryType: z.enum(['pickup', 'delivery'], {
     message: 'Tipo de entrega invalido. Opciones: pickup, delivery',
   }),
-  paymentMethod: z.enum(['cash', 'transfer', 'mercadopago', 'Efectivo', 'Transferencia'], {
-    message: 'Metodo de pago invalido',
+  // 💳 Métodos de pago unificados de verdad
+  paymentMethod: z.enum(['cash', 'debito', 'credito'], {
+    message: 'Método de pago inválido. Opciones: cash, debito, credito',
+  }),
+  // 📝 Notas sanitizadas: remueve HTML/caracteres raros y limita longitud
+  notes: z.string()
+    .max(60, 'Las notas no pueden superar los 60 caracteres')
+    .optional()
+    .transform(val => {
+      if (!val) return '';
+      return val
+        .toLowerCase()                     // Todo a minúsculas
+        .replace(/<\/?[^>]+(>|$)/g, "")     // Remueve tags HTML por si acaso
+        .replace(/[^a-zñáéíóúü\s]/g, "")   // Filtro estricto: solo letras y espacios
+        .trim();                           // Limpia espacios sobrantes en los extremos
   }),
   couponCode: z.string().optional(),
   delivery: z.object({
@@ -40,7 +53,6 @@ export const createOrderSchema = z.object({
     coordinates: CoordinatesSchema.optional(),
   }).optional(),
 }).superRefine((data, ctx) => {
-  
   if (data.deliveryType === 'delivery') {
     if (!data.delivery?.coordinates?.lat || !data.delivery?.coordinates?.lng) {
       ctx.addIssue({

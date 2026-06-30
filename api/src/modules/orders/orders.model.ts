@@ -19,8 +19,8 @@ export interface iCartItem {
   addons?: iCartAddon[];
 }
 
-export type PaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'Efectivo' | 'Transferencia';
-export const validPaymentMethods: PaymentMethod[] = ['cash', 'transfer', 'mercadopago', 'Efectivo', 'Transferencia'];
+export type PaymentMethod = 'cash' | 'debito' | 'credito';
+export const validPaymentMethods: PaymentMethod[] = ['cash', 'debito', 'credito'];
 
 export interface iOrder extends Document {
   customer: {
@@ -75,14 +75,14 @@ const OrderSchema = new Schema<iOrder>({
   notes: { 
     type: String, 
     trim: true,
-    maxlength: [300, 'Las notas no pueden superar los 300 caracteres'], // 👈 Límite de caracteres
+    maxlength: [60, 'Las notas no pueden superar los 60 caracteres'], 
     default: ''
   },
   couponCode: { type: String },
   discountPercent: { type: Number, default: 0, min: 0 },
   subtotal: { type: Number, required: true, min: 0 },
   deliveryType: { type: String, enum: ['pickup', 'delivery'], required: true },
-  paymentMethod: { type: String, enum: validPaymentMethods, required: true },
+  paymentMethod: { type: String, enum: validPaymentMethods, required: true }, // Usará nuestro array actualizado
   deliveryCost: { type: Number, default: 0, min: 0 },
   delivery: {
     address: { type: String },
