@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+'use client';
+
+import { useEffect, useState, useMemo } from 'react';
 import { AdminCard } from './ui/AdminCard';
 import { AdminInput, AdminTextarea, AdminSelect } from './ui/AdminInput';
 import { useAdminMenu } from '../hooks/useAdminMenu';
@@ -56,11 +58,23 @@ export function MenuTab() {
   } = useAdminMenu();
 
   const [showIconPicker, setShowIconPicker] = useState(false);
+  
+  // 🔍 Estado local para el Filtro Rápido por Categoría
+  const [selectedCatFilter, setSelectedCatFilter] = useState<string>('');
 
   useEffect(() => { reload(); }, [reload]);
 
   // Ícono actual del form
   const SelectedIcon = cForm.icon ? getCategoryIcon('', cForm.icon) : null;
+
+  // 🛡️ Filtro reactivo para la lista de "Tus Productos"
+  const filteredProducts = useMemo(() => {
+    if (!selectedCatFilter) return products;
+    return products.filter(p => {
+      const prodCatId = typeof p.category === 'object' ? p.category?._id : p.category;
+      return prodCatId === selectedCatFilter;
+    });
+  }, [products, selectedCatFilter]);
 
   return (
     <div className="space-y-5">
@@ -74,13 +88,7 @@ export function MenuTab() {
             value={cForm.name}
             onChange={e => setCForm(p => ({ ...p, name: e.target.value }))}
           />
-          <AdminInput
-            type="number"
-            placeholder="Orden"
-            value={cForm.order}
-            onChange={e => setCForm(p => ({ ...p, order: e.target.value }))}
-            className="w-24"
-          />
+
           {/* Botón selector de ícono */}
           <button
             type="button"
@@ -92,11 +100,9 @@ export function MenuTab() {
                 : 'bg-white/5 border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
               }`}
           >
-            {SelectedIcon
-              ? <SelectedIcon className="w-4 h-4" />
-              : <span className="text-xs">🖼</span>
-            }
+            {SelectedIcon ? <SelectedIcon className="w-4 h-4" /> : <span className="text-xs">🖼</span>}
           </button>
+          
           <button
             onClick={saveCat}
             className="bg-primary text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all whitespace-nowrap"
@@ -117,7 +123,6 @@ export function MenuTab() {
                   <CatIcon className="w-4 h-4 text-primary shrink-0" />
                   <div>
                     <p className={`font-semibold text-sm ${c.active ? 'text-white' : 'text-white/40 line-through'}`}>{c.name}</p>
-                    <p className="text-white/30 text-xs">Orden: {c.order}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -204,18 +209,22 @@ export function MenuTab() {
 
       {/* ── Productos ── */}
       <div className="grid md:grid-cols-[2fr_3fr] gap-5">
+        
+        {/* Formulario de Alta/Edición */}
         <AdminCard>
           <h2 className="font-semibold text-white text-sm mb-4">{pEditId ? 'Editar Producto' : 'Nuevo Producto'}</h2>
           {pErr && <p className="text-red-400 text-xs mb-2">{pErr}</p>}
           <div className="flex flex-col gap-3">
             <AdminInput placeholder="Título" value={pForm.title} onChange={e => setPForm(p => ({ ...p, title: e.target.value }))} />
-            <div className="flex gap-2">
-              <AdminInput type="number" placeholder="Precio" value={pForm.price} onChange={e => setPForm(p => ({ ...p, price: e.target.value }))} className="w-32" />
-              <AdminSelect value={pForm.category} onChange={e => setPForm(p => ({ ...p, category: e.target.value }))} className="flex-1">
+            
+            <div className="grid grid-cols-2 gap-2">
+              <AdminInput type="number" placeholder="Precio" value={pForm.price} onChange={e => setPForm(p => ({ ...p, price: e.target.value }))} className="w-full" />
+              <AdminSelect value={pForm.category} onChange={e => setPForm(p => ({ ...p, category: e.target.value }))} className="w-full">
                 <option value="">Seleccionar categoría</option>
                 {cats.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
               </AdminSelect>
             </div>
+            
             <AdminTextarea placeholder="Descripción" value={pForm.description} onChange={e => setPForm(p => ({ ...p, description: e.target.value }))} rows={2} />
             <AdminInput placeholder="URL de imagen (opcional)" value={pForm.image} onChange={e => setPForm(p => ({ ...p, image: e.target.value }))} />
             <label className="flex items-center gap-2 text-sm text-white/50 cursor-pointer">
@@ -236,13 +245,26 @@ export function MenuTab() {
           </div>
         </AdminCard>
 
+        {/* Listado "Tus Productos" con Filtro Rápido */}
         <AdminCard>
-          <h2 className="font-semibold text-white text-sm mb-4">Tus Productos</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <h2 className="font-semibold text-white text-sm">Tus Productos</h2>
+            
+            <AdminSelect 
+              value={selectedCatFilter} 
+              onChange={e => setSelectedCatFilter(e.target.value)} 
+              className="w-full sm:w-48 py-1 px-2 text-xs"
+            >
+              <option value="">Todas las categorías</option>
+              {cats.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+            </AdminSelect>
+          </div>
+
           <div className="flex flex-col gap-2 max-h-[480px] overflow-y-auto overscroll-contain scrollbar-none">
-            {products.map(p => {
+            {filteredProducts.map(p => {
               const catName = typeof p.category === 'object' ? p.category?.name : (cats.find(c => c._id === p.category)?.name ?? '—');
               return (
-                <div key={p._id} className="flex items-center gap-3 bg-[#1A1A1A] border border-white/10 rounded-xl px-3 py-3">
+                <div key={p._id} className="flex items-center gap-3 bg-[#1A1A1A] border border-white/10 rounded-xl px-3 py-3 animate-in fade-in duration-100">
                   {p.image && <img src={p.image} alt={p.title} className="w-10 h-10 rounded-lg object-cover shrink-0 bg-zinc-900" />}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -261,6 +283,9 @@ export function MenuTab() {
                 </div>
               );
             })}
+            {filteredProducts.length === 0 && (
+              <p className="text-white/20 text-xs text-center py-6">No hay productos en esta categoría.</p>
+            )}
           </div>
         </AdminCard>
       </div>

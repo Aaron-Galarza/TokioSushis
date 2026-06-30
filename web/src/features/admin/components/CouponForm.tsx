@@ -12,6 +12,9 @@ interface Props {
   toggleArr: (field: 'validDays' | 'validPaymentMethods', val: string) => void;
 }
 
+// 🏷️ Mapeo visual para los botones de pago
+const LABELS: Record<string, string> = { cash: 'Efectivo', debito: 'Débito', credito: 'Crédito' };
+
 export function CouponForm({ cpForm, setCpForm, cpEditId, cpErr, compact = false, save, cancel, toggleArr }: Props) {
   return (
     <div className="flex flex-col gap-3">
@@ -38,7 +41,7 @@ export function CouponForm({ cpForm, setCpForm, cpEditId, cpErr, compact = false
             <p className="text-white/40 text-xs mb-1.5">Días válidos (vacío = todos)</p>
             <div className="flex flex-wrap gap-1.5">
               {CDAYS.map(d => (
-                <button key={d} onClick={() => toggleArr('validDays', d)}
+                <button key={d} type="button" onClick={() => toggleArr('validDays', d)}
                   className={`px-2 py-1 rounded text-xs font-medium ${cpForm.validDays.includes(d) ? 'bg-primary text-black' : 'bg-[#1A1A1A] border border-white/10 text-white/50 hover:text-white'}`}>
                   {DS[d]}
                 </button>
@@ -49,9 +52,9 @@ export function CouponForm({ cpForm, setCpForm, cpEditId, cpErr, compact = false
             <p className="text-white/40 text-xs mb-1.5">Métodos (vacío = todos)</p>
             <div className="flex gap-1.5">
               {PAYS.map(p => (
-                <button key={p} onClick={() => toggleArr('validPaymentMethods', p)}
+                <button key={p} type="button" onClick={() => toggleArr('validPaymentMethods', p)}
                   className={`px-2 py-1 rounded text-xs font-medium ${cpForm.validPaymentMethods.includes(p) ? 'bg-primary text-black' : 'bg-[#1A1A1A] border border-white/10 text-white/50 hover:text-white'}`}>
-                  {p}
+                  {LABELS[p] || p}
                 </button>
               ))}
             </div>

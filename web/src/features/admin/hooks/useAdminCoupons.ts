@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { fetchAdminCoupons, createCoupon, updateCoupon, deleteCoupon } from '@/services/admin.service';
 import { PAYS, CDAYS } from '@/constants/admin';
 
@@ -15,6 +15,11 @@ export function useAdminCoupons() {
   const reload = useCallback(async () => {
     try { setCoupons(await fetchAdminCoupons()); } catch {}
   }, []);
+
+  // 🚀 LA PIEZA FALTANTE: Ejecuta la carga inicial de los cupones al montar la pantalla
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const save = async () => {
     setCpErr('');
