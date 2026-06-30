@@ -19,7 +19,8 @@ export interface Order {
   customer: OrderCustomer;
   items: CartItem[];
   deliveryType: 'pickup' | 'delivery';
-  paymentMethod: 'cash' | 'transfer' | 'mercadopago';
+  paymentMethod: 'cash' | 'debito' | 'credito'; // 👈 Sincronizado
+  notes?: string; // 👈 Agregado para que puedas visualizarlo en el admin
   couponCode?: string;
   subtotal: number;
   deliveryCost: number;

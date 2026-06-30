@@ -11,7 +11,7 @@
   --color-muted: #2A2A2A;
   --color-muted-foreground: #A0A0A0;
   --font-sans: var(--font-inter), sans-serif;
-  --font-heading: var(--font-cormorant), serif;
+  --font-heading: var(--font-poppins), sans-serif;
   --radius-aw: 12px;
   --spacing-aw: 16px;
 }
