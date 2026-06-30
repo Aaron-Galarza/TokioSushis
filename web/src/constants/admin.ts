@@ -1,4 +1,4 @@
-export const PAYS = ['cash', 'transfer', 'mercadopago'] as const;
+export const PAYS = ['cash', 'debito', 'credito'] as const;
 
 export const CDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 

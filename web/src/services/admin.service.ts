@@ -2,8 +2,8 @@ import api from './api';
 export type AdminRange = 'hoy' | 'ayer' | 'semana' | 'mes';
 
 // ── Orders ──────────────────────────────────────────────────────────────────
-export const fetchAdminOrders = () =>
-  api.get('/orders/admin/range?range=hoy').then(r => r.data.data ?? []);
+export const fetchAdminOrders = (range: AdminRange = 'hoy') =>
+  api.get(`/orders/admin/range?range=${range}`).then(r => r.data.data ?? []);
 export const updateOrderStatus = (id: string, status: string, deliveryCost?: number) =>
   api.put(`/orders/admin/${id}`, { status, ...(deliveryCost !== undefined ? { deliveryCost } : {}) });
 export const updateOrderDeliveryCost = (id: string, deliveryCost: number) =>
@@ -43,7 +43,7 @@ export const deleteCoupon = (id: string) => api.delete(`/coupons/admin/${id}`);
 // ── Gallery ─────────────────────────────────────────────────────────────────
 export const fetchGallery = () => api.get('/gallery').then(r => r.data.data ?? []);
 export const uploadImage = (formData: FormData) =>
-  api.post('/gallery', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  api.post('/gallery', formData, { headers: { 'Content-Type': 'multipart/form-center' } });
 export const deleteGalleryImage = (id: string) => api.delete(`/gallery/${id}`);
 
 // ── Config ──────────────────────────────────────────────────────────────────

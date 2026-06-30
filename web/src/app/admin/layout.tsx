@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 
-// Clave bajo la que Zustand persist guarda el estado de auth
 const AUTH_STORAGE_KEY = 'american-way-auth-storage';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -13,8 +12,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
-  // Lectura directa de localStorage: síncrona, sin esperar hidratación de Zustand.
-  // Funciona igual en carga inicial que al reactivar una pestaña suspendida.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -29,7 +26,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [router]);
 
-  // El logout limpia el store y saca al usuario del panel en el acto
   const handleLogout = () => {
     logout();
     router.replace('/login');
@@ -46,19 +42,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="h-screen bg-[#0A0A0A] text-white flex flex-col">
-      <header className="relative flex items-center h-14 px-4 border-b border-white/10 bg-[#0A0A0A] shrink-0">
+      <header className="flex items-center justify-between gap-2 h-14 px-3 sm:px-4 border-b border-white/10 bg-[#0A0A0A] shrink-0">
+
+        {/* Izquierda: volver (solo flecha en mobile, flecha+texto en desktop) */}
         <button
           onClick={() => router.push('/')}
-          className="flex items-center gap-1.5 text-white/40 hover:text-white transition-colors text-sm"
+          className="flex items-center gap-1.5 text-white/40 hover:text-white transition-colors text-sm shrink-0"
+          aria-label="Volver al menú"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Volver al Menú
+          <ArrowLeft className="w-5 h-5" />
+          <span className="hidden sm:inline">Volver al Menú</span>
         </button>
-        <h1 className="absolute left-1/2 -translate-x-1/2 font-heading italic text-sm font-semibold tracking-[0.2em] text-primary whitespace-nowrap">
-          PANEL DE ADMINISTRACIÓN
-        </h1>
-        <button onClick={handleLogout} className="ml-auto text-red-400/50 hover:text-red-300 text-xs transition-colors">
-          Salir
+
+        {/* Centro: logo + nombre */}
+        <div className="flex items-center gap-2 min-w-0">
+          <img src="/tokyoSushis.webp" alt="Tokio Sushis" className="h-7 w-7 object-contain shrink-0" />
+          <span className="font-heading text-sm font-bold tracking-wide text-primary truncate hidden xs:inline sm:inline">
+            TOKIO SUSHIS
+          </span>
+        </div>
+
+        {/* Derecha: salir (solo ícono en mobile) */}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 text-red-400/60 hover:text-red-300 text-xs transition-colors shrink-0"
+          aria-label="Cerrar sesión"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">Salir</span>
         </button>
       </header>
       <div className="flex-1 flex flex-col overflow-hidden">
