@@ -2,12 +2,13 @@ import { DailyAnalyticsModel } from './daily.model';
 import { iOrder } from '../orders/orders.model';
 import { argDate } from '../../utils/Timezone';
 
-// ─── Tipos ───────────────────────────────────────────────
+// ─── Tipos Sincronizados ─────────────────────────────────
 
 interface AnalyticsStats {
   total: number;
   efectivo: number;
-  trans: number;
+  debito: number;
+  credito: number;
   entregados: number;
   topProduct: { title: string; quantity: number } | null;
 }
@@ -18,7 +19,7 @@ export const getAnalytics = async (
   range: 'hoy' | 'ayer' | 'semana' | 'mes'
 ): Promise<AnalyticsStats> => {
 
-  const today = argDate(); // "2026-05-05" en hora Argentina
+  const today = argDate(); 
   let startDate: string;
   let endDate: string = today;
 
@@ -48,22 +49,22 @@ export const getAnalytics = async (
       break;
   }
 
-  // Los dailies guardan date como "YYYY-MM-DD" en hora Argentina
   const dailies = await DailyAnalyticsModel.find({
     date: { $gte: startDate, $lte: endDate },
   }).lean();
 
   if (dailies.length === 0) {
-    return { total: 0, efectivo: 0, trans: 0, entregados: 0, topProduct: null };
+    return { total: 0, efectivo: 0, debito: 0, credito: 0, entregados: 0, topProduct: null };
   }
 
   const productMap: Record<string, { qty: number; title: string }> = {};
-  let total = 0, efectivo = 0, trans = 0, entregados = 0;
+  let total = 0, efectivo = 0, debito = 0, credito = 0, entregados = 0;
 
   for (const day of dailies) {
-    total     += day.total ?? 0;
-    efectivo  += day.efectivo ?? 0;
-    trans     += day.trans ?? 0;
+    total      += day.total ?? 0;
+    efectivo   += day.efectivo ?? 0;
+    debito     += day.debito ?? 0; // 💳 Nuevos acumuladores mapeados
+    credito    += day.credito ?? 0;
     entregados += day.entregados ?? 0;
 
     const products = day.products;
@@ -82,13 +83,13 @@ export const getAnalytics = async (
     }
   }
 
-  return { total, efectivo, trans, entregados, topProduct: getTopProduct(productMap) };
+  return { total, efectivo, debito, credito, entregados, topProduct: getTopProduct(productMap) };
 };
 
 // ─── Escribir en daily cuando una orden se entrega ───────
 
 export const updateAnalyticsOnDelivery = async (order: iOrder) => {
-  const date = argDate(new Date(order.createdAt)); // ← fecha Argentina, no UTC
+  const date = argDate(new Date(order.createdAt));
 
   const incUpdates: Record<string, number> = {};
   const setUpdates: Record<string, string> = {};
@@ -99,15 +100,16 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
     setUpdates[`${key}.title`] = item.title;
   }
 
+  // Desglose limpio condicional por pasarela real
+  const methodKey = order.paymentMethod === 'cash' ? 'efectivo' : order.paymentMethod === 'debito' ? 'debito' : 'credito';
+
   await DailyAnalyticsModel.findOneAndUpdate(
     { date },
     {
       $inc: {
         total: order.total,
         entregados: 1,
-        ...(order.paymentMethod === 'Efectivo' || order.paymentMethod === 'cash'
-          ? { efectivo: order.total }
-          : { trans: order.total }),
+        [methodKey]: order.total, // Suma dinámicamente al casillero correspondiente
         ...incUpdates,
       },
       $set: setUpdates,
@@ -115,13 +117,13 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
     { upsert: true }
   );
 
-  console.log(`[ANALYTICS] ADD → ${date} | $${order.total}`);
+  console.log(`[ANALYTICS] ADD → ${date} | $${order.total} por ${order.paymentMethod}`);
 };
 
 // ─── Revertir cuando una orden delivered se cancela ──────
 
 export const revertAnalyticsOnDelivery = async (order: iOrder) => {
-  const date = argDate(new Date(order.createdAt)); // ← fecha Argentina, no UTC
+  const date = argDate(new Date(order.createdAt));
 
   const daily = await DailyAnalyticsModel.findOne({ date });
   if (!daily) {
@@ -140,9 +142,13 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
   const safeTotal      = Math.min(order.total, daily.total);
   const safeEntregados = Math.min(1, daily.entregados);
 
-  const isEfectivo   = order.paymentMethod === 'Efectivo' || order.paymentMethod === 'cash';
-  const safeEfectivo = isEfectivo ? Math.min(order.total, daily.efectivo) : 0;
-  const safeTrans    = !isEfectivo ? Math.min(order.total, daily.trans) : 0;
+  // Reversión precisa según método
+  const isCash = order.paymentMethod === 'cash';
+  const isDebito = order.paymentMethod === 'debito';
+  
+  const safeEfectivo = isCash ? Math.min(order.total, daily.efectivo ?? 0) : 0;
+  const safeDebito   = isDebito ? Math.min(order.total, daily.debito ?? 0) : 0;
+  const safeCredito  = (!isCash && !isDebito) ? Math.min(order.total, daily.credito ?? 0) : 0;
 
   await DailyAnalyticsModel.findOneAndUpdate(
     { date },
@@ -151,7 +157,8 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
         total: -safeTotal,
         entregados: -safeEntregados,
         efectivo: -safeEfectivo,
-        trans: -safeTrans,
+        debito: -safeDebito,
+        credito: -safeCredito,
         ...incUpdates,
       },
     }

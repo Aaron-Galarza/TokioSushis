@@ -9,19 +9,20 @@ const app: Application = express();
 
 const allowedOrigins = [
     process.env.CLIENT_URL,
-    'https://un-toque-ahumado.vercel.app',
     'http://localhost:3000',
-    'https://un-toque-ahumado-c1gwleu4y-aaron-galarzas-projects.vercel.app'
+    'https://tokyo-sushis.vercel.app'
 ].filter(Boolean)
 
 app.use(helmet())
 app.use(cors({
-    origin: function (origin, callback) {
+  origin: function (origin, callback) {
+    // Permitir peticiones sin origen (como Postman o peticiones del mismo servidor)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
+      console.log(`[CORS REJECTED] Origen no permitido por la lista: ${origin}`);
       callback(new Error('No permitido por CORS'));
     }
   },

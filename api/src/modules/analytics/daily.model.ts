@@ -10,7 +10,9 @@ export interface IDailyAnalytics extends Document {
   date: string; // "YYYY-MM-DD"
   total: number;
   efectivo: number;
-  trans: number;
+  trans: number; // 💾 Lo dejamos por retrocompatibilidad con órdenes viejas
+  debito: number;  // 💳 Nuevo
+  credito: number; // 💳 Nuevo
   entregados: number;
   products: Map<string, IProductEntry>;
 }
@@ -25,7 +27,9 @@ const dailyAnalyticsSchema = new Schema<IDailyAnalytics>(
     },
     total: { type: Number, default: 0 },
     efectivo: { type: Number, default: 0 },
-    trans: { type: Number, default: 0 },
+    trans: { type: Number, default: 0 },    // 💾 Persiste para no romper históricos
+    debito: { type: Number, default: 0 },   // 💳 Nuevo campo mapeado
+    credito: { type: Number, default: 0 },  // 💳 Nuevo campo mapeado
     entregados: { type: Number, default: 0 },
     products: {
       type: Map,
