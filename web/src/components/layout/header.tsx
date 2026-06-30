@@ -33,13 +33,13 @@ export function Header() {
         >
           <img
             src="/tokyoSushis.webp"
-            alt="Tokio Sushis"
+            alt="Tokyo Sushis"
             width={32}
             height={32}
             className="h-8 w-8 object-contain shrink-0"
           />
           <span className="font-heading text-lg sm:text-xl font-bold tracking-wide text-primary truncate">
-            TOKIO SUSHIS
+            TOKYO SUSHIS
           </span>
         </button>
 

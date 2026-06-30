@@ -56,9 +56,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Centro: logo + nombre */}
         <div className="flex items-center gap-2 min-w-0">
-          <img src="/tokyoSushis.webp" alt="Tokio Sushis" className="h-7 w-7 object-contain shrink-0" />
+          <img src="/tokyoSushis.webp" alt="Tokyo Sushis" className="h-7 w-7 object-contain shrink-0" />
           <span className="font-heading text-sm font-bold tracking-wide text-primary truncate hidden xs:inline sm:inline">
-            TOKIO SUSHIS
+            TOKYO SUSHIS
           </span>
         </div>
 

@@ -47,7 +47,7 @@ export const FeaturedBanner = ({
         <div className="w-24 h-24 rounded-full border-2 border-primary/40 bg-black/60 flex items-center justify-center mb-5 shadow-[0_0_32px_rgba(197,168,111,0.2)] overflow-hidden">
           <img
             src="/tokyoSushis.webp"
-            alt="Tokio Sushis"
+            alt="Tokyo Sushis"
             className="w-full h-full object-cover"
           />
         </div>

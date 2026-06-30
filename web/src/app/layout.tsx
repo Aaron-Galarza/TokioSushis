@@ -17,7 +17,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Tokio Sushis | Delivery & Menú",
+  title: "Tokyo Sushis | Delivery & Menú",
   icons: {
     icon: '/tokyoSushis.webp',
   },
