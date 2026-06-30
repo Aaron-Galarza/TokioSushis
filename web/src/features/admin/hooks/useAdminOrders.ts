@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { fetchAdminOrders, updateOrderStatus as apiUpdateStatus } from '@/services/admin.service';
+import type { AdminRange } from '@/services/admin.service';
 
 // 🔥 Sumamos 'delivered' a los filtros válidos del Frontend
 export type SF = 'pending' | 'in-preparation' | 'completed' | 'delivered' | 'cancelled';
@@ -9,12 +10,13 @@ export type SF = 'pending' | 'in-preparation' | 'completed' | 'delivered' | 'can
 export function useAdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [sFilter, setSFilter] = useState<SF>('pending');
+  const [tRange, setTRange]   = useState<AdminRange>('hoy'); // 📅 Filtro temporal activo
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const reload = useCallback(async () => {
-    try { setOrders(await fetchAdminOrders()); } catch {}
-  }, []);
+    try { setOrders(await fetchAdminOrders(tRange)); } catch {}
+  }, [tRange]);
 
   useEffect(() => {
     reload();
@@ -42,5 +44,17 @@ export function useAdminOrders() {
     reload();
   }, [reload]);
 
-  return { orders, sFilter, setSFilter, expandedId, setExpandedId, oCounts, filteredOrders, updateStatus, reload };
+  return { 
+    orders, 
+    sFilter, 
+    setSFilter, 
+    tRange, 
+    setTRange, 
+    expandedId, 
+    setExpandedId, 
+    oCounts, 
+    filteredOrders, 
+    updateStatus, 
+    reload 
+  };
 }

@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { Plus, Minus, X, ShoppingBag, Loader2, ChevronDown } from 'lucide-react';
 import { AddressAutocomplete } from '@/features/checkout/components/AddressAutocomplete';
@@ -14,7 +13,6 @@ interface LineItem {
   quantity: number;
   addons: { addonId: string; title: string; price: number; quantity: number }[];
 }
-
 interface Props {
   products: any[];
   addons: any[];
@@ -27,7 +25,10 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
   const [open, setOpen]                   = useState(false);
   const [customer, setCustomer]           = useState(BLANK_CUSTOMER);
   const [deliveryType, setDeliveryType]   = useState<'pickup' | 'delivery'>('pickup');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+  
+  // 💳 Actualizado para soportar las nuevas variantes de la API
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debito' | 'credito'>('cash');
+  
   const [address, setAddress]             = useState('');
   const [coords, setCoords]               = useState<{ lat: number; lng: number } | null>(null);
   const [deliveryCost, setDeliveryCost]   = useState(0);
@@ -37,7 +38,6 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
   const [submitting, setSubmitting]       = useState(false);
   const [error, setError]                 = useState<string | null>(null);
 
-  // Calcular costo de envío cuando cambian las coordenadas
   useEffect(() => {
     if (deliveryType !== 'delivery' || !coords) {
       setDeliveryCost(0);
@@ -59,45 +59,45 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
     calculate();
   }, [coords, deliveryType]);
 
-  // Agregar producto a la lista
   const addProduct = (productId: string) => {
     const prod = products.find((p: any) => p._id === productId);
     if (!prod) return;
     const exists = items.find(i => i.productId === productId);
     if (exists) {
-      setItems(items.map(i =>
-        i.productId === productId ? { ...i, quantity: i.quantity + 1 } : i
-      ));
+      setItems(items.map(i => i.productId === productId ? { ...i, quantity: i.quantity + 1 } : i));
     } else {
-      setItems([...items, {
-        productId: prod._id,
-        title: prod.title,
-        price: prod.price,
-        quantity: 1,
-        addons: [],
-      }]);
+      setItems([...items, { productId: prod._id, title: prod.title, price: prod.price, quantity: 1, addons: [] }]);
     }
   };
 
   const updateQty = (productId: string, delta: number) => {
-    setItems(prev =>
-      prev
-        .map(i => i.productId === productId ? { ...i, quantity: i.quantity + delta } : i)
-        .filter(i => i.quantity > 0)
-    );
+    setItems(prev => prev.map(i => i.productId === productId ? { ...i, quantity: i.quantity + delta } : i).filter(i => i.quantity > 0));
   };
 
-  const toggleAddon = (productId: string, addon: any) => {
+  // Función modificada para manejar incremento, decremento o remoción de adicionales por cantidad
+  const updateAddonQty = (productId: string, addon: any, delta: number) => {
     setItems(prev => prev.map(item => {
       if (item.productId !== productId) return item;
+      
       const exists = item.addons.find(a => a.addonId === addon._id);
+      
       if (exists) {
-        return { ...item, addons: item.addons.filter(a => a.addonId !== addon._id) };
+        const newQty = exists.quantity + delta;
+        if (newQty <= 0) {
+          return { ...item, addons: item.addons.filter(a => a.addonId !== addon._id) };
+        }
+        return {
+          ...item,
+          addons: item.addons.map(a => a.addonId === addon._id ? { ...a, quantity: newQty } : a)
+        };
+      } else if (delta > 0) {
+        return {
+          ...item,
+          addons: [...item.addons, { addonId: addon._id, title: addon.title, price: addon.price, quantity: 1 }]
+        };
       }
-      return {
-        ...item,
-        addons: [...item.addons, { addonId: addon._id, title: addon.title, price: addon.price, quantity: 1 }],
-      };
+      
+      return item;
     }));
   };
 
@@ -105,7 +105,6 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
     const addonsTotal = i.addons.reduce((s, a) => s + a.price * a.quantity, 0);
     return sum + (i.price + addonsTotal) * i.quantity;
   }, 0);
-
   const total = subtotal + deliveryCost;
 
   const reset = () => {
@@ -120,39 +119,18 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!customer.name || !customer.phone) {
-      setError('Nombre y teléfono son obligatorios');
-      return;
-    }
-    if (items.length === 0) {
-      setError('Agregá al menos un producto');
-      return;
-    }
-    if (deliveryType === 'delivery' && !coords) {
-      setError('Seleccioná una dirección válida para el delivery');
-      return;
-    }
-
+    if (!customer.name || !customer.phone) { setError('Nombre y teléfono son obligatorios'); return; }
+    if (items.length === 0) { setError('Agregá al menos un producto'); return; }
+    if (deliveryType === 'delivery' && !coords) { setError('Seleccioná una dirección válida para el delivery'); return; }
     setSubmitting(true);
     setError(null);
-
     try {
       await createAdminOrder({
-        customer: {
-          name: customer.name,
-          phone: customer.phone,
-          address: deliveryType === 'delivery' ? address : undefined,
-        },
-        items: items.map(i => ({
-          productId: i.productId,
-          quantity: i.quantity,
-          addons: i.addons.map(a => ({ addonId: a.addonId, quantity: a.quantity })),
-        })),
+        customer: { name: customer.name, phone: customer.phone, address: deliveryType === 'delivery' ? address : undefined },
+        items: items.map(i => ({ productId: i.productId, quantity: i.quantity, addons: i.addons.map(a => ({ addonId: a.addonId, quantity: a.quantity })) })),
         deliveryType,
         paymentMethod,
-        ...(deliveryType === 'delivery' && coords ? {
-          delivery: { address, coordinates: coords },
-        } : {}),
+        ...(deliveryType === 'delivery' && coords ? { delivery: { address, coordinates: coords } } : {}),
       });
       reset();
       setOpen(false);
@@ -168,7 +146,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
     <div className="mb-4">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-sm font-semibold transition-all active:scale-95"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-sm font-semibold transition-all active:scale-95 w-full sm:w-auto justify-center sm:justify-start"
       >
         <ShoppingBag className="w-4 h-4" />
         Nuevo pedido manual
@@ -176,43 +154,48 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
       </button>
 
       {open && (
-        <div className="mt-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="mt-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-3 sm:p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
 
           {/* Cliente */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input
               placeholder="Nombre del cliente *"
               value={customer.name}
               onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))}
-              className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50"
+              className="bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 w-full"
             />
             <input
               placeholder="Teléfono *"
               value={customer.phone}
               onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
-              className="bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50"
+              className="bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 w-full"
             />
           </div>
 
-          {/* Delivery / Pickup + Pago */}
-          <div className="flex gap-2 flex-wrap">
-            <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs font-semibold">
+          {/* Delivery/Pickup + Selector de Métodos de Pago */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* Tipo de entrega */}
+            <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs font-semibold h-[38px]">
               {(['pickup', 'delivery'] as const).map(t => (
                 <button
                   key={t}
+                  type="button"
                   onClick={() => { setDeliveryType(t); setCoords(null); setAddress(''); setDeliveryCost(0); }}
-                  className={`px-3 py-2 transition-all ${deliveryType === t ? 'bg-primary text-black' : 'bg-[#111] text-white/40 hover:text-white'}`}
+                  className={`flex-1 px-2 py-2 transition-all ${deliveryType === t ? 'bg-primary text-black' : 'bg-[#111] text-white/40 hover:text-white'}`}
                 >
                   {t === 'pickup' ? 'Retiro' : 'Delivery'}
                 </button>
               ))}
             </div>
-            <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs font-semibold">
-              {([['cash', 'Efectivo'], ['transfer', 'Transferencia']] as const).map(([v, l]) => (
+            
+            {/* 💳 Selector de Pago expandido a 3 opciones */}
+            <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs font-semibold h-[38px]">
+              {([['cash', 'Efectivo'], ['debito', 'Débito'], ['credito', 'Crédito']] as const).map(([v, l]) => (
                 <button
                   key={v}
+                  type="button"
                   onClick={() => setPaymentMethod(v)}
-                  className={`px-3 py-2 transition-all ${paymentMethod === v ? 'bg-primary text-black' : 'bg-[#111] text-white/40 hover:text-white'}`}
+                  className={`flex-1 px-1 py-2 transition-all text-center whitespace-nowrap ${paymentMethod === v ? 'bg-primary text-black' : 'bg-[#111] text-white/40 hover:text-white'}`}
                 >
                   {l}
                 </button>
@@ -220,7 +203,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
             </div>
           </div>
 
-          {/* Dirección (solo delivery) */}
+          {/* Dirección */}
           {deliveryType === 'delivery' && (
             <div>
               <AddressAutocomplete
@@ -236,9 +219,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
               )}
               {deliveryError && <p className="text-xs text-red-400 mt-1">{deliveryError}</p>}
               {deliveryCost > 0 && !deliveryLoading && (
-                <p className="text-xs text-primary mt-1">
-                  Costo de envío: ${deliveryCost.toLocaleString('es-AR')}
-                </p>
+                <p className="text-xs text-primary mt-1">Costo de envío: ${deliveryCost.toLocaleString('es-AR')}</p>
               )}
             </div>
           )}
@@ -248,14 +229,12 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
             <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Productos</p>
             <select
               onChange={e => { if (e.target.value) { addProduct(e.target.value); e.target.value = ''; } }}
-              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
+              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50"
               defaultValue=""
             >
               <option value="" disabled>+ Agregar producto</option>
               {products.filter((p: any) => p.active).map((p: any) => (
-                <option key={p._id} value={p._id}>
-                  {p.title} — ${p.price?.toLocaleString('es-AR')}
-                </option>
+                <option key={p._id} value={p._id}>{p.title} — ${p.price?.toLocaleString('es-AR')}</option>
               ))}
             </select>
           </div>
@@ -264,7 +243,6 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
           {items.length > 0 && (
             <div className="space-y-2">
               {items.map(item => {
-                // Adicionales aplicables a este producto
                 const applicableAddons = addons.filter((a: any) =>
                   a.active && (
                     !a.categories?.length ||
@@ -276,43 +254,61 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                     })
                   )
                 );
-
                 return (
                   <div key={item.productId} className="bg-[#111] border border-white/5 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-white font-medium">{item.title}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-primary">${item.price.toLocaleString('es-AR')}</span>
-                        <button onClick={() => updateQty(item.productId, -1)} className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-white font-medium truncate flex-1 min-w-0">{item.title}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-xs text-primary hidden xs:inline">${item.price.toLocaleString('es-AR')}</span>
+                        <button onClick={() => updateQty(item.productId, -1)} className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all shrink-0">
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="text-sm text-white w-4 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQty(item.productId, 1)} className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all">
+                        <span className="text-sm text-white w-4 text-center shrink-0">{item.quantity}</span>
+                        <button onClick={() => updateQty(item.productId, 1)} className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all shrink-0">
                           <Plus className="w-3 h-3" />
                         </button>
-                        <button onClick={() => setItems(items.filter(i => i.productId !== item.productId))} className="w-6 h-6 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition-all">
+                        <button onClick={() => setItems(items.filter(i => i.productId !== item.productId))} className="w-6 h-6 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition-all shrink-0">
                           <X className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
-
-                    {/* Adicionales */}
                     {applicableAddons.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {applicableAddons.map((a: any) => {
-                          const selected = item.addons.some(ad => ad.addonId === a._id);
+                          const currentAddon = item.addons.find(ad => ad.addonId === a._id);
+                          const quantity = currentAddon?.quantity ?? 0;
+                          
                           return (
-                            <button
+                            <div
                               key={a._id}
-                              onClick={() => toggleAddon(item.productId, a)}
-                              className={`text-[11px] px-2 py-0.5 rounded-full border transition-all ${
-                                selected
-                                  ? 'bg-primary text-black border-primary'
-                                  : 'bg-white/5 text-white/40 border-white/10 hover:border-white/30'
+                              className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border transition-all ${
+                                quantity > 0 ? 'bg-primary text-black border-primary' : 'bg-white/5 text-white/40 border-white/10 hover:border-white/30'
                               }`}
                             >
-                              {a.title} +${a.price?.toLocaleString('es-AR')}
-                            </button>
+                              <span onClick={() => { if (quantity === 0) updateAddonQty(item.productId, a, 1); }} className={quantity === 0 ? 'cursor-pointer' : ''}>
+                                {a.title} +${a.price?.toLocaleString('es-AR')}
+                              </span>
+                              
+                              {quantity > 0 && (
+                                <div className="flex items-center gap-1 ml-1 pl-1 border-l border-black/20">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateAddonQty(item.productId, a, -1)}
+                                    className="w-3.5 h-3.5 rounded-sm bg-black/10 hover:bg-black/20 flex items-center justify-center text-black"
+                                  >
+                                    <Minus className="w-2 h-2" />
+                                  </button>
+                                  <span className="font-bold min-w-[8px] text-center">{quantity}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateAddonQty(item.productId, a, 1)}
+                                    className="w-3.5 h-3.5 rounded-sm bg-black/10 hover:bg-black/20 flex items-center justify-center text-black"
+                                  >
+                                    <Plus className="w-2 h-2" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
@@ -325,7 +321,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
 
           {/* Total + submit */}
           {items.length > 0 && (
-            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-white/5">
               <div className="text-sm text-white/50">
                 Total: <span className="text-primary font-bold text-base">${total.toLocaleString('es-AR')}</span>
                 {deliveryCost > 0 && <span className="text-xs ml-1 text-white/30">(incl. envío)</span>}
@@ -333,7 +329,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-black font-bold rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 w-full sm:w-auto"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Confirmar pedido
