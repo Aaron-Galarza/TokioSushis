@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   TrendingUp, DollarSign, CreditCard, ShoppingBag, Star,
-  Clock, Package, CheckCircle, XCircle, Truck,
-  AlertCircle, Power, Tag, Utensils, Bike, MapPin, Loader2,
+  Clock, AlertCircle, Power, Tag, Utensils, Bike, MapPin, Loader2,
 } from 'lucide-react';
 import { useAdminOverview } from '../hooks/useAdminOverview';
 import { useAdminOrders } from '../hooks/useAdminOrders';
@@ -12,29 +11,15 @@ import { useAdminCoupons } from '../hooks/useAdminCoupons';
 import { useAdminMenu } from '../hooks/useAdminMenu';
 import { toggleEmergency as apiToggle, fetchConfigStatus } from '@/services/admin.service';
 import type { AdminRange } from '@/services/admin.service';
-
-// 🛠️ Modificado con las etiquetas exactas solicitadas y unificado el color verde de éxito para "ready"
-const STATUS_CFG: Record<string, { label: string; dot: string; badge: string; icon: any }> = {
-  pending:          { label: 'Pendiente',   dot: 'bg-yellow-400', badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25', icon: Clock },
-  'in-preparation': { label: 'En Proceso',  dot: 'bg-blue-400',   badge: 'bg-blue-500/15 text-blue-400 border-blue-500/25',       icon: Package },
-  ready:            { label: 'Terminado',   dot: 'bg-green-400',  badge: 'bg-green-500/15 text-green-400 border-green-500/25',    icon: CheckCircle },
-  delivered:        { label: 'Entregado',   dot: 'bg-emerald-400',badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', icon: Truck },
-  cancelled:        { label: 'Cancelado',   dot: 'bg-red-400',    badge: 'bg-red-500/15 text-red-400 border-red-500/25',           icon: XCircle },
-};
-
-const CAT_PALETTE = [
-  'bg-primary/15 text-primary border-primary/25',
-  'bg-orange-500/15 text-orange-400 border-orange-500/25',
-  'bg-blue-500/15 text-blue-400 border-blue-500/25',
-  'bg-purple-500/15 text-purple-400 border-purple-500/25',
-  'bg-pink-500/15 text-pink-400 border-pink-500/25',
-  'bg-teal-500/15 text-teal-400 border-teal-500/25',
-];
+import { ORDER_STATUS, type OrderStatusKey } from '@/constants/orderStatus';
+import { buildCatColorMap, CAT_PALETTE } from '@/constants/categoryColors';
 
 const RANGES: { v: AdminRange; l: string }[] = [
   { v: 'hoy', l: 'Hoy' }, { v: 'ayer', l: 'Ayer' },
   { v: 'semana', l: 'Esta semana' }, { v: 'mes', l: 'Este mes' },
 ];
+
+const ALL_STATUSES: OrderStatusKey[] = ['pending', 'in-preparation', 'ready', 'delivered', 'cancelled'];
 
 export function OverviewTab() {
   const overview   = useAdminOverview();
@@ -46,16 +31,11 @@ export function OverviewTab() {
   const loadAll = useCallback(async () => {
     await Promise.all([overview.reload(), coupons.reload(), menu.reload()]);
     try { const c = await fetchConfigStatus(); setEmergency(c.isEmergencyClosed ?? false); } catch {}
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  const catColorMap: Record<string, string> = {};
-  menu.cats.forEach((cat: any, i: number) => {
-    catColorMap[cat._id] = CAT_PALETTE[i % CAT_PALETTE.length];
-    catColorMap[cat.name] = CAT_PALETTE[i % CAT_PALETTE.length];
-  });
-
+  const catColorMap = buildCatColorMap(menu.cats);
   const recentOrders  = ordersHook.orders.slice(0, 6);
   const activeProducts = menu.products.filter((p: any) => p.active);
   const allCoupons    = coupons.coupons ?? [];
@@ -64,7 +44,7 @@ export function OverviewTab() {
   return (
     <div className="space-y-4">
 
-      {/* ── 1. Métricas (Sincronizadas con Débito y Crédito) ── */}
+      {/* ── 1. Métricas ── */}
       <section className="bg-[#161616] rounded-xl border border-[#2A2A2A] p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-white/30 uppercase tracking-widest">Métricas de Negocio</span>
@@ -107,7 +87,7 @@ export function OverviewTab() {
         )}
       </section>
 
-      {/* ── 2. Pedidos Recientes (Mapeando los 5 estados reales del día) ── */}
+      {/* ── 2. Pedidos Recientes ── */}
       <section className="bg-[#161616] rounded-xl border border-[#2A2A2A] p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div className="flex flex-col gap-0.5">
@@ -115,11 +95,10 @@ export function OverviewTab() {
             <span className="text-[10px] text-white/20 italic">Movimientos estrictos correspondientes al día de hoy</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto scrollbar-none pt-1 sm:pt-0">
-            {/* Listado con los 5 estados reales corregidos */}
-            {(['pending', 'in-preparation', 'ready', 'delivered', 'cancelled'] as const).map(s => (
+            {ALL_STATUSES.map(s => (
               <span key={s} className="flex items-center gap-1 text-[10px] sm:text-xs text-white/30 whitespace-nowrap">
-                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CFG[s].dot}`} />
-                {STATUS_CFG[s].label}
+                <span className={`w-1.5 h-1.5 rounded-full ${ORDER_STATUS[s].dot}`} />
+                {ORDER_STATUS[s].label}
               </span>
             ))}
           </div>
@@ -130,11 +109,10 @@ export function OverviewTab() {
         ) : (
           <div className="space-y-2">
             {recentOrders.map((order: any) => {
-              const cfg = STATUS_CFG[order.status] ?? STATUS_CFG['pending'];
+              const cfg = ORDER_STATUS[order.status as OrderStatusKey] ?? ORDER_STATUS.pending;
               const Icon = cfg.icon;
               const num = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
-              const dt = new Date(order.createdAt);
-              const time = dt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+              const time = new Date(order.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
               return (
                 <div key={order._id} className="flex items-center gap-2 sm:gap-3 bg-[#0A0A0A] rounded-lg px-2.5 sm:px-3 py-2 sm:py-2.5 border border-[#2A2A2A]">
                   <div className="flex-1 min-w-0">

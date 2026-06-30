@@ -3,6 +3,7 @@ import { Clock, User, Phone, MapPin, Banknote, CreditCard, Bike, XCircle, Printe
 import { generateComandaHTML } from '../utils/generateComandaHTML';
 import { formatWhatsAppLink } from '../utils/whatsappMessage';
 import { updateOrderDeliveryCost } from '@/services/admin.service';
+import { ORDER_STATUS, STATUS_TRANSITIONS, type OrderStatusKey } from '@/constants/orderStatus';
 
 interface ORProps {
   order: any;
@@ -12,25 +13,12 @@ interface ORProps {
   onRefresh?: () => void;
 }
 
-const SDOT: Record<string, string> = {
-  pending:          'bg-yellow-400',
-  'in-preparation': 'bg-blue-400',
-  ready:            'bg-green-400', // Sincronizado correctamente a Verde
-  delivered:        'bg-emerald-500',
-  cancelled:        'bg-red-500',
-};
-
-const SNX: Record<string, { l: string; v: string }> = {
-  pending:          { l: 'Iniciar proceso', v: 'in-preparation' },
-  'in-preparation': { l: 'Marcar listo',     v: 'ready' },
-  ready:            { l: 'Entregado',         v: 'delivered' },
-};
-
 export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORProps) {
-  const dot = SDOT[order.status] || 'bg-zinc-600';
+  const status = ORDER_STATUS[order.status as OrderStatusKey] ?? ORDER_STATUS.pending;
+  const transition = STATUS_TRANSITIONS[order.status as OrderStatusKey];
   const num = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
   const isDelivery = order.deliveryType === 'delivery';
-  
+
   const [editingCost, setEditingCost] = useState(false);
   const [costInput, setCostInput]     = useState(String(order.deliveryCost ?? 0));
   const [savingCost, setSavingCost]   = useState(false);
@@ -60,7 +48,7 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORP
     <div className="bg-[#1A1A1A] rounded-xl border border-[#2A2A2A] overflow-hidden mb-3 last:mb-0">
       {/* ── Header ── */}
       <div className="flex items-start gap-3 p-4">
-        <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${dot}`} />
+        <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${status.dot}`} />
 
         <button className="flex-1 text-left min-w-0" onClick={onToggle}>
           <div className="flex justify-between items-start gap-4">
@@ -69,8 +57,6 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORP
                 <User className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-white text-sm font-semibold">{order.customer?.name}</span>
                 <span className="text-white/30 text-xs">#{num}</span>
-                
-                {/* 📞 Botón WhatsApp dinámico (Ubicado idéntico a la foto adjunta) */}
                 {order.customer?.phone && (
                   <a
                     href={formatWhatsAppLink(order.customer.phone, order)}
@@ -176,10 +162,10 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORP
           {order.couponCode && <p className="text-green-400 text-xs font-medium">Cupón: {order.couponCode} (−{order.discountPercent}%)</p>}
 
           <div className="flex gap-2 flex-wrap pt-1">
-            {order.status !== 'cancelled' && order.status !== 'delivered' && SNX[order.status] && (
-              <button onClick={() => onStatus(order._id, SNX[order.status].v)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-sm font-semibold transition-all active:scale-95">
+            {order.status !== 'cancelled' && order.status !== 'delivered' && transition && (
+              <button onClick={() => onStatus(order._id, transition.next)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-sm font-semibold transition-all active:scale-95">
                 <ArrowRight className="w-3.5 h-3.5" />
-                {SNX[order.status].l}
+                {transition.label}
               </button>
             )}
             {order.status !== 'cancelled' && order.status !== 'delivered' && (
