@@ -10,16 +10,18 @@ import { CheckoutForm } from '@/features/checkout/components/CheckoutForm';
 import { CouponSection } from '@/features/checkout/components/CouponSection';
 import { SummarySection } from '@/features/checkout/components/SummarySection';
 
+// 💳 Métodos de pago reales unificados
 const PAYMENT_LABELS: Record<string, string> = {
   cash: 'Efectivo',
-  transfer: 'Transferencia',
-  mercadopago: 'Mercado Pago',
+  debito: 'Débito',
+  credito: 'Crédito',
 };
 
 export default function CheckoutPage() {
   const {
     items, deliveryType, coupon, isDeliveryLoading,
     name, setName, phone, setPhone,
+    notes, setNotes, // 📝 Se agregan aquí para extraerlos correctamente del hook
     paymentMethod, setPaymentMethod,
     couponCode, couponLoading, couponError, validateCoupon, handleCouponInput,
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,
@@ -57,19 +59,29 @@ export default function CheckoutPage() {
 
         <section>
           <h2 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3 px-1">Tus datos</h2>
-          <CheckoutForm name={name} phone={phone} onNameChange={setName} onPhoneChange={setPhone} />
+          <CheckoutForm
+            name={name}
+            phone={phone}
+            notes={notes}
+            onNameChange={setName}
+            onPhoneChange={setPhone}
+            onNotesChange={setNotes}
+          />
         </section>
 
         <section>
           <h2 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3 px-1">Método de pago</h2>
           <div className="flex gap-2">
             {Object.entries(PAYMENT_LABELS).map(([method, label]) => (
-              <button key={method} onClick={() => setPaymentMethod(method as any)}
+              <button 
+                key={method} 
+                onClick={() => setPaymentMethod(method as any)}
                 className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-sm transition-all
                   ${paymentMethod === method
                     ? 'bg-primary text-black'
                     : 'bg-[#1A1A1A] border border-white/10 text-white/60 hover:text-white'
-                  }`}>
+                  }`}
+              >
                 {label}
               </button>
             ))}
@@ -114,7 +126,8 @@ export default function CheckoutPage() {
               ${isConfirmDisabled
                 ? 'bg-zinc-800 text-white/30 cursor-not-allowed'
                 : 'bg-primary text-black hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(197,168,111,0.2)]'
-              }`}>
+              }`}
+          >
             {submitting ? 'Enviando pedido...' : isDeliveryLoading ? 'Calculando envío...' : 'Confirmar Pedido'}
             {!isConfirmDisabled && <CheckCircle2 className="w-5 h-5" />}
           </button>

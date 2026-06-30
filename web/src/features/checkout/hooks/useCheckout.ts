@@ -7,7 +7,8 @@ import { useDelivery } from './useDelivery';
 import api from '@/services/api';
 import type { Coupon } from '@/types';
 
-type PaymentMethod = 'cash' | 'transfer' | 'mercadopago';
+// 💳 Sincronizado con los nuevos métodos del Backend
+type PaymentMethod = 'cash' | 'debito' | 'credito';
 export { type PaymentMethod };
 
 export function useCheckout() {
@@ -17,6 +18,7 @@ export function useCheckout() {
 
   const [name, setName]                     = useState('');
   const [phone, setPhone]                   = useState('');
+  const [notes, setNotes]                   = useState(''); // 📝 Nuevo estado para aclaraciones
   const [paymentMethod, setPaymentMethod]   = useState<PaymentMethod | null>(null);
   const [couponCode, setCouponCode]         = useState('');
   const [couponLoading, setCouponLoading]   = useState(false);
@@ -65,6 +67,7 @@ export function useCheckout() {
         })),
         deliveryType,
         paymentMethod,
+        notes: notes.trim(), // 📝 Se adjunta limpio al backend
         ...(coupon && couponCode ? { couponCode: couponCode.trim() } : {}),
         ...(deliveryType === 'delivery' && deliveryCoordinates
           ? { delivery: { address: deliveryAddress, coordinates: deliveryCoordinates } }
@@ -74,11 +77,11 @@ export function useCheckout() {
       const res = await api.post('/orders', payload);
       const orderNumber = res.data?.data?.orderNumber;
 
-      // Snapshot para la página de confirmación — se limpia al leerlo
+      // Actualizado con las etiquetas unificadas para el resumen final
       const payLabels: Record<string, string> = {
         cash: 'Efectivo',
-        transfer: 'Transferencia',
-        mercadopago: 'Mercado Pago',
+        debito: 'Débito',
+        credito: 'Crédito',
       };
 
       sessionStorage.setItem('order_confirmation', JSON.stringify({
@@ -87,6 +90,7 @@ export function useCheckout() {
         deliveryType,
         deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : null,
         paymentMethod: payLabels[paymentMethod ?? ''] ?? paymentMethod,
+        notes: notes.trim(), // Se persiste también para el post-checkout si es necesario
         items: items.map(item => ({
           title: item.product.title,
           quantity: item.quantity,
@@ -105,8 +109,7 @@ export function useCheckout() {
       }));
 
       router.push('/order-confirmation');
-      // Limpiar después de navegar para evitar que el checkout
-      // re-renderice con carrito vacío antes de que termine la navegación
+      
       setTimeout(() => clearCart(), 100);
     } catch (err: any) {
       setSubmitError(err.response?.data?.error || 'Error al enviar el pedido. Intentá de nuevo.');
@@ -118,6 +121,7 @@ export function useCheckout() {
   return {
     items, deliveryType, deliveryCoordinates, coupon, isDeliveryLoading,
     name, setName, phone, setPhone,
+    notes, setNotes, // 📦 Retornado explícitamente para limpiar el error de compilación
     paymentMethod, setPaymentMethod,
     couponCode, couponLoading, couponError, validateCoupon, handleCouponInput,
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,

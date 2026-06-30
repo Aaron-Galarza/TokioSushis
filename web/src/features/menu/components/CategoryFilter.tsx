@@ -47,7 +47,8 @@ export const CategoryFilter = ({
   };
 
   return (
-    <div className="w-full bg-black/95 backdrop-blur-md py-4 border-b border-white/5 relative group">
+    /* 📱 SE FIJA ACÁ: 'max-md:sticky max-md:top-0 max-md:z-50' hace que en mobile quede pegado arriba al scrollear */
+    <div className="w-full bg-black/95 backdrop-blur-md py-4 border-b border-white/5 max-md:sticky max-md:top-0 max-md:z-50 relative group">
       {showLeftArrow && (
         <button onClick={() => scroll('left')} className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/80 hover:bg-zinc-900 text-white p-2 rounded-full border border-white/10 shadow-lg transition-all hidden md:flex items-center justify-center">
           <ChevronLeft className="w-5 h-5 text-primary" />
@@ -81,7 +82,6 @@ export const CategoryFilter = ({
 
         {categories.map((cat) => {
           const isActive = selectedCategory === cat.id;
-          // Pasamos cat.icon para que use el ícono guardado en DB
           const Icon = getCategoryIcon(cat.name, cat.icon);
           return (
             <button
