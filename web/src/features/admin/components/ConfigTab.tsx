@@ -21,15 +21,43 @@ export function ConfigTab() {
   useEffect(() => { reload(); }, [reload]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6 items-start">
-      <div className="flex flex-col gap-4">
-        <EmergencySection emergency={emergency} onToggle={toggleEmergency} />
-        <ScheduleSection schedule={schedule} setSchedule={setSchedule} schedSaved={schedSaved} saveSchedule={saveSchedule} />
-        <BannerSection banner={banner} setBanner={setBanner} bannerSaved={bannerSaved} setBannerSaved={setBannerSaved} saveBanner={saveBanner} />
+    <div className="flex flex-col gap-5 md:gap-6">
+      {/* ═══ FILA SUPERIOR: BANNER (ancho completo) ═══ */}
+      <BannerSection
+        banner={banner}
+        setBanner={setBanner}
+        bannerSaved={bannerSaved}
+        setBannerSaved={setBannerSaved}
+        saveBanner={saveBanner}
+      />
+
+      {/* ═══ FILA MEDIA: Horarios y Rangos (Misma altura en PC gracias al comportamiento Grid por defecto) ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+        <ScheduleSection
+          schedule={schedule}
+          setSchedule={setSchedule}
+          schedSaved={schedSaved}
+          saveSchedule={saveSchedule}
+        />
+        <RangesSection
+          ranges={ranges}
+          nRange={nRange}
+          setNRange={setNRange}
+          rErr={rErr}
+          addRange={addRange}
+          deleteRange={deleteRange}
+        />
       </div>
-      <div className="flex flex-col gap-4">
-        <RainSection isRaining={isRaining} extraRain={extraRain} setExtraRain={setExtraRain} toggleRain={toggleRain} />
-        <RangesSection ranges={ranges} nRange={nRange} setNRange={setNRange} rErr={rErr} addRange={addRange} deleteRange={deleteRange} />
+
+      {/* ═══ FILA INFERIOR: Pánico y Lluvia (Alineación superior perfecta en PC) ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6 items-start">
+        <EmergencySection emergency={emergency} onToggle={toggleEmergency} />
+        <RainSection
+          isRaining={isRaining}
+          extraRain={extraRain}
+          setExtraRain={setExtraRain}
+          toggleRain={toggleRain}
+        />
       </div>
     </div>
   );
