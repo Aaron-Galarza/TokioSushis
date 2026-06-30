@@ -3,52 +3,12 @@
 import { useEffect, useState, useMemo } from 'react';
 import { AdminCard } from './ui/AdminCard';
 import { AdminInput, AdminTextarea, AdminSelect } from './ui/AdminInput';
+import { IconPickerModal } from './ui/IconPickerModal';
+import { AdminActionButtons } from './ui/AdminActionButtons';
+import { AdminProductRow } from './ui/AdminProductRow';
 import { useAdminMenu } from '../hooks/useAdminMenu';
-import { CATEGORY_ICON_OPTIONS, getCategoryIcon } from '@/lib/categoryIcons';
+import { getCategoryIcon } from '@/lib/categoryIcons';
 
-// ── Mini modal de selección de ícono ────────────────────────────────────────
-function IconPickerModal({
-  selected,
-  onSelect,
-  onClose,
-}: {
-  selected: string;
-  onSelect: (name: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-5 w-80 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-white text-sm font-semibold">Elegir ícono</p>
-          <button onClick={onClose} className="text-white/30 hover:text-white text-xs">✕</button>
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {CATEGORY_ICON_OPTIONS.map(({ name, icon: Icon }) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => { onSelect(name); onClose(); }}
-              className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all
-                ${selected === name
-                  ? 'bg-primary/20 border-primary/50 text-primary'
-                  : 'bg-[#0A0A0A] border-white/5 text-white/40 hover:border-white/20 hover:text-white/70'
-                }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="text-[9px] truncate w-full text-center">{name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── MenuTab ─────────────────────────────────────────────────────────────────
 export function MenuTab() {
   const {
     products, cats, addons, reload,
@@ -58,16 +18,12 @@ export function MenuTab() {
   } = useAdminMenu();
 
   const [showIconPicker, setShowIconPicker] = useState(false);
-  
-  // 🔍 Estado local para el Filtro Rápido por Categoría
   const [selectedCatFilter, setSelectedCatFilter] = useState<string>('');
 
   useEffect(() => { reload(); }, [reload]);
 
-  // Ícono actual del form
   const SelectedIcon = cForm.icon ? getCategoryIcon('', cForm.icon) : null;
 
-  // 🛡️ Filtro reactivo para la lista de "Tus Productos"
   const filteredProducts = useMemo(() => {
     if (!selectedCatFilter) return products;
     return products.filter(p => {
@@ -89,7 +45,6 @@ export function MenuTab() {
             onChange={e => setCForm(p => ({ ...p, name: e.target.value }))}
           />
 
-          {/* Botón selector de ícono */}
           <button
             type="button"
             onClick={() => setShowIconPicker(true)}
@@ -125,13 +80,12 @@ export function MenuTab() {
                     <p className={`font-semibold text-sm ${c.active ? 'text-white' : 'text-white/40 line-through'}`}>{c.name}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => toggleCat(c._id)} className={`text-xs px-2 py-1 rounded-lg ${c.active ? 'bg-white/5 text-white/50 hover:text-white' : 'bg-green-900/50 text-green-300 hover:bg-green-900'}`}>
-                    {c.active ? 'Desactivar' : 'Activar'}
-                  </button>
-                  <button onClick={() => editCat(c)} className="text-xs text-white/40 hover:text-white px-2 py-1 bg-white/5 rounded-lg">Editar</button>
-                  <button onClick={() => removeCat(c._id)} className="text-xs text-red-400/60 hover:text-red-300 px-2 py-1 bg-white/5 rounded-lg">Borrar</button>
-                </div>
+                <AdminActionButtons 
+                  active={c.active} 
+                  onToggle={() => toggleCat(c._id)} 
+                  onEdit={() => editCat(c)} 
+                  onDelete={() => removeCat(c._id)} 
+                />
               </div>
             );
           })}
@@ -151,8 +105,7 @@ export function MenuTab() {
         </div>
         <div className="mb-4">
           <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
-            Categorías asociadas
-            <span className="normal-case ml-1 text-white/20">(vacío = aplica a todas)</span>
+            Categorías asociadas <span className="normal-case ml-1 text-white/20">(vacío = aplica a todas)</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
             {cats.filter(c => c.active).map(c => {
@@ -194,13 +147,12 @@ export function MenuTab() {
                     {catLabels.length > 0 ? catLabels.join(', ') : <span className="italic text-white/20">Todas las categorías</span>}
                   </p>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => toggleAddon(a._id)} className={`text-xs px-2 py-1 rounded-lg ${a.active ? 'bg-white/5 text-white/50 hover:text-white' : 'bg-green-900/50 text-green-300 hover:bg-green-900'}`}>
-                    {a.active ? 'Desactivar' : 'Activar'}
-                  </button>
-                  <button onClick={() => editAddon(a)} className="text-xs text-white/40 hover:text-white px-2 py-1 bg-white/5 rounded-lg">Editar</button>
-                  <button onClick={() => removeAddon(a._id)} className="text-xs text-red-400/60 hover:text-red-300 px-2 py-1 bg-white/5 rounded-lg">Borrar</button>
-                </div>
+                <AdminActionButtons 
+                  active={a.active} 
+                  onToggle={() => toggleAddon(a._id)} 
+                  onEdit={() => editAddon(a)} 
+                  onDelete={() => removeAddon(a._id)} 
+                />
               </div>
             );
           })}
@@ -245,11 +197,10 @@ export function MenuTab() {
           </div>
         </AdminCard>
 
-        {/* Listado "Tus Productos" con Filtro Rápido */}
+        {/* Listado "Tus Productos" */}
         <AdminCard>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
             <h2 className="font-semibold text-white text-sm">Tus Productos</h2>
-            
             <AdminSelect 
               value={selectedCatFilter} 
               onChange={e => setSelectedCatFilter(e.target.value)} 
@@ -264,23 +215,14 @@ export function MenuTab() {
             {filteredProducts.map(p => {
               const catName = typeof p.category === 'object' ? p.category?.name : (cats.find(c => c._id === p.category)?.name ?? '—');
               return (
-                <div key={p._id} className="flex items-center gap-3 bg-[#1A1A1A] border border-white/10 rounded-xl px-3 py-3 animate-in fade-in duration-100">
-                  {p.image && <img src={p.image} alt={p.title} className="w-10 h-10 rounded-lg object-cover shrink-0 bg-zinc-900" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`font-semibold text-sm truncate ${p.active ? 'text-white' : 'text-white/40 line-through'}`}>{p.title}</p>
-                      {p.controlStock && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${(p.stock ?? 0) > 0 ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'}`}>Stock: {p.stock ?? 0}</span>}
-                    </div>
-                    <p className="text-[11px] text-white/30">{catName} · <span className="text-primary">${p.price?.toLocaleString('es-AR')}</span></p>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => toggleProduct(p._id)} className={`text-xs px-2 py-1 rounded-lg ${p.active ? 'bg-white/5 text-white/50 hover:text-white' : 'bg-green-900/50 text-green-300'}`}>
-                      {p.active ? 'Desactivar' : 'Activar'}
-                    </button>
-                    <button onClick={() => editProduct(p)} className="text-xs text-white/40 hover:text-white px-2 py-1 bg-white/5 rounded-lg">Editar</button>
-                    <button onClick={() => removeProduct(p._id)} className="text-xs text-red-400/60 hover:text-red-300 px-2 py-1 bg-white/5 rounded-lg">Borrar</button>
-                  </div>
-                </div>
+                <AdminProductRow
+                  key={p._id}
+                  product={p}
+                  catName={catName}
+                  onToggle={() => toggleProduct(p._id)}
+                  onEdit={() => editProduct(p)}
+                  onDelete={() => removeProduct(p._id)}
+                />
               );
             })}
             {filteredProducts.length === 0 && (
@@ -290,7 +232,6 @@ export function MenuTab() {
         </AdminCard>
       </div>
 
-      {/* Modal de selección de ícono */}
       {showIconPicker && (
         <IconPickerModal
           selected={cForm.icon}
