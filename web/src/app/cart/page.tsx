@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, ShoppingBag, ArrowRight, Trash2 } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
-import { CartItemCard } from "@/features/cart/components/CartItemcard";
+import { CartItemCard } from "@/features/cart/components/CartItemCard";
 import { CartEmpty } from "@/features/cart/components/CartEmpty";
 
 export default function CartPage() {

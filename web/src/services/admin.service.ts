@@ -43,7 +43,7 @@ export const deleteCoupon = (id: string) => api.delete(`/coupons/admin/${id}`);
 // ── Gallery ─────────────────────────────────────────────────────────────────
 export const fetchGallery = () => api.get('/gallery').then(r => r.data.data ?? []);
 export const uploadImage = (formData: FormData) =>
-  api.post('/gallery', formData, { headers: { 'Content-Type': 'multipart/form-center' } });
+  api.post('/gallery', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const deleteGalleryImage = (id: string) => api.delete(`/gallery/${id}`);
 
 // ── Config ──────────────────────────────────────────────────────────────────
