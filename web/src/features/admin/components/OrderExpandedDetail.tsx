@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { MapPin, Bike, Check, XCircle, ArrowRight } from 'lucide-react';
 import { OrderItemList } from './ui/OrderItemList';
 import { updateOrderDeliveryCost } from '@/services/admin.service';
+import { formatOrderReadyWhatsAppLink } from '../utils/whatsappMessage';
 
 interface OrderExpandedDetailProps {
   order: any;
@@ -28,6 +29,27 @@ export function OrderExpandedDetail({ order, isDelivery, transition, onStatus, o
       onRefresh?.();
     } catch {} finally {
       setSavingCost(false);
+    }
+  };
+
+  const handleTransitionClick = () => {
+    // 1. Primero, ejecutamos el cambio de estado normal en la DB
+    onStatus(order._id, transition.next);
+
+    // 2. Si el estado al que lo estamos pasando es 'ready' (Terminado), preguntamos:
+    if (transition.next === 'ready') {
+      const wantsToNotify = window.confirm(
+        `¿Deseás avisarle por WhatsApp a ${order.customer?.name || 'el cliente'} que su pedido está listo?`
+      );
+
+      if (wantsToNotify) {
+        if (order.customer?.phone) {
+          const url = formatOrderReadyWhatsAppLink(order.customer.phone, order);
+          window.open(url, '_blank');
+        } else {
+          alert('Este cliente no tiene un número de teléfono registrado.');
+        }
+      }
     }
   };
 
@@ -102,10 +124,10 @@ export function OrderExpandedDetail({ order, isDelivery, transition, onStatus, o
 
       <div className="flex gap-2 flex-wrap pt-1">
         {order.status !== 'cancelled' && order.status !== 'delivered' && transition && (
-          <button
-            onClick={() => onStatus(order._id, transition.next)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-sm font-semibold transition-all active:scale-95"
-          >
+      <button
+        onClick={handleTransitionClick}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-sm font-semibold transition-all active:scale-95"
+      >
             <ArrowRight className="w-3.5 h-3.5" />
             {transition.label}
           </button>

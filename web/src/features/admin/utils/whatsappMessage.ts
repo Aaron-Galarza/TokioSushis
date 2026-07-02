@@ -26,28 +26,44 @@ export function formatWhatsAppLink(phone: string, order: any): string {
   // Si es delivery o retiro, le metemos el textito personalizado
   const isDelivery = order.deliveryType === 'delivery';
   const deliveryInfo = isDelivery
-    ? `🛵 Modo: Delivery a domicilio\n📍 Dirección: ${order.delivery?.address || 'A confirmar'}`
-    : `🛍️ Modo: Retiro por el local (¡Te esperamos!)`;
+    ? `Modo: Delivery a domicilio\n Dirección: ${order.delivery?.address || 'A confirmar'}`
+    : `Modo: Retiro por el local (¡Te esperamos!)`;
 
   // Notas o aclaraciones del cliente
   const notesInfo = order.notes 
-    ? `📝 Nota que nos dejaste: "${order.notes}"`
-    : '✨ Sin notas ni aclaraciones adicionales.';
+    ? `Nota que nos dejaste: "${order.notes}"`
+    : 'Sin notas ni aclaraciones adicionales.';
 
-  // Mensaje súper simpático, humano, re piola y sushesco 🍣
-  const text = `¡Hola ${customerName}! ¡Buenas noches! 🙌 Te escribimos de acá de TokyoSushis 🍣🥢 por tu pedido voluntario número #${orderId}.
+  const text = `¡Hola ${customerName}! Desde TokyoSushis queremos confirmar tu pedido #${orderId}.
 
-Queríamos chequear con vos que esté todo súper bien y tal cual lo armaste antes de que los chicos lo metan a la cocina, así te llega impecable:
-
-🥢 Tu pedido:
+Tu pedido:
 ${itemsList}
 
 ${deliveryInfo}
 ${notesInfo}
 
-¿Está todo perfecto o te gustaría hacer algún cambio de último momento en las piezas, sumar algún adicional o corregir algo? 🤔 ¡Avisanos y lo dejamos exacto a tu gusto! 
+¿Está todo perfecto o te gustaría realizar algun cambio? ¡Avisanos y lo dejamos exacto a tu gusto! `;
 
-¡Muchas gracias por elegirnos y que disfrutes de tu noche! 🍱✨`;
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+}
+
+export function formatOrderReadyWhatsAppLink(phone: string, order: any): string {
+  if (!phone) return '#';
+  let cleanPhone = phone.replace(/\D/g, '');
+  if (cleanPhone.length === 10 && !cleanPhone.startsWith('54')) {
+    cleanPhone = '54' + cleanPhone;
+  }
+
+  const customerName = order.customer?.name || 'amigo';
+  const orderId = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
+  const isDelivery = order.deliveryType === 'delivery';
+
+  // Mensaje para cuando el pedido ya está terminado
+  const text = `¡Hola ${customerName}!Tu pedido #${orderId} de TokioSushis ya está listo.\n\n${
+    isDelivery
+      ? 'El repartidor ya lo tiene y va en camino hacia tu domicilio. ¡Avisanos cuando te llegue!'
+      : 'Ya podés pasar por el local a retirarlo. ¡Te esperamos!'
+  }`;
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
