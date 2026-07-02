@@ -21,7 +21,6 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
       const product = await ProductService.viewById(item.productId)
       if (!product) throw new AppError(404, `Producto ${item.productId} no encontrado`)
  
-      // 🔥 FIX CRÍTICO DE STOCK: Validación real en el servidor
       if (product.controlStock) {
         if (product.stock <= 0) {
           throw new AppError(400, `El producto "${product.title}" se encuentra agotado`)
@@ -30,7 +29,6 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
           throw new AppError(400, `Stock insuficiente para "${product.title}". Disponibles: ${product.stock}, solicitados: ${item.quantity}`)
         }
         
-        // Descontamos el stock de forma exacta
         product.stock -= item.quantity
         await product.save()
       }
@@ -75,7 +73,6 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     const coupon = await CouponService.search(orderData.couponCode)
     if (!coupon) throw new AppError(404, 'El cupón ingresado no es válido o ya no existe')
     
-    // 🔥 CRUCES DE REGLAS DE NEGOCIO REALES EN BACKEND
     const couponError = CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType);
     if (couponError) {
       throw new AppError(400, couponError);
@@ -105,6 +102,14 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     total += deliveryCost
   }
 
+  // 🔥 LÓGICA DE RECARGO POR TARJETA DE CRÉDITO (15%)
+  let surcharge = 0;
+  if (orderData.paymentMethod === 'credito') {
+    // El 15% se calcula sobre la base neta (subtotal - descuentos + envío)
+    surcharge = Math.round(total * 0.15);
+    total += surcharge;
+  }
+
   let sanitizedNotes = '';
   if (orderData.notes && typeof orderData.notes === 'string') {
     sanitizedNotes = orderData.notes
@@ -123,6 +128,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     discountPercent,
     subtotal:      subTotal,
     deliveryCost,
+    surcharge, // NUEVO: Guardamos el recargo aplicado
     delivery,
     total:         Math.max(0, total),
     notes:         sanitizedNotes
@@ -180,23 +186,32 @@ export const getOrdersRange = async (range: 'hoy' | 'ayer' | 'semana' | 'mes'): 
 export const update = async (
   id: string,
   newStatus: OrderStatus,
-  newDeliveryCost?: number   // ← nuevo parámetro opcional
+  newDeliveryCost?: number   
 ): Promise<iOrder | null> => {
   const oldOrder = await OrderModel.findById(id);
   if (!oldOrder) return null;
 
   const oldStatus = oldOrder.status;
 
-  // Construir el objeto de actualización dinámicamente
   const updateData: Record<string, any> = {};
   if (newStatus !== undefined) updateData.status = newStatus;
 
-  // Si viene un nuevo costo de envío, recalcular el total
+  // Si viene un nuevo costo de envío, recalcular el total respetando el recargo si hubo crédito
   if (newDeliveryCost !== undefined) {
     updateData.deliveryCost = newDeliveryCost;
-    // total = subtotal - descuento + nuevo costo envío
+    
     const discount = (oldOrder.subtotal * oldOrder.discountPercent) / 100;
-    updateData.total = Math.max(0, oldOrder.subtotal - discount + newDeliveryCost);
+    let baseTotal = oldOrder.subtotal - discount + newDeliveryCost;
+    
+    // Si pagó con crédito, recalculamos también el recargo del 15% en base al nuevo total base
+    let newSurcharge = 0;
+    if (oldOrder.paymentMethod === 'credito') {
+      newSurcharge = Math.round(baseTotal * 0.15);
+      updateData.surcharge = newSurcharge;
+      baseTotal += newSurcharge;
+    }
+    
+    updateData.total = Math.max(0, baseTotal);
   }
 
   const updatedOrder = await OrderModel.findByIdAndUpdate(
@@ -214,7 +229,6 @@ export const update = async (
     console.log(`[PEDIDO] Costo de envío actualizado a $${newDeliveryCost} → Total: $${updatedOrder.total}`);
   }
 
-  // Analytics: entrega
   if (newStatus && oldStatus !== 'delivered' && newStatus === 'delivered') {
     await updateAnalyticsOnDelivery(updatedOrder);
   }
@@ -222,7 +236,6 @@ export const update = async (
     await revertAnalyticsOnDelivery(updatedOrder);
   }
 
-  // Stock: cancelación
   if (newStatus && oldStatus !== 'cancelled' && newStatus === 'cancelled') {
     console.log(`[STOCK] Devolviendo stock por cancelacion del pedido ${updatedOrder._id}`);
     for (const item of oldOrder.items) {

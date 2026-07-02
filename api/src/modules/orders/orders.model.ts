@@ -36,6 +36,7 @@ export interface iOrder extends Document {
   deliveryType: 'pickup' | 'delivery';
   paymentMethod: PaymentMethod;
   deliveryCost: number;
+  surcharge: number; // NUEVO: Monto exacto del recargo por tarjeta de crédito
   delivery?: {
     address?: string;
     coordinates?: {
@@ -82,8 +83,9 @@ const OrderSchema = new Schema<iOrder>({
   discountPercent: { type: Number, default: 0, min: 0 },
   subtotal: { type: Number, required: true, min: 0 },
   deliveryType: { type: String, enum: ['pickup', 'delivery'], required: true },
-  paymentMethod: { type: String, enum: validPaymentMethods, required: true }, // Usará nuestro array actualizado
+  paymentMethod: { type: String, enum: validPaymentMethods, required: true },
   deliveryCost: { type: Number, default: 0, min: 0 },
+  surcharge: { type: Number, default: 0, min: 0 }, // NUEVO: Guardamos el recargo en la BD
   delivery: {
     address: { type: String },
     coordinates: {
