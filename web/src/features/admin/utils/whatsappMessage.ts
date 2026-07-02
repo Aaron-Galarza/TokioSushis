@@ -34,7 +34,7 @@ export function formatWhatsAppLink(phone: string, order: any): string {
     ? `Nota que nos dejaste: "${order.notes}"`
     : 'Sin notas ni aclaraciones adicionales.';
 
-  const text = `¡Hola ${customerName}! Desde TokyoSushis queremos confirmar tu pedido #${orderId}.
+  const text = `¡Hola ${customerName}! Desde Tokyo Sushis queremos confirmar tu pedido #${orderId}.
 
 Tu pedido:
 ${itemsList}
@@ -59,7 +59,7 @@ export function formatOrderReadyWhatsAppLink(phone: string, order: any): string 
   const isDelivery = order.deliveryType === 'delivery';
 
   // Mensaje para cuando el pedido ya está terminado
-  const text = `¡Hola ${customerName}!Tu pedido #${orderId} de TokioSushis ya está listo.\n\n${
+  const text = `¡Hola ${customerName}!Tu pedido #${orderId} de Tokyo Sushis ya está listo.\n\n${
     isDelivery
       ? 'El repartidor ya lo tiene y va en camino hacia tu domicilio. ¡Avisanos cuando te llegue!'
       : 'Ya podés pasar por el local a retirarlo. ¡Te esperamos!'

@@ -23,7 +23,7 @@ export const generateComandaHTML = (order: any): string => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Comanda #${num}</title>
+      <title>por</title>
       <style>
         body { 
           font-family: 'Courier New', Courier, monospace; 
@@ -60,7 +60,7 @@ export const generateComandaHTML = (order: any): string => {
         <div class="header">
           <h3>TOKIO SUSHIS</h3>
           <p>Resistencia, Chaco</p>
-          <p><strong>#{num}</strong></p>
+          <p><strong>#${num}</strong></p>
         </div>
         <div class="separator"></div>
         <div class="details">

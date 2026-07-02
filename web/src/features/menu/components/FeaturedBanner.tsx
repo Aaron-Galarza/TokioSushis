@@ -33,7 +33,7 @@ export const FeaturedBanner = ({
     <section className="relative w-full min-h-[440px] flex flex-col items-center justify-center overflow-hidden">
       {/* Background image */}
       {banner ? (
-        <img src={banner} alt="Tokyo Sushi" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={banner} alt="Tokyo Sushis" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-zinc-900" />
       )}
