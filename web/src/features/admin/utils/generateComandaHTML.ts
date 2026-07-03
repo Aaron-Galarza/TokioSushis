@@ -36,7 +36,7 @@ export const generateComandaHTML = (order: any): string => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Comanda #${num}</title>
+      <title>por AFdevelopers</title>
       <style>
         body { 
           font-family: 'Courier New', Courier, monospace; 
