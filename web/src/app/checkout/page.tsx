@@ -25,7 +25,7 @@ export default function CheckoutPage() {
     paymentMethod, setPaymentMethod,
     couponCode, couponLoading, couponError, validateCoupon, handleCouponInput,
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,
-    subtotal, discount, total,
+    subtotal, discount, total, surcharge
   } = useCheckout();
 
   return (
@@ -108,6 +108,7 @@ export default function CheckoutPage() {
             items={items}
             subtotal={subtotal}
             discount={discount}
+            surcharge={surcharge}
             total={total}
             deliveryType={deliveryType}
             isDeliveryLoading={isDeliveryLoading}

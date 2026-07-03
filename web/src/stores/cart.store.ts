@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { Product, CartItem, CartAddon, Coupon, Addon } from '@/types';
 
-// 🛠️ HELPERS (Optimizados)
+// 🛠️ HELPERS
 const calcItemTotal = (prod: Product, qty: number, addons: CartAddon[]) => 
   qty * (prod.price + addons.reduce((sum, a) => sum + a.addon.price * a.quantity, 0));
 
@@ -18,7 +18,7 @@ const areSameAddons = (a: CartAddon[], b: CartAddon[]) => {
 interface CartState {
   items: CartItem[];
   deliveryType: 'pickup' | 'delivery';
-  paymentMethod: 'cash' | 'transfer' | 'mercadopago' | null;
+  paymentMethod: 'cash' | 'debito' | 'credito' | null; // 💳 Sincronizado
   coupon: Coupon | null;
   deliveryAddress: string;
   deliveryCoordinates: { lat: number; lng: number } | null;
@@ -32,14 +32,15 @@ interface CartState {
   clearCart: () => void;
 
   setDeliveryType: (type: 'pickup' | 'delivery') => void;
-  setPaymentMethod: (method: 'cash' | 'transfer' | 'mercadopago' | null) => void;
+  setPaymentMethod: (method: 'cash' | 'debito' | 'credito' | null) => void; // 💳 Sincronizado
   setCoupon: (coupon: Coupon) => void;
   clearCoupon: () => void;
   setDeliveryAddress: (address: string, coords: { lat: number; lng: number }) => void;
   setDeliveryCost: (cost: number, distanceKm: number) => void;
   clearDelivery: () => void;
 
-  getTotals: () => { subtotal: number; discount: number; total: number; itemCount: number; };
+  // ⚡ Ahora getTotals expone explícitamente el recargo (surcharge)
+  getTotals: () => { subtotal: number; discount: number; surcharge: number; total: number; itemCount: number; };
 }
 
 export const useCartStore = create<CartState>()(
@@ -75,30 +76,27 @@ export const useCartStore = create<CartState>()(
         return { items: newItems };
       }),
 
-      // 👇 EL MOTOR CORREGIDO
       updateItemAddon: (index, addon, delta) => set((state) => {
         const item = state.items[index];
         if (!item) return state;
 
         const newItems = [...state.items];
         
-        // 1. CLONACIÓN: Ahora la fila original se queda el adicional, y mandamos las sobrantes abajo.
         if (item.quantity > 1) {
           const leftovers = JSON.parse(JSON.stringify(item));
           leftovers.quantity = item.quantity - 1;
           leftovers.itemTotal = calcItemTotal(leftovers.product, leftovers.quantity, leftovers.addons);
           
-          newItems.splice(index + 1, 0, leftovers); // Sobrantes a una fila nueva
+          newItems.splice(index + 1, 0, leftovers);
           
           newItems[index] = JSON.parse(JSON.stringify(item));
-          newItems[index].quantity = 1; // La fila que tocaste se queda con 1 para recibir el extra
+          newItems[index].quantity = 1;
         } else {
           newItems[index] = JSON.parse(JSON.stringify(item));
         }
 
         const target = newItems[index];
 
-        // 2. APLICAR EXTRAS
         const existIdx = target.addons.findIndex((a: CartAddon) => a.addon.id === addon.id);
         if (existIdx >= 0) {
           target.addons[existIdx].quantity += delta;
@@ -108,7 +106,6 @@ export const useCartStore = create<CartState>()(
         }
         target.itemTotal = calcItemTotal(target.product, target.quantity, target.addons);
 
-        // 3. AUTO-MERGE
         const merged: CartItem[] = [];
         newItems.forEach(curr => {
           const exist = merged.find(m => m.product.id === curr.product.id && areSameAddons(m.addons, curr.addons));
@@ -122,7 +119,7 @@ export const useCartStore = create<CartState>()(
         return { items: merged };
       }),
 
-      clearCart: () => set({ items: [], coupon: null }),
+      clearCart: () => set({ items: [], coupon: null, paymentMethod: null }),
       setDeliveryType: (type) => set({ deliveryType: type }),
       setPaymentMethod: (method) => set({ paymentMethod: method }),
       setCoupon: (coupon) => set({ coupon }),
@@ -131,13 +128,21 @@ export const useCartStore = create<CartState>()(
       setDeliveryCost: (cost, dist) => set({ deliveryCost: cost, distanceKm: dist }),
       clearDelivery: () => set({ deliveryAddress: '', deliveryCoordinates: null, distanceKm: 0, deliveryCost: 0 }),
 
+      // 🧮 MOTOR DE CÁLCULO ACTUALIZADO
       getTotals: () => {
-        const { items, coupon, deliveryType, deliveryCost } = get();
+        const { items, coupon, deliveryType, deliveryCost, paymentMethod } = get();
         const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
         const subtotal = items.reduce((sum, i) => sum + i.itemTotal, 0);
         const discount = (subtotal * (coupon?.active ? coupon.discountPercent : 0)) / 100;
-        const total = subtotal - discount + (deliveryType === 'delivery' ? deliveryCost : 0);
-        return { itemCount, subtotal, discount, total };
+        
+        // El total base incluye subtotal, descuentos y costo de envío (si aplica)
+        const baseTotal = subtotal - discount + (deliveryType === 'delivery' ? deliveryCost : 0);
+        
+        // Si el método es crédito, aplica el 15% sobre el total base
+        const surcharge = paymentMethod === 'credito' ? Math.round(baseTotal * 0.15) : 0;
+        const total = baseTotal + surcharge;
+
+        return { itemCount, subtotal, discount, surcharge, total };
       },
     }),
     { name: 'american-way-cart-storage', storage: createJSONStorage(() => localStorage) }

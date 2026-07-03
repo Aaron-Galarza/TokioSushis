@@ -3,7 +3,20 @@ export const generateComandaHTML = (order: any): string => {
   const dt = new Date(order.createdAt);
   
   const deliveryLabel = order.deliveryType === 'delivery' ? 'DELIVERY' : 'RETIRO LOCAL';
-  const paymentLabel = order.paymentMethod === 'cash' ? 'Efectivo' : order.paymentMethod === 'transfer' ? 'Transferencia' : 'Mercado Pago';
+  
+  // 💳 Lógica de mapeo extendida con aclaración de terminales
+  let paymentLabel = 'Mercado Pago';
+  if (order.paymentMethod === 'cash') {
+    paymentLabel = 'Efectivo';
+  } else if (order.paymentMethod === 'transfer') {
+    paymentLabel = 'Transferencia';
+  } else if (order.paymentMethod === 'debito') {
+    paymentLabel = 'Débito (POSNET)';
+  } else if (order.paymentMethod === 'credito') {
+    paymentLabel = order.deliveryType === 'delivery' ? 'Crédito (LINK DE PAGO)' : 'Crédito (POSNET)';
+  } else if (order.paymentMethod) {
+    paymentLabel = order.paymentMethod; // Respeta etiquetas ya parseadas
+  }
 
   const orderDate = dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
   const orderTime = dt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -13,7 +26,7 @@ export const generateComandaHTML = (order: any): string => {
       <strong>${item.quantity}x ${item.title}</strong>
       ${item.addons && item.addons.length > 0 ? `
         <ul style="list-style: none; padding-left: 12px; margin: 3px 0; color: #444; font-size: 0.9em;">
-          ${item.addons.map((a: any) => `<li>&#8627; ${a.quantity}x ${a.title}</li>`).join('')}
+          ${item.addons.map((a: any) => `<li>&#8627; ${a.quantity}x ${a.title || a.name}</li>`).join('')}
         </ul>
       ` : ''}
     </div>
@@ -23,7 +36,7 @@ export const generateComandaHTML = (order: any): string => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>por</title>
+      <title>Comanda #${num}</title>
       <style>
         body { 
           font-family: 'Courier New', Courier, monospace; 
@@ -79,9 +92,14 @@ export const generateComandaHTML = (order: any): string => {
         <div class="totals">
           <p>Subtotal: $${order.subtotal?.toLocaleString('es-AR') || '0'}</p>
           ${order.deliveryCost > 0 ? `<p>Envío: $${order.deliveryCost.toLocaleString('es-AR')}</p>` : ''}
-          ${order.couponCode ? `<p>Cupón (${order.discountPercent}%): -$${((order.subtotal * order.discountPercent) / 100).toLocaleString('es-AR')}</p>` : ''}
+          ${order.discount > 0 ? `<p>Descuento: -$${order.discount.toLocaleString('es-AR')}</p>` : order.couponCode ? `<p>Cupón (${order.discountPercent}%): -$${((order.subtotal * order.discountPercent) / 100).toLocaleString('es-AR')}</p>` : ''}
+          
+          <!-- 💳 FILA DE RECARGO EN COMANDA -->
+          ${order.surcharge > 0 ? `<p>Recargo Tarjeta (15%): +$${order.surcharge.toLocaleString('es-AR')}</p>` : ''}
+          
           <p style="font-size: 1.2em; font-weight: bold; margin-top: 4px;">TOTAL: $${order.total?.toLocaleString('es-AR') || '0'}</p>
-          <p style="font-size: 0.85em; margin-top: 6px; font-style: italic; text-align: center;">Pago: ${paymentLabel}</p>
+          <div class="separator" style="margin: 4px 0 2px 0;"></div>
+          <p style="font-size: 1em; font-weight: bold; margin-top: 4px; text-align: center; text-transform: uppercase;">Pago: ${paymentLabel}</p>
         </div>
       </div>
       <script>

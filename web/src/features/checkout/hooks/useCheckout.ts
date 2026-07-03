@@ -4,29 +4,43 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/stores/cart.store';
 import { useDelivery } from './useDelivery';
+import { useShallow } from 'zustand/shallow'
 import api from '@/services/api';
 import type { Coupon } from '@/types';
 
-// 💳 Sincronizado con los nuevos métodos del Backend
 type PaymentMethod = 'cash' | 'debito' | 'credito';
 export { type PaymentMethod };
 
 export function useCheckout() {
   const router = useRouter();
-  const { items, deliveryType, deliveryCoordinates, deliveryAddress, coupon, setCoupon, clearCoupon, clearCart, getTotals } = useCartStore();
+  
+  // ⚡ SELECTORES REACTIVOS DE ZUSTAND
+  const items = useCartStore((state) => state.items);
+  const deliveryType = useCartStore((state) => state.deliveryType);
+  const deliveryCoordinates = useCartStore((state) => state.deliveryCoordinates);
+  const deliveryAddress = useCartStore((state) => state.deliveryAddress);
+  const coupon = useCartStore((state) => state.coupon);
+  const paymentMethod = useCartStore((state) => state.paymentMethod); // Leemos del store
+  const setPaymentMethod = useCartStore((state) => state.setPaymentMethod); // Escribimos en el store
+  
+  const setCoupon = useCartStore((state) => state.setCoupon);
+  const clearCoupon = useCartStore((state) => state.clearCoupon);
+  const clearCart = useCartStore((state) => state.clearCart);
+  
+  // 🔥 Los totales se recalculan automáticamente gracias al selector reactivo
+  const { subtotal, discount, surcharge, total } = useCartStore(
+    useShallow((state) => state.getTotals())
+  );
   const { loading: isDeliveryLoading } = useDelivery();
 
   const [name, setName]                     = useState('');
   const [phone, setPhone]                   = useState('');
-  const [notes, setNotes]                   = useState(''); // 📝 Nuevo estado para aclaraciones
-  const [paymentMethod, setPaymentMethod]   = useState<PaymentMethod | null>(null);
+  const [notes, setNotes]                   = useState(''); 
   const [couponCode, setCouponCode]         = useState('');
   const [couponLoading, setCouponLoading]   = useState(false);
   const [couponError, setCouponError]       = useState('');
   const [submitting, setSubmitting]         = useState(false);
   const [submitError, setSubmitError]       = useState('');
-
-  const { subtotal, discount, total } = getTotals();
 
   const isConfirmDisabled =
     items.length === 0 || !name.trim() || !phone.trim() || !paymentMethod ||
@@ -67,7 +81,7 @@ export function useCheckout() {
         })),
         deliveryType,
         paymentMethod,
-        notes: notes.trim(), // 📝 Se adjunta limpio al backend
+        notes: notes.trim(),
         ...(coupon && couponCode ? { couponCode: couponCode.trim() } : {}),
         ...(deliveryType === 'delivery' && deliveryCoordinates
           ? { delivery: { address: deliveryAddress, coordinates: deliveryCoordinates } }
@@ -77,7 +91,6 @@ export function useCheckout() {
       const res = await api.post('/orders', payload);
       const orderNumber = res.data?.data?.orderNumber;
 
-      // Actualizado con las etiquetas unificadas para el resumen final
       const payLabels: Record<string, string> = {
         cash: 'Efectivo',
         debito: 'Débito',
@@ -90,7 +103,7 @@ export function useCheckout() {
         deliveryType,
         deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : null,
         paymentMethod: payLabels[paymentMethod ?? ''] ?? paymentMethod,
-        notes: notes.trim(), // Se persiste también para el post-checkout si es necesario
+        notes: notes.trim(),
         items: items.map(item => ({
           title: item.product.title,
           quantity: item.quantity,
@@ -104,6 +117,7 @@ export function useCheckout() {
         })),
         subtotal,
         discount,
+        surcharge, // ⚡ Se persiste el recargo calculado para la pantalla final
         total,
         couponCode: coupon ? couponCode.trim() : null,
       }));
@@ -121,10 +135,10 @@ export function useCheckout() {
   return {
     items, deliveryType, deliveryCoordinates, coupon, isDeliveryLoading,
     name, setName, phone, setPhone,
-    notes, setNotes, // 📦 Retornado explícitamente para limpiar el error de compilación
+    notes, setNotes, 
     paymentMethod, setPaymentMethod,
     couponCode, couponLoading, couponError, validateCoupon, handleCouponInput,
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,
-    subtotal, discount, total,
+    subtotal, discount, surcharge, total, // ⚡ Retorna el recargo dinámico
   };
 }
