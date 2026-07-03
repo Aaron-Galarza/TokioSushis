@@ -71,7 +71,7 @@ export const generateComandaHTML = (order: any): string => {
     <body>
       <div class="ticket">
         <div class="header">
-          <h3>TOKIO SUSHIS</h3>
+          <h3>TOKYO SUSHIS</h3>
           <p>Resistencia, Chaco</p>
           <p><strong>#${num}</strong></p>
         </div>
