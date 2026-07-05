@@ -1,4 +1,7 @@
 import { iCategoria, CategoriaModel } from './categorias.model';
+import { makeCrud } from '../../utils/crudFactory';
+
+const crud = makeCrud(CategoriaModel);
 
 export const viewAll = async (): Promise<iCategoria[]> => {
   return await CategoriaModel.find().sort({ order: 1, name: 1 });
@@ -20,22 +23,6 @@ export const create = async (data: Partial<iCategoria>): Promise<iCategoria> => 
   return await newCategoria.save();
 };
 
-export const modify = async (id: string, data: Partial<iCategoria>): Promise<iCategoria | null> => {
-  return await CategoriaModel.findByIdAndUpdate(
-    id,
-    { $set: data },
-    { new: true, runValidators: true },
-  );
-};
-
-export const toggleActive = async (id: string): Promise<iCategoria | null> => {
-  const categoria = await CategoriaModel.findById(id);
-  if (!categoria) return null;
-
-  categoria.active = !categoria.active;
-  return await categoria.save();
-};
-
-export const deleteById = async (id: string): Promise<iCategoria | null> => {
-  return await CategoriaModel.findByIdAndDelete(id);
-};
+export const modify = crud.modify;
+export const toggleActive = crud.toggleActive;
+export const deleteById = crud.deleteById;

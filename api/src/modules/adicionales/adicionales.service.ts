@@ -1,4 +1,7 @@
 import { iAdicional, AdicionalModel } from './adicionales.model';
+import { makeCrud } from '../../utils/crudFactory';
+
+const crud = makeCrud(AdicionalModel);
 
 // 🔥 Actualizamos la proyección de category a categories
 const ACTIVE_SELECT = 'title price categories active';
@@ -41,22 +44,6 @@ export const create = async (data: Partial<iAdicional>): Promise<iAdicional> => 
   return await newAdicional.save();
 };
 
-export const modify = async (id: string, data: Partial<iAdicional>): Promise<iAdicional | null> => {
-  return await AdicionalModel.findByIdAndUpdate(
-    id,
-    { $set: data },
-    { new: true, runValidators: true },
-  );
-};
-
-export const toggleActive = async (id: string): Promise<iAdicional | null> => {
-  const adicional = await AdicionalModel.findById(id);
-  if (!adicional) return null;
-
-  adicional.active = !adicional.active;
-  return await adicional.save();
-};
-
-export const deleteById = async (id: string): Promise<iAdicional | null> => {
-  return await AdicionalModel.findByIdAndDelete(id);
-};
+export const modify = crud.modify;
+export const toggleActive = crud.toggleActive;
+export const deleteById = crud.deleteById;

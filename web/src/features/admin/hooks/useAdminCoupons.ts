@@ -3,14 +3,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { fetchAdminCoupons, createCoupon, updateCoupon, deleteCoupon } from '@/services/admin.service';
 import { PAYS, CDAYS } from '@/constants/admin';
+import { useAdminCrud } from './useAdminCrud';
 
 const BLANK = { code: '', discountPercent: '', active: true, validDays: [] as string[], validPaymentMethods: [] as string[] };
 
 export function useAdminCoupons() {
   const [coupons, setCoupons] = useState<any[]>([]);
-  const [cpForm, setCpForm] = useState({ ...BLANK });
-  const [cpEditId, setCpEditId] = useState<string | null>(null);
-  const [cpErr, setCpErr] = useState('');
 
   const reload = useCallback(async () => {
     try { setCoupons(await fetchAdminCoupons()); } catch {}
@@ -21,29 +19,29 @@ export function useAdminCoupons() {
     reload();
   }, [reload]);
 
-  const save = async () => {
-    setCpErr('');
-    try {
-      const pl = { ...cpForm, discountPercent: Number(cpForm.discountPercent) };
-      if (cpEditId) await updateCoupon(cpEditId, pl); else await createCoupon(pl);
-      setCpForm({ ...BLANK }); setCpEditId(null); reload();
-    } catch (e: any) { setCpErr(e.response?.data?.error || 'Error al guardar'); }
-  };
-
-  const edit = (c: any) => {
-    setCpEditId(c._id);
-    setCpForm({ code: c.code, discountPercent: String(c.discountPercent), active: c.active, validDays: c.validDays ?? [], validPaymentMethods: c.validPaymentMethods ?? [] });
-  };
-
-  const remove = async (id: string) => {
-    if (!confirm('¿Eliminar?')) return;
-    await deleteCoupon(id); reload();
-  };
-
-  const cancel = () => { setCpForm({ ...BLANK }); setCpEditId(null); setCpErr(''); };
+  const crud = useAdminCrud({
+    blank: BLANK,
+    create: createCoupon,
+    update: updateCoupon,
+    remove: deleteCoupon,
+    reload,
+    toPayload: (form) => ({ ...form, discountPercent: Number(form.discountPercent) }),
+    fromItem: (c: any) => ({
+      code: c.code,
+      discountPercent: String(c.discountPercent),
+      active: c.active,
+      validDays: c.validDays ?? [],
+      validPaymentMethods: c.validPaymentMethods ?? [],
+    }),
+  });
 
   const toggleArr = (field: 'validDays' | 'validPaymentMethods', val: string) =>
-    setCpForm(p => ({ ...p, [field]: p[field].includes(val) ? p[field].filter(v => v !== val) : [...p[field], val] }));
+    crud.setForm(p => ({ ...p, [field]: p[field].includes(val) ? p[field].filter((v: string) => v !== val) : [...p[field], val] }));
 
-  return { coupons, cpForm, setCpForm, cpEditId, cpErr, save, edit, remove, cancel, toggleArr, reload, PAYS, CDAYS };
+  return {
+    coupons,
+    cpForm: crud.form, setCpForm: crud.setForm, cpEditId: crud.editId, cpErr: crud.err,
+    save: crud.save, edit: crud.edit, remove: crud.remove, cancel: crud.cancel,
+    toggleArr, reload, PAYS, CDAYS,
+  };
 }

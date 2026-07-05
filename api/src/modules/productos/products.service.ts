@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import { iProducto, ProductModel } from './products.model';
 import { CategoriaModel } from '../categorias/categorias.model';
+import { makeCrud } from '../../utils/crudFactory';
+
+const crud = makeCrud(ProductModel);
 
 const isObjectId = (value: unknown): value is mongoose.Types.ObjectId | string =>
   typeof value === 'string'
@@ -62,22 +65,6 @@ export const create = async (data: Partial<iProducto>): Promise<iProducto> => {
   return await newProduct.save();
 };
 
-export const modify = async (id: string, data: Partial<iProducto>): Promise<iProducto | null> => {
-  return await ProductModel.findByIdAndUpdate(
-    id,
-    { $set: data },
-    { new: true, runValidators: true },
-  );
-};
-
-export const toggleActive = async (id: string): Promise<iProducto | null> => {
-  const product = await ProductModel.findById(id);
-  if (!product) return null;
-
-  product.active = !product.active;
-  return await product.save();
-};
-
-export const deleteById = async (id: string): Promise<iProducto | null> => {
-  return await ProductModel.findByIdAndDelete(id);
-};
+export const modify = crud.modify;
+export const toggleActive = crud.toggleActive;
+export const deleteById = crud.deleteById;

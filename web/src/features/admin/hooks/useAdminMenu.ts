@@ -5,6 +5,7 @@ import {
   fetchAdminCategories, createCategory, updateCategory, toggleCategoryActive, deleteCategory,
   fetchAdminAddons, createAddon, updateAddon, toggleAddonActive, deleteAddon,
 } from '@/services/admin.service';
+import { useAdminCrud } from './useAdminCrud';
 
 const PBLANK = {
   title: '', price: '', description: '', image: '',
@@ -18,16 +19,6 @@ export function useAdminMenu() {
   const [cats, setCats]         = useState<any[]>([]);
   const [addons, setAddons]     = useState<any[]>([]);
 
-  const [pForm, setPForm]   = useState({ ...PBLANK });
-  const [pEditId, setPEditId] = useState<string | null>(null);
-  const [pErr, setPErr]     = useState('');
-
-  const [cForm, setCForm]   = useState({ ...CBLANK });
-  const [cEditId, setCEditId] = useState<string | null>(null);
-
-  const [aForm, setAForm]   = useState({ ...ABLANK });
-  const [aEditId, setAEditId] = useState<string | null>(null);
-
   const reload = useCallback(async () => {
     try {
       const [p, c, a] = await Promise.all([
@@ -40,75 +31,67 @@ export function useAdminMenu() {
   }, []);
 
   // ── Products ────────────────────────────────────────────────────────────────
-  const saveProduct = async () => {
-    setPErr('');
-    try {
+  const productCrud = useAdminCrud({
+    blank: PBLANK,
+    create: createProduct,
+    update: updateProduct,
+    remove: deleteProduct,
+    toggle: toggleProductActive,
+    reload,
+    toPayload: (form) => {
       const pl: any = {
-        title: pForm.title, price: Number(pForm.price),
-        description: pForm.description, category: pForm.category,
-        active: pForm.active, controlStock: pForm.controlStock,
+        title: form.title, price: Number(form.price),
+        description: form.description, category: form.category,
+        active: form.active, controlStock: form.controlStock,
       };
-      if (pForm.controlStock) pl.stock = Number(pForm.stock);
-      if (pForm.image.trim()) pl.image = pForm.image.trim();
-      if (pEditId) await updateProduct(pEditId, pl); else await createProduct(pl);
-      setPForm({ ...PBLANK }); setPEditId(null); reload();
-    } catch (e: any) { setPErr(e.response?.data?.error || 'Error al guardar'); }
-  };
-  const editProduct   = (p: any) => {
-    setPEditId(p._id);
-    setPForm({
+      if (form.controlStock) pl.stock = Number(form.stock);
+      if (form.image.trim()) pl.image = form.image.trim();
+      return pl;
+    },
+    fromItem: (p: any) => ({
       title: p.title, price: String(p.price), description: p.description,
       image: p.image || '',
       category: typeof p.category === 'object' ? p.category._id : p.category,
       active: p.active, controlStock: p.controlStock ?? false, stock: String(p.stock ?? 0),
-    });
-  };
-  const toggleProduct = async (id: string) => { await toggleProductActive(id); reload(); };
-  const removeProduct = async (id: string) => { if (!confirm('¿Eliminar?')) return; await deleteProduct(id); reload(); };
-  const cancelProduct = () => { setPForm({ ...PBLANK }); setPEditId(null); setPErr(''); };
+    }),
+  });
 
   // ── Categories ──────────────────────────────────────────────────────────────
-  const saveCat = async () => {
-    try {
-      const pl = { name: cForm.name, order: Number(cForm.order), active: cForm.active, icon: cForm.icon };
-      if (cEditId) await updateCategory(cEditId, pl); else await createCategory(pl);
-      setCForm({ ...CBLANK }); setCEditId(null); reload();
-    } catch {}
-  };
-  const editCat   = (c: any) => {
-    setCEditId(c._id);
-    setCForm({ name: c.name, order: String(c.order), active: c.active, icon: c.icon || '' });
-  };
-  const toggleCat = async (id: string) => { await toggleCategoryActive(id); reload(); };
-  const removeCat = async (id: string) => { if (!confirm('¿Eliminar?')) return; await deleteCategory(id); reload(); };
-  const cancelCat = () => { setCForm({ ...CBLANK }); setCEditId(null); };
+  const catCrud = useAdminCrud({
+    blank: CBLANK,
+    create: createCategory,
+    update: updateCategory,
+    remove: deleteCategory,
+    toggle: toggleCategoryActive,
+    reload,
+    toPayload: (form) => ({ name: form.name, order: Number(form.order), active: form.active, icon: form.icon }),
+    fromItem: (c: any) => ({ name: c.name, order: String(c.order), active: c.active, icon: c.icon || '' }),
+  });
 
   // ── Addons ──────────────────────────────────────────────────────────────────
-  const saveAddon = async () => {
-    try {
-      const pl: Record<string, any> = {
-        title: aForm.title, price: Number(aForm.price),
-        active: aForm.active, categories: aForm.categories,
-      };
-      if (aEditId) await updateAddon(aEditId, pl); else await createAddon(pl);
-      setAForm({ ...ABLANK }); setAEditId(null); reload();
-    } catch {}
-  };
-  const editAddon = (a: any) => {
-    setAEditId(a._id);
-    const catIds: string[] = (a.categories ?? []).map((c: any) =>
-      typeof c === 'object' ? c._id : c
-    );
-    setAForm({ title: a.title || a.name, price: String(a.price), categories: catIds, active: a.active });
-  };
-  const toggleAddon = async (id: string) => { await toggleAddonActive(id); reload(); };
-  const removeAddon = async (id: string) => { if (!confirm('¿Eliminar?')) return; await deleteAddon(id); reload(); };
-  const cancelAddon = () => { setAForm({ ...ABLANK }); setAEditId(null); };
+  const addonCrud = useAdminCrud({
+    blank: ABLANK,
+    create: createAddon,
+    update: updateAddon,
+    remove: deleteAddon,
+    toggle: toggleAddonActive,
+    reload,
+    toPayload: (form) => ({ title: form.title, price: Number(form.price), active: form.active, categories: form.categories }),
+    fromItem: (a: any) => ({
+      title: a.title || a.name,
+      price: String(a.price),
+      active: a.active,
+      categories: (a.categories ?? []).map((c: any) => (typeof c === 'object' ? c._id : c)),
+    }),
+  });
 
   return {
     products, cats, addons, reload,
-    pForm, setPForm, pEditId, pErr, saveProduct, editProduct, toggleProduct, removeProduct, cancelProduct,
-    cForm, setCForm, cEditId, saveCat, editCat, toggleCat, removeCat, cancelCat,
-    aForm, setAForm, aEditId, saveAddon, editAddon, toggleAddon, removeAddon, cancelAddon,
+    pForm: productCrud.form, setPForm: productCrud.setForm, pEditId: productCrud.editId, pErr: productCrud.err,
+    saveProduct: productCrud.save, editProduct: productCrud.edit, toggleProduct: productCrud.toggle, removeProduct: productCrud.remove, cancelProduct: productCrud.cancel,
+    cForm: catCrud.form, setCForm: catCrud.setForm, cEditId: catCrud.editId,
+    saveCat: catCrud.save, editCat: catCrud.edit, toggleCat: catCrud.toggle, removeCat: catCrud.remove, cancelCat: catCrud.cancel,
+    aForm: addonCrud.form, setAForm: addonCrud.setForm, aEditId: addonCrud.editId,
+    saveAddon: addonCrud.save, editAddon: addonCrud.edit, toggleAddon: addonCrud.toggle, removeAddon: addonCrud.remove, cancelAddon: addonCrud.cancel,
   };
 }
