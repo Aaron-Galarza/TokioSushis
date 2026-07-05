@@ -32,8 +32,8 @@ export const createOrderSchema = z.object({
     message: 'Tipo de entrega invalido. Opciones: pickup, delivery',
   }),
   // 💳 Métodos de pago unificados de verdad
-  paymentMethod: z.enum(['cash', 'debito', 'credito'], {
-    message: 'Método de pago inválido. Opciones: cash, debito, credito',
+  paymentMethod: z.enum(['cash', 'debito', 'credito', 'transferencia'], {
+    message: 'Método de pago inválido. Opciones: cash, debito, credito, transferencia',
   }),
   // 📝 Notas sanitizadas: remueve HTML/caracteres raros y limita longitud
   notes: z.string()

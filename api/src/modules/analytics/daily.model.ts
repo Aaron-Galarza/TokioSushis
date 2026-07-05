@@ -13,6 +13,7 @@ export interface IDailyAnalytics extends Document {
   trans: number; // 💾 Lo dejamos por retrocompatibilidad con órdenes viejas
   debito: number;  // 💳 Nuevo
   credito: number; // 💳 Nuevo
+  transferencia: number; // 🏦 Nuevo
   entregados: number;
   products: Map<string, IProductEntry>;
 }
@@ -30,6 +31,7 @@ const dailyAnalyticsSchema = new Schema<IDailyAnalytics>(
     trans: { type: Number, default: 0 },    // 💾 Persiste para no romper históricos
     debito: { type: Number, default: 0 },   // 💳 Nuevo campo mapeado
     credito: { type: Number, default: 0 },  // 💳 Nuevo campo mapeado
+    transferencia: { type: Number, default: 0 }, // 🏦 Nuevo campo mapeado
     entregados: { type: Number, default: 0 },
     products: {
       type: Map,

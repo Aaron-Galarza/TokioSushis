@@ -7,7 +7,7 @@ const couponBaseSchema = z.object({
   Percent: z.number().min(1).max(100).optional(),
   active: z.boolean().optional(),
   validDays: z.array(z.string()).optional(),
-  validPaymentMethods: z.array(z.enum(['cash', 'transfer', 'mercadopago', 'Efectivo', 'Transferencia'])).optional(),
+  validPaymentMethods: z.array(z.enum(['cash', 'debito', 'credito', 'transferencia'])).optional(),
 });
 
 export const createCouponSchema = couponBaseSchema

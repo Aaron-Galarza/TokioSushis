@@ -33,7 +33,7 @@ const CouponSchema = new Schema<iCoupon>({
   },
   validPaymentMethods: {
     type: [String],
-    enum: ['cash', 'transfer', 'mercadopago', 'Efectivo', 'Transferencia'],
+    enum: ['cash', 'debito', 'credito', 'transferencia'],
     default: [],
   },
 }, { timestamps: true });

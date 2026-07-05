@@ -9,6 +9,7 @@ interface AnalyticsStats {
   efectivo: number;
   debito: number;
   credito: number;
+  transferencia: number;
   entregados: number;
   topProduct: { title: string; quantity: number } | null;
 }
@@ -54,18 +55,19 @@ export const getAnalytics = async (
   }).lean();
 
   if (dailies.length === 0) {
-    return { total: 0, efectivo: 0, debito: 0, credito: 0, entregados: 0, topProduct: null };
+    return { total: 0, efectivo: 0, debito: 0, credito: 0, transferencia: 0, entregados: 0, topProduct: null };
   }
 
   const productMap: Record<string, { qty: number; title: string }> = {};
-  let total = 0, efectivo = 0, debito = 0, credito = 0, entregados = 0;
+  let total = 0, efectivo = 0, debito = 0, credito = 0, transferencia = 0, entregados = 0;
 
   for (const day of dailies) {
-    total      += day.total ?? 0;
-    efectivo   += day.efectivo ?? 0;
-    debito     += day.debito ?? 0; // 💳 Nuevos acumuladores mapeados
-    credito    += day.credito ?? 0;
-    entregados += day.entregados ?? 0;
+    total         += day.total ?? 0;
+    efectivo      += day.efectivo ?? 0;
+    debito        += day.debito ?? 0; // 💳 Nuevos acumuladores mapeados
+    credito       += day.credito ?? 0;
+    transferencia += day.transferencia ?? 0;
+    entregados    += day.entregados ?? 0;
 
     const products = day.products;
     if (!products) continue;
@@ -83,7 +85,7 @@ export const getAnalytics = async (
     }
   }
 
-  return { total, efectivo, debito, credito, entregados, topProduct: getTopProduct(productMap) };
+  return { total, efectivo, debito, credito, transferencia, entregados, topProduct: getTopProduct(productMap) };
 };
 
 // ─── Escribir en daily cuando una orden se entrega ───────
@@ -101,7 +103,11 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
   }
 
   // Desglose limpio condicional por pasarela real
-  const methodKey = order.paymentMethod === 'cash' ? 'efectivo' : order.paymentMethod === 'debito' ? 'debito' : 'credito';
+  const methodKey =
+    order.paymentMethod === 'cash' ? 'efectivo' :
+    order.paymentMethod === 'debito' ? 'debito' :
+    order.paymentMethod === 'transferencia' ? 'transferencia' :
+    'credito';
 
   await DailyAnalyticsModel.findOneAndUpdate(
     { date },
@@ -145,10 +151,12 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
   // Reversión precisa según método
   const isCash = order.paymentMethod === 'cash';
   const isDebito = order.paymentMethod === 'debito';
-  
-  const safeEfectivo = isCash ? Math.min(order.total, daily.efectivo ?? 0) : 0;
-  const safeDebito   = isDebito ? Math.min(order.total, daily.debito ?? 0) : 0;
-  const safeCredito  = (!isCash && !isDebito) ? Math.min(order.total, daily.credito ?? 0) : 0;
+  const isTransferencia = order.paymentMethod === 'transferencia';
+
+  const safeEfectivo      = isCash ? Math.min(order.total, daily.efectivo ?? 0) : 0;
+  const safeDebito        = isDebito ? Math.min(order.total, daily.debito ?? 0) : 0;
+  const safeTransferencia = isTransferencia ? Math.min(order.total, daily.transferencia ?? 0) : 0;
+  const safeCredito       = (!isCash && !isDebito && !isTransferencia) ? Math.min(order.total, daily.credito ?? 0) : 0;
 
   await DailyAnalyticsModel.findOneAndUpdate(
     { date },
@@ -159,6 +167,7 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
         efectivo: -safeEfectivo,
         debito: -safeDebito,
         credito: -safeCredito,
+        transferencia: -safeTransferencia,
         ...incUpdates,
       },
     }
