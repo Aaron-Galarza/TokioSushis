@@ -94,7 +94,7 @@ export function useAdminConfig() {
     emergency, toggleEmergency,
     schedule, setSchedule, schedSaved, saveSchedule,
     banner, setBanner, bannerSaved, setBannerSaved, saveBanner,
-    isRaining, setIsRaining, extraRain, setExtraRain, toggleRain,
+    isRaining, extraRain, setExtraRain, toggleRain,
     ranges, nRange, setNRange, rErr, addRange, deleteRange,
     reload,
   };

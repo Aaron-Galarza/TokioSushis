@@ -1,7 +1,8 @@
 import { TRANSFER_INFO } from '@/constants/admin';
+import { formatOrderNumber } from '@/lib/format';
 
 export const generateComandaHTML = (order: any): string => {
-  const num = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
+  const num = formatOrderNumber(order);
   const dt = new Date(order.createdAt);
   
   const deliveryLabel = order.deliveryType === 'delivery' ? 'DELIVERY' : 'RETIRO LOCAL';

@@ -1,6 +1,7 @@
 import { DailyAnalyticsModel } from './daily.model';
 import { iOrder } from '../orders/orders.model';
 import { argDate } from '../../utils/Timezone';
+import { Range, getRangeStartDate } from '../../utils/dateRange';
 
 // ─── Tipos Sincronizados ─────────────────────────────────
 
@@ -16,39 +17,10 @@ interface AnalyticsStats {
 
 // ─── Consulta principal ──────────────────────────────────
 
-export const getAnalytics = async (
-  range: 'hoy' | 'ayer' | 'semana' | 'mes'
-): Promise<AnalyticsStats> => {
+export const getAnalytics = async (range: Range): Promise<AnalyticsStats> => {
 
-  const today = argDate(); 
-  let startDate: string;
-  let endDate: string = today;
-
-  switch (range) {
-    case 'hoy':
-      startDate = today;
-      break;
-
-    case 'ayer': {
-      const d = new Date(today + 'T12:00:00Z');
-      d.setUTCDate(d.getUTCDate() - 1);
-      startDate = d.toISOString().slice(0, 10);
-      endDate   = startDate;
-      break;
-    }
-
-    case 'semana': {
-      const d = new Date(today + 'T12:00:00Z');
-      const dow = d.getUTCDay();
-      d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
-      startDate = d.toISOString().slice(0, 10);
-      break;
-    }
-
-    case 'mes':
-      startDate = today.slice(0, 8) + '01';
-      break;
-  }
+  const startDate = getRangeStartDate(range);
+  const endDate = range === 'ayer' ? startDate : argDate();
 
   const dailies = await DailyAnalyticsModel.find({
     date: { $gte: startDate, $lte: endDate },

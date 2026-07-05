@@ -13,6 +13,7 @@ import { toggleEmergency as apiToggle, fetchConfigStatus } from '@/services/admi
 import type { AdminRange } from '@/services/admin.service';
 import { ORDER_STATUS, type OrderStatusKey } from '@/constants/orderStatus';
 import { buildCatColorMap, CAT_PALETTE } from '@/constants/categoryColors';
+import { formatOrderNumber } from '@/lib/format';
 
 const RANGES: { v: AdminRange; l: string }[] = [
   { v: 'hoy', l: 'Hoy' }, { v: 'ayer', l: 'Ayer' },
@@ -112,7 +113,7 @@ export function OverviewTab() {
             {recentOrders.map((order: any) => {
               const cfg = ORDER_STATUS[order.status as OrderStatusKey] ?? ORDER_STATUS.pending;
               const Icon = cfg.icon;
-              const num = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
+              const num = formatOrderNumber(order);
               const time = new Date(order.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
               return (
                 <div key={order._id} className="flex items-center gap-2 sm:gap-3 bg-[#0A0A0A] rounded-lg px-2.5 sm:px-3 py-2 sm:py-2.5 border border-[#2A2A2A]">

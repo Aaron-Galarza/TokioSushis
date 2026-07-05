@@ -6,7 +6,14 @@ import { updateAnalyticsOnDelivery, revertAnalyticsOnDelivery } from '../analyti
 import { checkStoreStatus } from '../Schedules/Schedule.service'
 import { calculateDelivery } from '../delivery/delivery.service'
 import { AppError } from '../../utils/AppError'
-import { argDate, argToUTC } from '../../utils/Timezone'
+import { argToUTC } from '../../utils/Timezone'
+import { Range, getRangeStartDate } from '../../utils/dateRange'
+
+// Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
+const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
+  const surcharge = paymentMethod === 'credito' ? Math.round(baseTotal * 0.15) : 0
+  return { total: baseTotal + surcharge, surcharge }
+}
 
 export const createOrder = async (orderData: any): Promise<iOrder> => {
  
@@ -104,13 +111,10 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     total += deliveryCost
   }
 
-  // 🔥 LÓGICA DE RECARGO POR TARJETA DE CRÉDITO (15%)
-  let surcharge = 0;
-  if (orderData.paymentMethod === 'credito') {
-    // El 15% se calcula sobre la base neta (subtotal - descuentos + envío)
-    surcharge = Math.round(total * 0.15);
-    total += surcharge;
-  }
+  // 🔥 RECARGO POR TARJETA DE CRÉDITO (15%)
+  const surchargeResult = applyCreditSurcharge(total, orderData.paymentMethod)
+  total = surchargeResult.total
+  const surcharge = surchargeResult.surcharge
 
   let sanitizedNotes = '';
   if (orderData.notes && typeof orderData.notes === 'string') {
@@ -145,41 +149,12 @@ export const getAllOrders = async (): Promise<iOrder[]> => {
   return await OrderModel.find().sort({ createdAt: -1 })
 }
 
-export const getOrdersRange = async (range: 'hoy' | 'ayer' | 'semana' | 'mes'): Promise<iOrder[]> => {
-  const today = argDate();                  
-  let start: Date;
-  let end: Date | null = null;
- 
-  switch (range) {
-    case 'hoy':
-      start = argToUTC(today);               
-      break;
- 
-    case 'ayer': {
-      const d = new Date(today + 'T12:00:00Z');
-      d.setUTCDate(d.getUTCDate() - 1);
-      const ayer = d.toISOString().slice(0, 10);
-      start = argToUTC(ayer);                
-      end   = argToUTC(today);               
-      break;
-    }
- 
-    case 'semana': {
-      const d = new Date(today + 'T12:00:00Z');
-      const dow = d.getUTCDay();             
-      d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
-      start = argToUTC(d.toISOString().slice(0, 10));
-      break;
-    }
- 
-    case 'mes':
-      start = argToUTC(today.slice(0, 8) + '01'); 
-      break;
-  }
- 
+export const getOrdersRange = async (range: Range): Promise<iOrder[]> => {
+  const start = argToUTC(getRangeStartDate(range));
+
   const filter: any = { $gte: start };
-  if (end) filter.$lt = end;
- 
+  if (range === 'ayer') filter.$lt = argToUTC(getRangeStartDate('hoy'));
+
   return await OrderModel.find({ createdAt: filter }).lean().sort({ createdAt: -1 });
 }
 
@@ -206,14 +181,10 @@ export const update = async (
     let baseTotal = oldOrder.subtotal - discount + newDeliveryCost;
     
     // Si pagó con crédito, recalculamos también el recargo del 15% en base al nuevo total base
-    let newSurcharge = 0;
-    if (oldOrder.paymentMethod === 'credito') {
-      newSurcharge = Math.round(baseTotal * 0.15);
-      updateData.surcharge = newSurcharge;
-      baseTotal += newSurcharge;
-    }
-    
-    updateData.total = Math.max(0, baseTotal);
+    const recalculated = applyCreditSurcharge(baseTotal, oldOrder.paymentMethod);
+    updateData.surcharge = recalculated.surcharge;
+
+    updateData.total = Math.max(0, recalculated.total);
   }
 
   const updatedOrder = await OrderModel.findByIdAndUpdate(

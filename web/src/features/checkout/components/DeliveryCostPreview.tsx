@@ -3,7 +3,7 @@
 import { Store, Loader2, MapPin, AlertCircle, Bike } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
 import { useDelivery } from '@/features/checkout/hooks/useDelivery';
-import { formatPrice } from '@/lib/format';
+import { formatPrice, formatDistance } from '@/lib/format';
 
 export const DeliveryCostPreview = () => {
   // 1. Nos traemos la data del store
@@ -59,8 +59,7 @@ export const DeliveryCostPreview = () => {
               <MapPin className="w-4 h-4" />
               <span>Distancia:</span>
             </div>
-            {/* .toFixed(1) para que muestre "4.5 km" en vez de "4.5321 km" */}
-            <span className="font-bold text-white">{distanceKm.toFixed(1)} km</span>
+            <span className="font-bold text-white">{formatDistance(distanceKm)}</span>
           </div>
           
           <div className="flex items-center justify-between text-sm pt-3 border-t border-white/5">

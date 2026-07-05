@@ -3,6 +3,7 @@
 import { Clock, User, Phone, MapPin, Banknote, CreditCard, Landmark, Bike, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import { generateComandaHTML } from '../utils/generateComandaHTML';
 import { formatWhatsAppLink } from '../utils/whatsappMessage';
+import { formatOrderNumber } from '@/lib/format';
 import { ORDER_STATUS, STATUS_TRANSITIONS, type OrderStatusKey } from '@/constants/orderStatus';
 import { OrderExpandedDetail } from './OrderExpandedDetail';
 
@@ -17,7 +18,7 @@ interface ORProps {
 export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORProps) {
   const status = ORDER_STATUS[order.status as OrderStatusKey] ?? ORDER_STATUS.pending;
   const transition = STATUS_TRANSITIONS[order.status as OrderStatusKey];
-  const num = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
+  const num = formatOrderNumber(order);
   const isDelivery = order.deliveryType === 'delivery';
 
   const handlePrint = () => {

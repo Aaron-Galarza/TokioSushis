@@ -1,4 +1,10 @@
 import { TRANSFER_INFO } from '@/constants/admin';
+import { formatOrderNumber } from '@/lib/format';
+
+const cleanPhoneNumber = (phone: string): string => {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length === 10 && !digits.startsWith('54') ? '54' + digits : digits;
+};
 
 function getFriendlyPaymentMethod(method: string, deliveryType: string): string {
   const payLabels: Record<string, string> = {
@@ -12,13 +18,10 @@ function getFriendlyPaymentMethod(method: string, deliveryType: string): string 
 
 export function formatWhatsAppLink(phone: string, order: any): string {
   if (!phone) return '#';
-  let cleanPhone = phone.replace(/\D/g, '');
-  if (cleanPhone.length === 10 && !cleanPhone.startsWith('54')) {
-    cleanPhone = '54' + cleanPhone;
-  }
+  const cleanPhone = cleanPhoneNumber(phone);
 
   const customerName = order.customer?.name || 'Cliente';
-  const orderId = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
+  const orderId = formatOrderNumber(order);
   
   const itemsList = (order.items || [])
     .map((item: any) => {
@@ -74,13 +77,10 @@ ${financialBreakdown}
 
 export function formatOrderReadyWhatsAppLink(phone: string, order: any): string {
   if (!phone) return '#';
-  let cleanPhone = phone.replace(/\D/g, '');
-  if (cleanPhone.length === 10 && !cleanPhone.startsWith('54')) {
-    cleanPhone = '54' + cleanPhone;
-  }
+  const cleanPhone = cleanPhoneNumber(phone);
 
   const customerName = order.customer?.name || 'Cliente';
-  const orderId = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
+  const orderId = formatOrderNumber(order);
   const isDelivery = order.deliveryType === 'delivery';
   const paymentLabel = getFriendlyPaymentMethod(order.paymentMethod, order.deliveryType);
 
