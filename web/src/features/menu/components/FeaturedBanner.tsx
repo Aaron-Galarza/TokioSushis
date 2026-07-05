@@ -54,7 +54,7 @@ export const FeaturedBanner = ({
 
         {/* Brand */}
         <h1 className="font-heading italic text-3xl sm:text-4xl font-semibold tracking-[0.18em] text-primary mb-1">
-          TOKYO SUSHI
+          TOKYO SUSHIS
         </h1>
         <p className="font-heading italic text-white/70 text-base mb-5">
           Auténtica cocina japonesa
