@@ -7,8 +7,9 @@ import { useDelivery } from './useDelivery';
 import { useShallow } from 'zustand/shallow'
 import api from '@/services/api';
 import type { Coupon } from '@/types';
+import { PAYMENT_LABELS, type PaymentKey } from '@/constants/admin';
 
-type PaymentMethod = 'cash' | 'debito' | 'credito';
+type PaymentMethod = PaymentKey;
 export { type PaymentMethod };
 
 export function useCheckout() {
@@ -91,18 +92,13 @@ export function useCheckout() {
       const res = await api.post('/orders', payload);
       const orderNumber = res.data?.data?.orderNumber;
 
-      const payLabels: Record<string, string> = {
-        cash: 'Efectivo',
-        debito: 'Débito',
-        credito: 'Crédito',
-      };
-
       sessionStorage.setItem('order_confirmation', JSON.stringify({
         orderNumber,
         customerName: name.trim(),
         deliveryType,
         deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : null,
-        paymentMethod: payLabels[paymentMethod ?? ''] ?? paymentMethod,
+        paymentMethod: PAYMENT_LABELS[paymentMethod as PaymentKey] ?? paymentMethod,
+        rawPaymentMethod: paymentMethod,
         notes: notes.trim(),
         items: items.map(item => ({
           title: item.product.title,

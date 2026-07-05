@@ -1,5 +1,5 @@
 import { AdminInput } from './ui/AdminInput';
-import { PAYS, CDAYS, DS } from '@/constants/admin';
+import { PAYS, CDAYS, DS, PAYMENT_LABELS } from '@/constants/admin';
 
 interface Props {
   cpForm: { code: string; discountPercent: string; active: boolean; validDays: string[]; validPaymentMethods: string[] };
@@ -11,9 +11,6 @@ interface Props {
   cancel: () => void;
   toggleArr: (field: 'validDays' | 'validPaymentMethods', val: string) => void;
 }
-
-// 🏷️ Mapeo visual para los botones de pago
-const LABELS: Record<string, string> = { cash: 'Efectivo', debito: 'Débito', credito: 'Crédito' };
 
 export function CouponForm({ cpForm, setCpForm, cpEditId, cpErr, compact = false, save, cancel, toggleArr }: Props) {
   return (
@@ -54,7 +51,7 @@ export function CouponForm({ cpForm, setCpForm, cpEditId, cpErr, compact = false
               {PAYS.map(p => (
                 <button key={p} type="button" onClick={() => toggleArr('validPaymentMethods', p)}
                   className={`px-2 py-1 rounded text-xs font-medium ${cpForm.validPaymentMethods.includes(p) ? 'bg-primary text-black' : 'bg-[#1A1A1A] border border-white/10 text-white/50 hover:text-white'}`}>
-                  {LABELS[p] || p}
+                  {PAYMENT_LABELS[p] || p}
                 </button>
               ))}
             </div>

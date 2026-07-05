@@ -1,12 +1,19 @@
 // ── Métodos de pago ─────────────────────────────────────────────────────────
-export const PAYS = ['cash', 'debito', 'credito'] as const;
+export const PAYS = ['cash', 'debito', 'credito', 'transferencia'] as const;
 export type PaymentKey = (typeof PAYS)[number];
 
 export const PAYMENT_LABELS: Record<PaymentKey, string> = {
-  cash:    'Efectivo',
-  debito:  'Débito',
-  credito: 'Crédito',
+  cash:          'Efectivo',
+  debito:        'Débito',
+  credito:       'Crédito',
+  transferencia: 'Transferencia',
 };
+
+// ── Datos de la cuenta para pagos por transferencia ────────────────────────
+export const TRANSFER_INFO = {
+  alias:  'Tokyo.nx',
+  holder: 'Román Augusto',
+} as const;
 
 // ── Días de la semana ───────────────────────────────────────────────────────
 export const CDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;

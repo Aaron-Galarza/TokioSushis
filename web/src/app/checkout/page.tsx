@@ -1,6 +1,7 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Receipt } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Receipt, Landmark, Check, Copy } from 'lucide-react';
 import { useCheckout } from '@/features/checkout/hooks/useCheckout';
 import { DeliveryTypeSelector } from '@/features/checkout/components/DeliveryTypeSelector';
 import { CheckoutAddressAdapter } from '@/features/checkout/components/CheckoutAddressAdapter';
@@ -9,13 +10,7 @@ import { AddressMap } from '@/features/checkout/components/AddressMap';
 import { CheckoutForm } from '@/features/checkout/components/CheckoutForm';
 import { CouponSection } from '@/features/checkout/components/CouponSection';
 import { SummarySection } from '@/features/checkout/components/SummarySection';
-
-// 💳 Métodos de pago reales unificados
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  debito: 'Débito',
-  credito: 'Crédito',
-};
+import { PAYMENT_LABELS, TRANSFER_INFO } from '@/constants/admin';
 
 export default function CheckoutPage() {
   const {
@@ -27,6 +22,15 @@ export default function CheckoutPage() {
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,
     subtotal, discount, total, surcharge
   } = useCheckout();
+
+  const [copied, setCopied] = useState(false);
+  const handleCopyAlias = async () => {
+    try {
+      await navigator.clipboard.writeText(TRANSFER_INFO.alias);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans">
@@ -86,6 +90,35 @@ export default function CheckoutPage() {
               </button>
             ))}
           </div>
+
+          {paymentMethod === 'transferencia' && (
+            <div className="mt-3 bg-[#1A1A1A] border border-primary/25 rounded-xl p-4 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-2 text-primary">
+                <Landmark className="w-4 h-4" />
+                <span className="text-sm font-bold">Datos para transferir</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 bg-[#111] rounded-lg px-3 py-2.5">
+                <div>
+                  <p className="text-[11px] text-white/40 uppercase tracking-wider">Transferencia a</p>
+                  <p className="text-white font-semibold text-sm">{TRANSFER_INFO.alias}</p>
+                </div>
+                <button
+                  onClick={handleCopyAlias}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-semibold transition-all active:scale-95"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Copiado' : 'Copiar'}
+                </button>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/40 uppercase tracking-wider">Titular</p>
+                <p className="text-white font-semibold text-sm">{TRANSFER_INFO.holder}</p>
+              </div>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                Realizá la transferencia y enviános el comprobante por WhatsApp para confirmar tu pedido.
+              </p>
+            </div>
+          )}
         </section>
 
         <section>

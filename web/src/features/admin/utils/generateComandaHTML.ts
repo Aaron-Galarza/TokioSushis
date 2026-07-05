@@ -1,3 +1,5 @@
+import { TRANSFER_INFO } from '@/constants/admin';
+
 export const generateComandaHTML = (order: any): string => {
   const num = String(order.orderNumber || order._id?.slice(-4) || '0').padStart(4, '0');
   const dt = new Date(order.createdAt);
@@ -8,7 +10,7 @@ export const generateComandaHTML = (order: any): string => {
   let paymentLabel = 'Mercado Pago';
   if (order.paymentMethod === 'cash') {
     paymentLabel = 'Efectivo';
-  } else if (order.paymentMethod === 'transfer') {
+  } else if (order.paymentMethod === 'transfer' || order.paymentMethod === 'transferencia') {
     paymentLabel = 'Transferencia';
   } else if (order.paymentMethod === 'debito') {
     paymentLabel = 'Débito (POSNET)';
@@ -100,6 +102,7 @@ export const generateComandaHTML = (order: any): string => {
           <p style="font-size: 1.2em; font-weight: bold; margin-top: 4px;">TOTAL: $${order.total?.toLocaleString('es-AR') || '0'}</p>
           <div class="separator" style="margin: 4px 0 2px 0;"></div>
           <p style="font-size: 1em; font-weight: bold; margin-top: 4px; text-align: center; text-transform: uppercase;">Pago: ${paymentLabel}</p>
+          ${order.paymentMethod === 'transferencia' ? `<p style="font-size: 0.85em; text-align: center; margin-top: 2px;">(${TRANSFER_INFO.alias} — ${TRANSFER_INFO.holder})</p>` : ''}
         </div>
       </div>
       <script>

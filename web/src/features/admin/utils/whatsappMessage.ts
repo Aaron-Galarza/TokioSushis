@@ -1,7 +1,9 @@
+import { TRANSFER_INFO } from '@/constants/admin';
+
 function getFriendlyPaymentMethod(method: string, deliveryType: string): string {
   const payLabels: Record<string, string> = {
     cash: 'Efectivo',
-    transfer: 'Transferencia',
+    transferencia: 'Transferencia',
     debito: 'Débito (POSNET)',
     credito: deliveryType === 'delivery' ? 'Crédito (LINK DE PAGO)' : 'Crédito (POSNET)',
   };
@@ -40,6 +42,9 @@ export function formatWhatsAppLink(phone: string, order: any): string {
     : 'Sin notas ni aclaraciones adicionales.';
 
   const paymentLabel = getFriendlyPaymentMethod(order.paymentMethod, order.deliveryType);
+  const transferInfo = order.paymentMethod === 'transferencia'
+    ? `\nTransferencia a: ${TRANSFER_INFO.alias}\nTitular: ${TRANSFER_INFO.holder}`
+    : '';
 
   let financialBreakdown = `Total a abonar: $${order.total?.toLocaleString('es-AR')}`;
   if (order.surcharge > 0 || order.discount > 0 || order.deliveryCost > 0) {
@@ -57,7 +62,7 @@ Tu pedido:
 ${itemsList}
 
 ${deliveryInfo}
-Forma de Pago: ${paymentLabel}
+Forma de Pago: ${paymentLabel}${transferInfo}
 ${notesInfo}
 
 ${financialBreakdown}

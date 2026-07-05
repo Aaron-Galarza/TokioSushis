@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  TrendingUp, DollarSign, CreditCard, ShoppingBag, Star,
+  TrendingUp, DollarSign, CreditCard, Landmark, ShoppingBag, Star,
   Clock, AlertCircle, Power, Tag, Utensils, Bike, MapPin, Loader2,
 } from 'lucide-react';
 import { useAdminOverview } from '../hooks/useAdminOverview';
@@ -62,19 +62,20 @@ export function OverviewTab() {
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
         ) : a && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
             {[
               { icon: TrendingUp,  label: 'Ventas Totales', value: `$${(a.total ?? 0).toLocaleString('es-AR')}` },
               { icon: DollarSign,  label: 'Efectivo',       value: `$${(a.efectivo ?? 0).toLocaleString('es-AR')}` },
               { icon: CreditCard,  label: 'Débito',         value: `$${(a.debito ?? 0).toLocaleString('es-AR')}` },
               { icon: CreditCard,  label: 'Crédito',        value: `$${(a.credito ?? 0).toLocaleString('es-AR')}` },
+              { icon: Landmark,    label: 'Transferencia',  value: `$${(a.transferencia ?? 0).toLocaleString('es-AR')}` },
               { icon: ShoppingBag, label: 'Pedidos',        value: String(a.entregados ?? 0) },
               { icon: Star,        label: 'Más Vendido',    value: a.topProduct?.title || '—' },
             ].map(({ icon: Icon, label, value }, i) => (
               <div
                 key={label}
                 className={`bg-[#0A0A0A] rounded-lg p-3 border border-[#2A2A2A] flex flex-col gap-1.5
-                  ${i === 5 ? 'col-span-2 md:col-span-1' : ''}`}
+                  ${i === 6 ? 'col-span-2 md:col-span-1' : ''}`}
               >
                 <div className="flex items-center gap-1.5">
                   <Icon className="w-3.5 h-3.5 shrink-0 text-primary" />

@@ -1,9 +1,10 @@
 'use client';
 
-import { Plus, Minus, X, ShoppingBag, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, Minus, X, ShoppingBag, Loader2, ChevronDown, Landmark } from 'lucide-react';
 import { AddressAutocomplete } from '@/features/checkout/components/AddressAutocomplete';
 import { useQuickOrder } from '../hooks/useQuickOrder';
 import type { AddressResult } from '@/features/checkout/hooks/useAddressSearch';
+import { PAYMENT_LABELS, TRANSFER_INFO } from '@/constants/admin';
 
 interface Props {
   products: any[];
@@ -94,11 +95,11 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
 
             {/* Selector de Pago */}
             <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs font-semibold h-[38px]">
-              {([['cash', 'Efectivo'], ['debito', 'Débito'], ['credito', 'Crédito']] as const).map(([v, l]) => (
+              {Object.entries(PAYMENT_LABELS).map(([v, l]) => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => setPaymentMethod(v)}
+                  onClick={() => setPaymentMethod(v as any)}
                   className={`flex-1 px-1 py-2 transition-all text-center whitespace-nowrap ${
                     paymentMethod === v ? 'bg-primary text-black' : 'bg-[#111] text-white/40 hover:text-white'
                   }`}
@@ -108,6 +109,13 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
               ))}
             </div>
           </div>
+
+          {paymentMethod === 'transferencia' && (
+            <div className="flex items-center gap-2 bg-[#111] border border-primary/20 rounded-lg px-3 py-2 text-xs text-white/70">
+              <Landmark className="w-3.5 h-3.5 text-primary shrink-0" />
+              Recordá al cliente: <span className="font-semibold text-white">{TRANSFER_INFO.alias}</span> — Titular {TRANSFER_INFO.holder}
+            </div>
+          )}
 
           {/* Dirección */}
           {deliveryType === 'delivery' && (

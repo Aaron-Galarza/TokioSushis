@@ -19,7 +19,7 @@ export interface Order {
   customer: OrderCustomer;
   items: CartItem[];
   deliveryType: 'pickup' | 'delivery';
-  paymentMethod: 'cash' | 'debito' | 'credito'; // 👈 Sincronizado
+  paymentMethod: 'cash' | 'debito' | 'credito' | 'transferencia'; // 👈 Sincronizado
   notes?: string; // 👈 Agregado para que puedas visualizarlo en el admin
   couponCode?: string;
   subtotal: number;

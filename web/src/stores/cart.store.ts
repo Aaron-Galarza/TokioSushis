@@ -18,7 +18,7 @@ const areSameAddons = (a: CartAddon[], b: CartAddon[]) => {
 interface CartState {
   items: CartItem[];
   deliveryType: 'pickup' | 'delivery';
-  paymentMethod: 'cash' | 'debito' | 'credito' | null; // 💳 Sincronizado
+  paymentMethod: 'cash' | 'debito' | 'credito' | 'transferencia' | null; // 💳 Sincronizado
   coupon: Coupon | null;
   deliveryAddress: string;
   deliveryCoordinates: { lat: number; lng: number } | null;
@@ -32,7 +32,7 @@ interface CartState {
   clearCart: () => void;
 
   setDeliveryType: (type: 'pickup' | 'delivery') => void;
-  setPaymentMethod: (method: 'cash' | 'debito' | 'credito' | null) => void; // 💳 Sincronizado
+  setPaymentMethod: (method: 'cash' | 'debito' | 'credito' | 'transferencia' | null) => void; // 💳 Sincronizado
   setCoupon: (coupon: Coupon) => void;
   clearCoupon: () => void;
   setDeliveryAddress: (address: string, coords: { lat: number; lng: number }) => void;

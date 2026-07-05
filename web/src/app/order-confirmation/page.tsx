@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, MapPin, Wallet, Bike, ShoppingBag, ArrowLeft, UtensilsCrossed, FileText } from 'lucide-react';
+import { CheckCircle, MapPin, Wallet, Bike, ShoppingBag, ArrowLeft, UtensilsCrossed, FileText, Landmark } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
+import { TRANSFER_INFO } from '@/constants/admin';
 
 interface OrderSnapshot {
   orderNumber?: number;
@@ -11,6 +12,7 @@ interface OrderSnapshot {
   deliveryType: 'pickup' | 'delivery';
   deliveryAddress: string | null;
   paymentMethod: string;
+  rawPaymentMethod?: string;
   notes: string; // Recibido desde el sessionStorage
   items: {
     title: string;
@@ -79,11 +81,12 @@ export default function OrderConfirmationPage() {
 
   // Verificación de método de pago con tarjeta (débito o crédito)
   const normalizedPayment = order.paymentMethod.toLowerCase();
-  const isCardPayment = 
-    normalizedPayment.includes('debito') || 
-    normalizedPayment.includes('débito') || 
-    normalizedPayment.includes('credito') || 
+  const isCardPayment =
+    normalizedPayment.includes('debito') ||
+    normalizedPayment.includes('débito') ||
+    normalizedPayment.includes('credito') ||
     normalizedPayment.includes('crédito');
+  const isTransferPayment = (order.rawPaymentMethod ?? normalizedPayment) === 'transferencia';
 
   // Construcción dinámica del mensaje final según logística y pago
   const isDelivery = order.deliveryType === 'delivery';
@@ -95,6 +98,10 @@ export default function OrderConfirmationPage() {
     infoMessage += isDelivery
       ? ' Te estaremos enviando el link de pago para proceder con el abono de forma segura.'
       : ' Recordá que podrás abonar con posnet al momento de realizar el retiro en el local.';
+  }
+
+  if (isTransferPayment) {
+    infoMessage += ' Recordá enviarnos el comprobante de la transferencia por WhatsApp para confirmar tu pedido.';
   }
 
   return (
@@ -152,6 +159,21 @@ export default function OrderConfirmationPage() {
               <p className="text-sm text-white font-semibold">{order.paymentMethod}</p>
             </div>
           </div>
+
+          {isTransferPayment && (
+            <div className="flex items-start gap-3 border-t border-white/5 pt-3 mt-1">
+              <Landmark className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs text-white/40 uppercase tracking-wider">Datos para transferir</p>
+                <p className="text-sm text-white">
+                  Transferencia a: <span className="font-semibold">{TRANSFER_INFO.alias}</span>
+                </p>
+                <p className="text-sm text-white">
+                  Titular: <span className="font-semibold">{TRANSFER_INFO.holder}</span>
+                </p>
+              </div>
+            </div>
+          )}
 
           {order.notes && (
             <div className="flex items-start gap-3 border-t border-white/5 pt-2 mt-1">

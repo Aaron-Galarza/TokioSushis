@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { deliveryService } from '@/services/delivery.service';
 import { createAdminOrder } from '@/services/admin.service';
+import type { PaymentKey } from '@/constants/admin';
 
 export interface LineItem {
   productId: string;
@@ -18,7 +19,7 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
   const [open, setOpen] = useState(false);
   const [customer, setCustomer] = useState(BLANK_CUSTOMER);
   const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debito' | 'credito'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentKey>('cash');
   
   const [address, setAddress] = useState('');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);

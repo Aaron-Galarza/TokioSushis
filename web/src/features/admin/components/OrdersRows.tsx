@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, User, Phone, MapPin, Banknote, CreditCard, Bike, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, User, Phone, MapPin, Banknote, CreditCard, Landmark, Bike, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import { generateComandaHTML } from '../utils/generateComandaHTML';
 import { formatWhatsAppLink } from '../utils/whatsappMessage';
 import { ORDER_STATUS, STATUS_TRANSITIONS, type OrderStatusKey } from '@/constants/orderStatus';
@@ -69,8 +69,15 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORP
                 <span className="text-xs text-white/40">{isDelivery ? 'Delivery' : 'Retiro'}</span>
               </div>
               <div className="flex items-center gap-1">
-                {order.paymentMethod === 'cash' ? <Banknote className="w-3.5 h-3.5 text-emerald-400" /> : <CreditCard className="w-3.5 h-3.5 text-blue-400" />}
-                <span className="text-xs text-white/40">{order.paymentMethod === 'cash' ? 'Efectivo' : order.paymentMethod === 'debito' ? 'Débito' : 'Crédito'}</span>
+                {order.paymentMethod === 'cash' ? <Banknote className="w-3.5 h-3.5 text-emerald-400" />
+                  : order.paymentMethod === 'transferencia' ? <Landmark className="w-3.5 h-3.5 text-purple-400" />
+                  : <CreditCard className="w-3.5 h-3.5 text-blue-400" />}
+                <span className="text-xs text-white/40">
+                  {order.paymentMethod === 'cash' ? 'Efectivo'
+                    : order.paymentMethod === 'debito' ? 'Débito'
+                    : order.paymentMethod === 'transferencia' ? 'Transferencia'
+                    : 'Crédito'}
+                </span>
               </div>
             </div>
           </div>
