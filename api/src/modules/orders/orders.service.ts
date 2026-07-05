@@ -12,7 +12,9 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
  
   const storeStatus = await checkStoreStatus()
   if (!storeStatus.isOpen) {
-    throw new AppError(403, storeStatus.message || 'El negocio está cerrado en este momento')
+    // 423 (Locked) y no 403: el 403 está reservado por el middleware de auth para token inválido/expirado,
+    // y el interceptor del front desloguea ante cualquier 403. "Local cerrado" es una regla de negocio, no un tema de sesión.
+    throw new AppError(423, storeStatus.message || 'El negocio está cerrado en este momento')
   }
  
   const items: iCartItem[] = await Promise.all(
