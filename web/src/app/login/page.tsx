@@ -49,7 +49,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0A0A0A] px-4">
       <div className="mb-8 text-center">
         <h1 className="font-heading italic text-3xl font-semibold tracking-widest text-primary">
-          TOKIO SUSHIS
+          TOKYO SUSHIS
         </h1>
         <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/30">Panel de administración</p>
       </div>
