@@ -23,7 +23,7 @@ export function Footer() {
               <Clock className="w-5 h-5 text-primary mb-2" />
               <h3 className="text-white text-sm mb-1">Horarios</h3>
               <p className="text-muted-foreground text-xs">Lun - Dom</p>
-              <p className="text-muted-foreground text-xs">12:00 - 23:00</p>
+              <p className="text-muted-foreground text-xs">19:30 - 23:45</p>
             </div>
 
             {/* Dirección (Clickeable al Mapa) */}

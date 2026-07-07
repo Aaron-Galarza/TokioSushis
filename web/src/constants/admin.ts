@@ -12,7 +12,7 @@ export const PAYMENT_LABELS: Record<PaymentKey, string> = {
 // ── Datos de la cuenta para pagos por transferencia ────────────────────────
 export const TRANSFER_INFO = {
   alias:  'Tokyo.nx',
-  holder: 'Román Augusto',
+  holder: 'Román Augusto Gomez',
 } as const;
 
 // ── Días de la semana ───────────────────────────────────────────────────────
