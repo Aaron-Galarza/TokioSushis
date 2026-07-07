@@ -15,20 +15,28 @@ export const AddressMap = () => {
   const { deliveryCoordinates, deliveryType } = useCartStore();
 
   useEffect(() => {
-    if (deliveryType === 'pickup' || !deliveryCoordinates || !mapContainer.current) return;
+    // Limpiar mapa cuando cambia a pickup o no hay coordenadas
+    if (deliveryType === 'pickup' || !deliveryCoordinates) {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      marker.current = null;
+      return;
+    }
+
+    if (!mapContainer.current) return;
 
     if (!map.current) {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/dark-v11', 
+        style: 'mapbox://styles/mapbox/dark-v11',
         center: [deliveryCoordinates.lng, deliveryCoordinates.lat],
         zoom: 15.5,
-        interactive: false, 
+        interactive: false,
         attributionControl: false,
       });
 
-      // 👇 EL ANTÍDOTO PARA EL BUG DE TAILWIND:
-      // Apenas el mapa termine de inicializarse internamente, le obligamos a recalcular su tamaño real
       map.current.on('load', () => {
         map.current?.resize();
       });
@@ -39,7 +47,7 @@ export const AddressMap = () => {
       marker.current = new mapboxgl.Marker(customMarker)
         .setLngLat([deliveryCoordinates.lng, deliveryCoordinates.lat])
         .addTo(map.current);
-        
+
     } else {
       map.current.flyTo({
         center: [deliveryCoordinates.lng, deliveryCoordinates.lat],
@@ -47,8 +55,6 @@ export const AddressMap = () => {
         speed: 1.2
       });
       marker.current?.setLngLat([deliveryCoordinates.lng, deliveryCoordinates.lat]);
-      
-      // Por las dudas, forzamos un resize en cada actualización de coordenadas
       map.current.resize();
     }
   }, [deliveryCoordinates, deliveryType]);
