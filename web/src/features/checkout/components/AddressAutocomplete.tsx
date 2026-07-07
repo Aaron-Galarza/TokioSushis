@@ -1,7 +1,8 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Loader2, Search, X } from 'lucide-react';
+import { MapPin, Loader2, Search, X, Map } from 'lucide-react';
 import { useAddressSearch, AddressResult } from '@/features/checkout/hooks/useAddressSearch';
+import { MapPicker } from './MapPicker';
 
 interface Props {
   value: string;
@@ -21,6 +22,7 @@ export const AddressAutocomplete = ({
   const [inputValue, setInputValue]   = useState(value || '');
   const [isOpen, setIsOpen]           = useState(false);
   const [isSelected, setIsSelected]   = useState(!!value);
+  const [isMapOpen, setIsMapOpen]     = useState(false);
   const dropdownRef                   = useRef<HTMLDivElement>(null);
 
   const { results, loading } = useAddressSearch(isSelected ? '' : inputValue);
@@ -59,6 +61,12 @@ export const AddressAutocomplete = ({
     onClear();
   };
 
+  const handleMapSelect = (lat: number, lng: number, placeName: string) => {
+    setInputValue(placeName);
+    setIsSelected(true);
+    onChange({ placeName, lat, lng });
+  };
+
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <div className="relative">
@@ -73,16 +81,25 @@ export const AddressAutocomplete = ({
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full bg-zinc-900/80 border border-white/10 rounded-xl py-3.5 pl-10 pr-10 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all shadow-sm"
+          className="w-full bg-zinc-900/80 border border-white/10 rounded-xl py-3.5 pl-10 pr-20 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all shadow-sm"
         />
-        {inputValue && (
+        <div className="absolute inset-y-0 right-3 flex items-center gap-2">
           <button
-            onClick={handleClear}
-            className="absolute inset-y-0 right-3 flex items-center text-white/40 hover:text-white/90 transition-colors"
+            onClick={() => setIsMapOpen(true)}
+            className="text-white/40 hover:text-primary transition-colors p-1"
+            title="Seleccionar desde el mapa"
           >
-            <X className="w-4 h-4" />
+            <Map className="w-4 h-4" />
           </button>
-        )}
+          {inputValue && (
+            <button
+              onClick={handleClear}
+              className="text-white/40 hover:text-white/90 transition-colors p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {isOpen && inputValue.length >= 4 && !isSelected && (
@@ -122,6 +139,12 @@ export const AddressAutocomplete = ({
           )}
         </div>
       )}
+
+      <MapPicker
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        onSelectCoordinates={handleMapSelect}
+      />
     </div>
   );
 };

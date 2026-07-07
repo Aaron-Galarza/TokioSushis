@@ -47,8 +47,8 @@ export const useAddressSearch = (query: string) => {
         url.searchParams.append('country', 'ar');
         url.searchParams.append('language', 'es');
         
-        // 🎯 FILTRO EXCLUSIVO: Solo calles con numeración exacta
-        url.searchParams.append('types', 'address');
+        // 🎯 FILTROS: Direcciones exactas y lugares (para mayor cobertura)
+        url.searchParams.append('types', 'address,place');
         
         // 🗺️ LÍMITE GEOGRÁFICO: Encuadra estrictamente el Gran Resistencia (Fontana, Barranqueras, Vilelas)
         url.searchParams.append('bbox', '-59.0526,-27.4915,-58.8953,-27.4022');
