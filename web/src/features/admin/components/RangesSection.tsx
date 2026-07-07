@@ -21,7 +21,7 @@ export function RangesSection({ ranges, nRange, setNRange, rErr, addRange, delet
         <Route className="w-4 h-4 text-primary" />
         <h2 className="font-semibold text-white text-sm">Rangos por Kilómetro</h2>
       </div>
-      <div className="flex flex-col gap-2 mb-4 max-h-52 overflow-y-auto overscroll-contain scrollbar-none">
+      <div className="flex flex-col gap-2 mb-4 max-h-80 overflow-y-auto overscroll-contain scrollbar-none">
         {ranges.length === 0 && <p className="text-white/25 text-xs text-center py-3">Sin rangos configurados</p>}
         {ranges.map(r => (
           <div key={r._id} className="flex items-center justify-between bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-3">

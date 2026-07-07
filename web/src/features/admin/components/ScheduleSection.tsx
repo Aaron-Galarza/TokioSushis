@@ -37,7 +37,7 @@ export function ScheduleSection({ schedule, setSchedule, schedSaved, saveSchedul
               <input type="checkbox" checked={!item.isStoreOpen}
                 onChange={e => setSchedule(p => p.map((d, idx) => idx === i ? { ...d, isStoreOpen: !e.target.checked } : d))}
                 className="accent-primary" />
-              Cerrado
+              <span className="hidden md:inline">Cerrado</span>
             </label>
           </div>
         ))}
