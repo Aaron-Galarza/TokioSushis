@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { AppError } from '../../utils/AppError';
 
-const FOLDER_NAME = 'tokiosushis/galeria';
+const FOLDER_NAME = 'TokyoSushis';
 
 const ensureConfig = () => {
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {

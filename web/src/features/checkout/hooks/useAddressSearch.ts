@@ -35,7 +35,14 @@ export const useAddressSearch = (query: string) => {
         // Usamos Geocoding v6 (la recomendada para calles y alturas estables)
         const url = new URL('https://api.mapbox.com/search/geocode/v6/forward');
         
-        url.searchParams.append('q', query);
+        // Si el último token es un número (altura), lo cerramos con un espacio:
+        // Mapbox autocompleta el último token como prefijo, y un número a medio
+        // escribir nunca matchea una altura real hasta que se marca como "completo".
+        const trimmedQuery = query.trim();
+        const lastToken = trimmedQuery.split(/\s+/).pop() || '';
+        const finalQuery = /^\d+$/.test(lastToken) ? `${trimmedQuery} ` : trimmedQuery;
+
+        url.searchParams.append('q', finalQuery);
         url.searchParams.append('access_token', token);
         url.searchParams.append('country', 'ar');
         url.searchParams.append('language', 'es');
