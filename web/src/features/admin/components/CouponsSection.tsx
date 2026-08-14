@@ -12,6 +12,7 @@ interface OrdersState {
   expandedId: string | null;
   setExpandedId: (id: string | null) => void;
   updateStatus: (id: string, status: string) => Promise<void>;
+  removeOrder: (id: string) => Promise<void>;
 }
 
 interface CouponsState {
@@ -44,6 +45,7 @@ export function CouponsSection({ orders, coupons }: Props) {
           expandedId={orders.expandedId}
           setExpandedId={orders.setExpandedId}
           updateStatus={orders.updateStatus}
+          onDelete={orders.removeOrder}
         />
       </AdminCard>
 
