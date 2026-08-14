@@ -96,19 +96,27 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   let delivery = orderData.delivery
 
   if (orderData.deliveryType === 'delivery') {
+    const address = orderData.delivery?.address ?? orderData.customer?.address
     const coordinates = orderData.delivery?.coordinates
-    if (typeof coordinates?.lat !== 'number' || typeof coordinates?.lng !== 'number') {
-      throw new AppError(400, 'Las coordenadas son obligatorias para envíos')
+
+    delivery = {
+      address,
+      ...(coordinates ? { coordinates } : {}),
     }
 
-    const deliveryCalculation = await calculateDelivery(coordinates.lat, coordinates.lng)
-    deliveryCost = deliveryCalculation.deliveryCost
-    delivery = {
-      address: orderData.delivery?.address ?? orderData.customer?.address,
-      coordinates,
-      distanceKm: deliveryCalculation.distanceKm
+    const hasCoordinates = typeof coordinates?.lat === 'number' && typeof coordinates?.lng === 'number'
+
+    if (hasCoordinates) {
+      try {
+        const deliveryCalculation = await calculateDelivery(coordinates.lat, coordinates.lng)
+        deliveryCost = deliveryCalculation.deliveryCost
+        delivery.distanceKm = deliveryCalculation.distanceKm
+        total += deliveryCost
+      } catch (error) {
+        // 📦 Mapbox no pudo calcular la ruta: el pedido se crea igual y el costo se coordina por WhatsApp
+        console.error('[DELIVERY_CALC_ERROR]', error)
+      }
     }
-    total += deliveryCost
   }
 
   // 🔥 RECARGO POR TARJETA DE CRÉDITO (15%)

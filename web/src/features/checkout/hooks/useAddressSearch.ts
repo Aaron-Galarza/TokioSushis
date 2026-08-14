@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 
 export interface AddressResult {
   placeName: string;
-  lat: number;
-  lng: number;
+  /** Opcional: cuando Mapbox no encuentra la dirección, el usuario puede confirmar el texto sin coordenadas */
+  lat?: number;
+  lng?: number;
 }
 
 export const useAddressSearch = (query: string) => {

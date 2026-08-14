@@ -124,7 +124,12 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                 value={address}
                 onChange={(r: AddressResult) => {
                   setAddress(r.placeName);
-                  setCoords({ lat: r.lat, lng: r.lng });
+                  // El admin sigue necesitando una dirección geolocalizada para cobrar envío automático
+                  setCoords(
+                    r.lat !== undefined && r.lng !== undefined
+                      ? { lat: r.lat, lng: r.lng }
+                      : null
+                  );
                 }}
                 onClear={() => {
                   setAddress('');

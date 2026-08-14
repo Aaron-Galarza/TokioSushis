@@ -42,10 +42,12 @@ export function useCheckout() {
   const [couponError, setCouponError]       = useState('');
   const [submitting, setSubmitting]         = useState(false);
   const [submitError, setSubmitError]       = useState('');
+  // 📦 Dirección sin geolocalizar: Mapbox no la encontró, el costo se coordina por WhatsApp
+  const [unresolvedAddressModal, setUnresolvedAddressModal] = useState(false);
 
   const isConfirmDisabled =
     items.length === 0 || !name.trim() || !phone.trim() || !paymentMethod ||
-    (deliveryType === 'delivery' && !deliveryCoordinates) || isDeliveryLoading || submitting;
+    (deliveryType === 'delivery' && !deliveryAddress) || isDeliveryLoading || submitting;
 
   const validateCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -67,6 +69,17 @@ export function useCheckout() {
 
   const handleConfirmOrder = async () => {
     if (isConfirmDisabled) return;
+
+    // 📦 Dirección sin coordenadas → avisamos que el envío se coordina por WhatsApp
+    if (deliveryType === 'delivery' && !deliveryCoordinates) {
+      setUnresolvedAddressModal(true);
+      return;
+    }
+
+    await submitOrder();
+  };
+
+  const submitOrder = async () => {
     setSubmitting(true); setSubmitError('');
     try {
       const payload: Record<string, any> = {
@@ -84,8 +97,8 @@ export function useCheckout() {
         paymentMethod,
         notes: notes.trim(),
         ...(coupon && couponCode ? { couponCode: couponCode.trim() } : {}),
-        ...(deliveryType === 'delivery' && deliveryCoordinates
-          ? { delivery: { address: deliveryAddress, coordinates: deliveryCoordinates } }
+        ...(deliveryType === 'delivery'
+          ? { delivery: { address: deliveryAddress, ...(deliveryCoordinates ? { coordinates: deliveryCoordinates } : {}) } }
           : {}),
       };
 
@@ -135,6 +148,12 @@ export function useCheckout() {
     paymentMethod, setPaymentMethod,
     couponCode, couponLoading, couponError, validateCoupon, handleCouponInput,
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,
+    unresolvedAddressModal,
+    confirmUnresolvedDelivery: async () => {
+      setUnresolvedAddressModal(false);
+      await submitOrder();
+    },
+    cancelUnresolvedDelivery: () => setUnresolvedAddressModal(false),
     subtotal, discount, surcharge, total, // ⚡ Retorna el recargo dinámico
   };
 }

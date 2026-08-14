@@ -14,7 +14,13 @@ export const CheckoutAddressAdapter = () => {
   const clearDelivery      = useCartStore((s) => s.clearDelivery);
 
   const handleChange = (result: AddressResult) => {
-    setDeliveryAddress(result.placeName, { lat: result.lat, lng: result.lng });
+    if (result.lat !== undefined && result.lng !== undefined) {
+      setDeliveryAddress(result.placeName, { lat: result.lat, lng: result.lng });
+    } else {
+      // Dirección libre sin geolocalizar: limpiamos costo/distancia previos
+      clearDelivery();
+      setDeliveryAddress(result.placeName, null);
+    }
   };
 
   return (

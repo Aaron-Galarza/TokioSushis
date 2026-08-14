@@ -55,6 +55,13 @@ export const AddressAutocomplete = ({
     onChange(result);
   };
 
+  // Confirmar el texto escrito tal cual, sin coordenadas (Mapbox no lo encontró)
+  const handleUseRawText = () => {
+    const raw = inputValue.trim();
+    if (!raw) return;
+    handleSelect({ placeName: raw });
+  };
+
   const handleClear = () => {
     setInputValue('');
     setIsSelected(false);
@@ -133,8 +140,16 @@ export const AddressAutocomplete = ({
               })}
             </ul>
           ) : (
-            <div className="p-4 text-center text-sm text-white/60">
-              No encontramos esa dirección, intentá con más detalle
+            <div className="p-4 flex flex-col gap-3">
+              <div className="text-center text-sm text-white/60">
+                No encontramos esa dirección, intentá con más detalle
+              </div>
+              <button
+                onClick={handleUseRawText}
+                className="w-full px-4 py-2.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-sm font-semibold transition-all active:scale-95"
+              >
+                Usar esta dirección de todos modos
+              </button>
             </div>
           )}
         </div>

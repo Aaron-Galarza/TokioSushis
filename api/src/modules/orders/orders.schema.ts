@@ -54,11 +54,12 @@ export const createOrderSchema = z.object({
   }).optional(),
 }).superRefine((data, ctx) => {
   if (data.deliveryType === 'delivery') {
-    if (!data.delivery?.coordinates?.lat || !data.delivery?.coordinates?.lng) {
+    const address = data.delivery?.address ?? data.customer?.address;
+    if (!address || !address.trim()) {
       ctx.addIssue({
         code: "custom",
-        message: 'Las coordenadas geográficas (lat y lng) son obligatorias para envíos a domicilio',
-        path: ['delivery', 'coordinates'],
+        message: 'La dirección es obligatoria para envíos a domicilio',
+        path: ['delivery', 'address'],
       });
     }
   }

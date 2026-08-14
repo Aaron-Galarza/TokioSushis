@@ -1,13 +1,13 @@
 'use client';
 
-import { Store, Loader2, MapPin, AlertCircle, Bike } from 'lucide-react';
+import { Store, Loader2, MapPin, AlertCircle, Bike, MessageCircle } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
 import { useDelivery } from '@/features/checkout/hooks/useDelivery';
 import { formatPrice, formatDistance } from '@/lib/format';
 
 export const DeliveryCostPreview = () => {
   // 1. Nos traemos la data del store
-  const { deliveryType, deliveryAddress, distanceKm, deliveryCost } = useCartStore();
+  const { deliveryType, deliveryAddress, distanceKm, deliveryCost, deliveryCoordinates } = useCartStore();
 
   // 2. Nos conectamos al hook que orquesta todo por detrás
   const { loading, error } = useDelivery();
@@ -27,6 +27,18 @@ export const DeliveryCostPreview = () => {
     return (
       <div className="p-4 mt-4 border border-white/5 border-dashed rounded-xl flex items-center justify-center text-white/30 text-sm animate-in fade-in duration-300">
         Ingresá tu dirección para calcular el envío
+      </div>
+    );
+  }
+
+  // 📦 Dirección confirmada sin geolocalizar: Mapbox no la encontró, costo se coordina por WhatsApp
+  if (deliveryAddress && !deliveryCoordinates && !loading) {
+    return (
+      <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+        <MessageCircle className="w-5 h-5 shrink-0 mt-0.5" />
+        <span className="text-sm font-medium">
+          No pudimos estimar el envío a esta dirección, pero en breves te lo confirmamos por WhatsApp.
+        </span>
       </div>
     );
   }

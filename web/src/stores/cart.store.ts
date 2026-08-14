@@ -35,7 +35,7 @@ interface CartState {
   setPaymentMethod: (method: 'cash' | 'debito' | 'credito' | 'transferencia' | null) => void; // 💳 Sincronizado
   setCoupon: (coupon: Coupon) => void;
   clearCoupon: () => void;
-  setDeliveryAddress: (address: string, coords: { lat: number; lng: number }) => void;
+  setDeliveryAddress: (address: string, coords: { lat: number; lng: number } | null) => void;
   setDeliveryCost: (cost: number, distanceKm: number) => void;
   clearDelivery: () => void;
 
