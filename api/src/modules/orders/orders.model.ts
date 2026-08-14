@@ -47,6 +47,7 @@ export interface iOrder extends Document {
   };
   total: number;
   status: OrderStatus;
+  deleted: boolean;
   createdAt: Date;
 }
 
@@ -96,6 +97,7 @@ const OrderSchema = new Schema<iOrder>({
   },
   total: { type: Number, required: true, min: 0 },
   status: { type: String, enum: validOrderStatus, default: 'pending' },
+  deleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
 OrderSchema.index({ createdAt: -1 });

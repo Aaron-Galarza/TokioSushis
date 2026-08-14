@@ -55,6 +55,7 @@ export function OrdersTab({ hook, menu }: { hook: OrdersHook; menu: MenuHook }) 
         expandedId={hook.expandedId}
         setExpandedId={hook.setExpandedId}
         updateStatus={hook.updateStatus}
+        onDelete={hook.removeOrder}
         onRefresh={hook.reload}
       />
     </AdminCard>

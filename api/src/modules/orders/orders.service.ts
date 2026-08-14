@@ -154,7 +154,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
 }
 
 export const getAllOrders = async (): Promise<iOrder[]> => {
-  return await OrderModel.find().sort({ createdAt: -1 })
+  return await OrderModel.find({ deleted: { $ne: true } }).sort({ createdAt: -1 })
 }
 
 export const getOrdersRange = async (range: Range): Promise<iOrder[]> => {
@@ -163,7 +163,7 @@ export const getOrdersRange = async (range: Range): Promise<iOrder[]> => {
   const filter: any = { $gte: start };
   if (range === 'ayer') filter.$lt = argToUTC(getRangeStartDate('hoy'));
 
-  return await OrderModel.find({ createdAt: filter }).lean().sort({ createdAt: -1 });
+  return await OrderModel.find({ deleted: { $ne: true }, createdAt: filter }).lean().sort({ createdAt: -1 });
 }
 
 // Reemplazar la función update en orders.service.ts
@@ -230,4 +230,33 @@ export const update = async (
   }
 
   return updatedOrder;
+};
+
+export const softDelete = async (id: string): Promise<iOrder | null> => {
+  const order = await OrderModel.findById(id);
+  if (!order) return null;
+  if (order.deleted) return order;
+
+  // Si estaba entregado, revertir analiticas (el pedido ya sumó al entregarse)
+  if (order.status === 'delivered') {
+    await revertAnalyticsOnDelivery(order);
+  }
+
+  // Reponer stock salvo que ya esté cancelado (el cancelado ya repuso stock)
+  if (order.status !== 'cancelled') {
+    console.log(`[STOCK] Devolviendo stock por anulacion del pedido ${order._id}`);
+    for (const item of order.items) {
+      const product = await ProductService.viewById(item.productId);
+      if (product && product.controlStock) {
+        product.stock += item.quantity;
+        await product.save();
+        console.log(`   -> Repuesto "${product.title}": +${item.quantity} (Nuevo Stock: ${product.stock})`);
+      }
+    }
+  }
+
+  order.deleted = true;
+  const saved = await order.save();
+  console.log(`[PEDIDO] Pedido ${saved._id} anulado`);
+  return saved;
 };

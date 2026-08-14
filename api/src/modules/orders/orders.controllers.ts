@@ -54,3 +54,13 @@ export const updateStatusOrder = asyncHandler(async (req: Request, res: Response
   if (status) getIO().to('admins').emit('order-updated', { id, status })
   return sendSucces(res, order, 200)
 })
+
+export const deleteOrder = asyncHandler(async (req: Request, res: Response) => {
+  const id = req.params.id as string
+
+  const order = await OrderService.softDelete(id)
+  if (!order) return sendError(res, 'Pedido no encontrado', 404)
+
+  getIO().to('admins').emit('order-deleted', { id: order._id })
+  return sendSucces(res, order, 200)
+})

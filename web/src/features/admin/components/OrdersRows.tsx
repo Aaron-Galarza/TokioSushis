@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, User, Phone, MapPin, Banknote, CreditCard, Landmark, Bike, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, User, Phone, MapPin, Banknote, CreditCard, Landmark, Bike, Printer, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { generateComandaHTML } from '../utils/generateComandaHTML';
 import { formatWhatsAppLink } from '../utils/whatsappMessage';
 import { formatOrderNumber } from '@/lib/format';
@@ -12,14 +12,22 @@ interface ORProps {
   expanded: boolean;
   onToggle: () => void;
   onStatus: (id: string, s: string) => void;
+  onDelete: (id: string) => Promise<void>;
   onRefresh?: () => void;
 }
 
-export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORProps) {
+export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, onRefresh }: ORProps) {
   const status = ORDER_STATUS[order.status as OrderStatusKey] ?? ORDER_STATUS.pending;
   const transition = STATUS_TRANSITIONS[order.status as OrderStatusKey];
   const num = formatOrderNumber(order);
   const isDelivery = order.deliveryType === 'delivery';
+
+  const handleDelete = () => {
+    const ok = window.confirm(
+      '¿Anular este pedido? Se revertirá por completo de la página.'
+    );
+    if (ok) onDelete(order._id);
+  };
 
   const handlePrint = () => {
     const htmlContent = generateComandaHTML(order);
@@ -87,6 +95,9 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onRefresh }: ORP
         <div className="flex flex-col gap-2 shrink-0">
           <button onClick={e => { e.stopPropagation(); handlePrint(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-primary/20 hover:text-primary text-white/30 transition-all" title="Imprimir comanda">
             <Printer className="w-4 h-4" />
+          </button>
+          <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-red-500/20 hover:text-red-400 text-white/30 transition-all" title="Anular pedido">
+            <Trash2 className="w-4 h-4" />
           </button>
           <button onClick={e => { e.stopPropagation(); onToggle(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-white/10 text-white/30 transition-all">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

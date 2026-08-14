@@ -8,6 +8,7 @@ export const updateOrderStatus = (id: string, status: string, deliveryCost?: num
   api.put(`/orders/admin/${id}`, { status, ...(deliveryCost !== undefined ? { deliveryCost } : {}) });
 export const updateOrderDeliveryCost = (id: string, deliveryCost: number) =>
   api.put(`/orders/admin/${id}`, { deliveryCost });
+export const deleteOrder = (id: string) => api.delete(`/orders/admin/${id}`);
 export const createAdminOrder = (payload: Record<string, any>) =>
   api.post('/orders', payload).then(r => r.data);
 

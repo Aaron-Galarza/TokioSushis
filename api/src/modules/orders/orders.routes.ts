@@ -11,5 +11,6 @@ router.post('/', ordersLimiter, validate(createOrderSchema), OrderController.cre
 router.put('/admin/:id', isAdmin, OrderController.updateStatusOrder)
 router.get('/admin', isAdmin, OrderController.getAllOrders);
 router.get('/admin/range', isAdmin, OrderController.getOrdersRange);
+router.delete('/admin/:id', isAdmin, OrderController.deleteOrder);
 
 export default router;

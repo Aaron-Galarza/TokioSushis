@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { fetchAdminOrders, updateOrderStatus as apiUpdateStatus } from '@/services/admin.service';
+import { fetchAdminOrders, updateOrderStatus as apiUpdateStatus, deleteOrder as apiDeleteOrder } from '@/services/admin.service';
 import type { AdminRange } from '@/services/admin.service';
 
 // 🔥 Sumamos 'delivered' a los filtros válidos del Frontend
@@ -44,6 +44,11 @@ export function useAdminOrders() {
     reload();
   }, [reload]);
 
+  const removeOrder = useCallback(async (id: string) => {
+    await apiDeleteOrder(id);
+    reload();
+  }, [reload]);
+
   return { 
     orders, 
     sFilter, 
@@ -55,6 +60,7 @@ export function useAdminOrders() {
     oCounts, 
     filteredOrders, 
     updateStatus, 
+    removeOrder, 
     reload 
   };
 }
