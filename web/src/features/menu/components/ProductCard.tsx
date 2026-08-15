@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, PackageX } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
 import { formatPrice } from '@/lib/format';
+import { cloudinaryImage } from '@/lib/image';
 import type { Product } from '@/types';
 
 interface ProductCardProps {
@@ -38,9 +39,11 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
         <div className="w-[88px] h-[88px] rounded-xl overflow-hidden bg-zinc-800">
           {!imageError && isValidImage ? (
             <img
-              src={product.image}
+              src={cloudinaryImage(product.image, 400)}
               alt={product.title}
               className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale opacity-50' : ''}`}
+              loading="lazy"
+              decoding="async"
               onError={() => setImageError(true)}
             />
           ) : (

@@ -11,42 +11,61 @@ export interface DeliveryServiceResponse {
   error?: string;
 }
 
+// Dedup de requests en vuelo: useDelivery se instancia en dos componentes
+// (useCheckout y DeliveryCostPreview) y ambos disparan el cálculo con las
+// mismas coordenadas. Con esto sale una sola llamada HTTP al backend.
+const inFlight = new Map<string, Promise<DeliveryServiceResponse>>();
+
+const doCalculate = async (lat: number, lng: number): Promise<DeliveryServiceResponse> => {
+  try {
+    const response = await fetch(`${API_URL}/delivery/calculate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ lat, lng }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || 'Error del servidor al calcular el envío');
+    }
+
+    const json = await response.json();
+
+    if (!json.success) {
+      throw new Error(json.error || 'No se pudo calcular el costo de envío');
+    }
+
+    return {
+      success: true,
+      data: {
+        distanceKm: json.data.distanceKm,
+        deliveryCost: json.data.deliveryCost,
+      },
+    };
+
+  } catch (error: any) {
+    console.error('[Delivery Service Error]:', error);
+    return {
+      success: false,
+      error: error.message || 'Ocurrió un error inesperado de conexión',
+    };
+  }
+};
+
 export const deliveryService = {
   calculateDeliveryCost: async (lat: number, lng: number): Promise<DeliveryServiceResponse> => {
+    const k = `${lat},${lng}`;
+    const existing = inFlight.get(k);
+    if (existing) return existing;
+
+    const promise = doCalculate(lat, lng);
+    inFlight.set(k, promise);
     try {
-      const response = await fetch(`${API_URL}/delivery/calculate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ lat, lng }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || 'Error del servidor al calcular el envío');
-      }
-
-      const json = await response.json();
-
-      if (!json.success) {
-        throw new Error(json.error || 'No se pudo calcular el costo de envío');
-      }
-
-      return {
-        success: true,
-        data: {
-          distanceKm: json.data.distanceKm,
-          deliveryCost: json.data.deliveryCost,
-        },
-      };
-
-    } catch (error: any) {
-      console.error('[Delivery Service Error]:', error);
-      return {
-        success: false,
-        error: error.message || 'Ocurrió un error inesperado de conexión',
-      };
+      return await promise;
+    } finally {
+      inFlight.delete(k);
     }
   },
 };

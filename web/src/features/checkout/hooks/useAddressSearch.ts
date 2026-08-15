@@ -9,6 +9,31 @@ export interface AddressResult {
   lng?: number;
 }
 
+// 🛟 Fallback con Google Geocoding a través del backend (la key queda en el server).
+// Solo se llama cuando Mapbox no encontró nada y la consulta tiene altura,
+// para ahorrar la cuota gratuita de Google.
+const fetchGoogleGeocode = async (query: string, signal: AbortSignal): Promise<AddressResult[]> => {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    const url = new URL(`${apiUrl}/geocoding/google`);
+    url.searchParams.append('query', query);
+
+    const response = await fetch(url.toString(), { signal });
+    if (!response.ok) return [];
+
+    const json = await response.json();
+    const data = json?.data ?? [];
+    return (Array.isArray(data) ? data : []).map((r: any) => ({
+      placeName: r.placeName,
+      lat: r.lat,
+      lng: r.lng,
+    }));
+  } catch (error: any) {
+    if (error?.name === 'AbortError') throw error;
+    return [];
+  }
+};
+
 export const useAddressSearch = (query: string) => {
   const [results, setResults] = useState<AddressResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,8 +85,9 @@ export const useAddressSearch = (query: string) => {
         const response = await fetch(url.toString(), { signal });
         const data = await response.json();
 
+        let mappedResults: AddressResult[] = [];
         if (data.features) {
-          const mappedResults: AddressResult[] = data.features.map((feature: any) => {
+          mappedResults = data.features.map((feature: any) => {
             const props = feature.properties;
             // Estructuramos el texto limpio: "Calle Altura, Ciudad, Provincia"
             const placeText = props.full_address 
@@ -74,9 +100,15 @@ export const useAddressSearch = (query: string) => {
               lat: feature.geometry.coordinates[1],
             };
           });
-          
-          setResults(mappedResults);
         }
+
+        // 🛟 Fallback Google: solo si Mapbox no encontró nada Y la consulta
+        // tiene altura (número al final), para no gastar cuota en nombres sueltos.
+        if (mappedResults.length === 0 && /^\d+$/.test(lastToken)) {
+          mappedResults = await fetchGoogleGeocode(trimmedQuery, signal);
+        }
+
+        setResults(mappedResults);
       } catch (error: any) {
         if (error.name === 'AbortError') return;
         console.error('Error fetching addresses:', error);

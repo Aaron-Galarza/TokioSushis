@@ -15,3 +15,11 @@ export const couponLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 })
+
+export const geocodingLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { success: false, error: 'Demasiadas búsquedas. Intentá de nuevo en un momento.' },
+  standardHeaders: true,
+  legacyHeaders: false
+})

@@ -2,6 +2,7 @@
 
 import { Search, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { cloudinaryImage } from '@/lib/image';
 
 interface HeroProps {
   banner: string;
@@ -33,7 +34,13 @@ export const FeaturedBanner = ({
     <section className="relative w-full min-h-[440px] flex flex-col items-center justify-center overflow-hidden">
       {/* Background image */}
       {banner ? (
-        <img src={banner} alt="Tokyo Sushis" className="absolute inset-0 w-full h-full object-cover" />
+        <img
+          src={cloudinaryImage(banner, 1600)}
+          alt="Tokyo Sushis"
+          className="absolute inset-0 w-full h-full object-cover"
+          fetchPriority="high"
+          decoding="async"
+        />
       ) : (
         <div className="absolute inset-0 bg-zinc-900" />
       )}
