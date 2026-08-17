@@ -110,9 +110,9 @@ export function Footer() {
               <p className="text-[9px] font-medium text-muted-foreground leading-tight">
                 Desarrollado por
               </p>
-              <p className="text-[10px] font-extrabold text-primary tracking-wide">
+              <a href="https://www.afdevelopers.com/" className="text-[10px] font-extrabold text-primary tracking-wide">
                 AFdevelopers
-              </p>
+              </a>
             </div>
           </div>
         </div>
