@@ -89,6 +89,17 @@ async function main() {
   const payload = (productId) => ({ customer: { name: 'Cliente', phone: '123456789' },
     items: [{ productId: productId.toString(), quantity: 1 }], deliveryType: 'pickup', paymentMethod: 'cash' });
   const otherCategory = await CategoriaModel.create({ branchId: a._id, name: 'Other', active: true });
+  const noStock = await ProductModel.create({ branchId: a._id, title: 'NoStock', price: 100,
+    category: catA._id, active: true, controlStock: false });
+  const validAddon = await AdicionalModel.create({ branchId: a._id, title: 'Valid', price: 10,
+    categories: [catA._id], active: true });
+  const addonOrder = payload(noStock._id);
+  addonOrder.items[0].quantity = 2;
+  addonOrder.items[0].addons = [{ addonId: validAddon._id.toString(), quantity: 2 }];
+  const priced = await request(url, '/orders', { method: 'POST', slug: a.slug,
+    key: 'addon-price-00001', body: addonOrder });
+  assert.equal(priced.status, 201);
+  assert.equal(priced.body.data.subtotal, 240);
   const wrongAddon = await AdicionalModel.create({ branchId: a._id, title: 'Wrong', price: 10,
     categories: [otherCategory._id], active: true });
   const invalidAddonOrder = payload(limited._id);

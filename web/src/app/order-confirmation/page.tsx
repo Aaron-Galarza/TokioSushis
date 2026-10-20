@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, MapPin, Wallet, Bike, ShoppingBag, ArrowLeft, UtensilsCrossed, FileText, Landmark } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
 import { useBranchPath } from '@/hooks/useBranchPath';
+import { useBranchStore } from '@/stores/branch.store';
 
 interface OrderSnapshot {
-  orderNumber?: number;
+  orderNumber?: number | string;
   customerName: string;
   deliveryType: 'pickup' | 'delivery';
   deliveryAddress: string | null;
@@ -34,11 +35,14 @@ interface OrderSnapshot {
 export default function OrderConfirmationPage() {
   const router = useRouter();
   const branchPath = useBranchPath();
+  const slug = useBranchStore((s) => s.branch?.slug);
   const [order, setOrder] = useState<OrderSnapshot | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('order_confirmation');
+    if (!slug) return;
+    const key = `order_confirmation:${slug}`;
+    const raw = sessionStorage.getItem(key);
     if (!raw) {
       setOrder(prev => {
         if (!prev) setNotFound(true);
@@ -49,11 +53,11 @@ export default function OrderConfirmationPage() {
     try {
       const parsed = JSON.parse(raw);
       setOrder(parsed);
-      sessionStorage.removeItem('order_confirmation');
+      sessionStorage.removeItem(key);
     } catch {
       setNotFound(true);
     }
-  }, []);
+  }, [slug]);
 
   if (notFound) {
     return (

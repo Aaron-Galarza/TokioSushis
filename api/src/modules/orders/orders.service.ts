@@ -125,9 +125,8 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
   )
 
   const subTotal = items.reduce((acc, item) => {
-    const itemTotal   = item.price * item.quantity
     const addonsTotal = (item.addons || []).reduce((a, addon) => a + addon.price * addon.quantity, 0)
-    return acc + itemTotal + addonsTotal
+    return acc + item.quantity * (item.price + addonsTotal)
   }, 0)
  
   let total = subTotal
