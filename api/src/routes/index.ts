@@ -12,6 +12,7 @@ import deliveryRoutes from '../modules/delivery/delivery.routes'
 import galleryRoutes from '../modules/gallery/gallery.routes'
 import geocodingRoutes from '../modules/geocoding/geocoding.routes'
 import branchRoutes from '../modules/branches/branch.routes'
+import ownerRoutes from '../modules/owner/owner.routes'
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.use('/coupons', couponsRoutes);
 router.use('/gallery', galleryRoutes);
 router.use('/geocoding', geocodingRoutes);
 router.use('/branches', branchRoutes);
+router.use('/owner', ownerRoutes);
 
 router.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

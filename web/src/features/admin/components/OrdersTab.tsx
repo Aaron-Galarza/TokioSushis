@@ -16,7 +16,7 @@ const TIME_FILTERS: { v: AdminRange; l: string }[] = [
   { v: 'mes', l: 'Este mes' },
 ];
 
-export function OrdersTab({ hook, menu }: { hook: OrdersHook; menu: MenuHook }) {
+export function OrdersTab({ hook, menu, canDelete = true }: { hook: OrdersHook; menu: MenuHook; canDelete?: boolean }) {
   return (
     <AdminCard>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -56,6 +56,7 @@ export function OrdersTab({ hook, menu }: { hook: OrdersHook; menu: MenuHook }) 
         setExpandedId={hook.setExpandedId}
         updateStatus={hook.updateStatus}
         onDelete={hook.removeOrder}
+        canDelete={canDelete}
         onRefresh={hook.reload}
       />
     </AdminCard>

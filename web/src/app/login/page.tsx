@@ -11,11 +11,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuthStore();
+  const role = useAuthStore((s) => s.role);
+  const branch = useAuthStore((s) => s.branch);
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) router.replace('/admin');
-  }, [isAuthenticated, router]);
+    if (isAuthenticated && role === 'owner') router.replace('/owner');
+    else if (isAuthenticated && branch?.slug) router.replace(`/admin/s/${branch.slug}`);
+  }, [isAuthenticated, role, branch?.slug, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +33,12 @@ export default function LoginPage() {
         throw new Error('El backend respondió, pero no se encontró un token válido en la respuesta.');
       }
 
-      login(token);
-      setTimeout(() => { router.push('/admin'); }, 150);
+      const returnedRole = res.data?.data?.role;
+      const returnedBranch = res.data?.data?.branch ?? null;
+      if (!['admin', 'encargado', 'owner'].includes(returnedRole)) throw new Error('Rol de usuario inválido');
+      if (returnedRole !== 'owner' && !returnedBranch?.slug) throw new Error('Cuenta sin sucursal asignada');
+      login(token, returnedRole, returnedBranch);
+      router.replace(returnedRole === 'owner' ? '/owner' : `/admin/s/${returnedBranch.slug}`);
     } catch (err: any) {
       if (err.response) {
         setError(err.response.data?.error || err.response.data?.message || 'Credenciales inválidas');

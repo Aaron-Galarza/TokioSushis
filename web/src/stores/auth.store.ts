@@ -7,9 +7,11 @@ interface AuthState {
   // Estado
   token: string | null;
   isAuthenticated: boolean;
+  role: 'admin' | 'encargado' | 'owner' | null;
+  branch: { id: string; name: string; slug: string } | null;
 
   // Acciones
-  login: (token: string) => void;
+  login: (token: string, role: 'admin' | 'encargado' | 'owner', branch: AuthState['branch']) => void;
   logout: () => void;
 }
 
@@ -20,11 +22,15 @@ export const useAuthStore = create<AuthState>()(
       // --- ESTADO INICIAL ---
       token: null,
       isAuthenticated: false,
+      role: null,
+      branch: null,
 
-      login: (token: string) => {
+      login: (token, role, branch) => {
         set({ 
           token, 
-          isAuthenticated: true 
+          isAuthenticated: true,
+          role,
+          branch,
         });
       },
 
@@ -32,7 +38,9 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         set({ 
           token: null, 
-          isAuthenticated: false 
+          isAuthenticated: false,
+          role: null,
+          branch: null,
         });
       },
     }),

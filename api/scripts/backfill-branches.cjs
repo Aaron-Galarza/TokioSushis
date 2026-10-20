@@ -50,6 +50,7 @@ const branchIndexes = {
   orders: [
     [{ branchId: 1, createdAt: -1 }, {}],
     [{ branchId: 1, status: 1, createdAt: -1 }, {}],
+    [{ createdAt: -1 }, {}],
     [{ branchId: 1, idempotencyKey: 1 }, { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }],
   ],
   configs: [[{ branchId: 1 }, { unique: true }]],

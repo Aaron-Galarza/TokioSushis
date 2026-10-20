@@ -44,14 +44,14 @@ api.interceptors.request.use(
       return config;
     }
 
-    const slug = /^\/s\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/|$)/.exec(window.location.pathname)?.[1];
-    if (slug) {
-      config.headers.set('X-Branch-Slug', slug);
-    }
+    const publicSlug = /^\/s\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/|$)/.exec(window.location.pathname)?.[1];
 
     try {
       const { useAuthStore } = await loadAuthStoreModule();
-      const token = useAuthStore.getState().token;
+      const { token, branch } = useAuthStore.getState();
+
+      const slug = publicSlug || (window.location.pathname.startsWith('/admin/') ? branch?.slug : undefined);
+      if (slug) config.headers.set('X-Branch-Slug', slug);
 
       if (token) {
         setAuthorizationHeader(config, token);

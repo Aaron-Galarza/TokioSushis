@@ -42,3 +42,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     branch: branch ? { id: branch._id.toString(), name: branch.name, slug: branch.slug } : null,
   } })
 })
+
+export const me = asyncHandler(async (req: Request, res: Response) => {
+  const branch = req.auth?.branchId
+    ? await BranchModel.findById(req.auth.branchId).select('name slug').lean()
+    : null;
+  return sendSucces(res, {
+    role: req.auth?.role,
+    branch: branch ? { id: branch._id.toString(), name: branch.name, slug: branch.slug } : null,
+  });
+});

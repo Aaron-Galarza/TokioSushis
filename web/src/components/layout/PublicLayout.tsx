@@ -6,7 +6,7 @@ import { Footer } from './Footer';
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isPrivateRoute = pathname?.startsWith('/admin') || pathname === '/login';
+  const isPrivateRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/owner') || pathname === '/login';
 
   if (isPrivateRoute) return <>{children}</>;
 

@@ -4,27 +4,43 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
+import api from '@/services/api';
 
 const AUTH_STORAGE_KEY = 'american-way-auth-storage';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const logout = useAuthStore((s) => s.logout);
+  const login = useAuthStore((s) => s.login);
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [branchSlug, setBranchSlug] = useState('');
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(AUTH_STORAGE_KEY);
       const token = raw ? JSON.parse(raw)?.state?.token : null;
-      if (token) {
-        setIsAuthorized(true);
-      } else {
+      if (!token) {
         router.replace('/login');
+        return;
       }
+      api.get('/users/me').then((res) => {
+        const role = res.data?.data?.role;
+        const branch = res.data?.data?.branch ?? null;
+        if (role === 'owner') return router.replace('/owner');
+        if (!['admin', 'encargado'].includes(role) || !branch?.slug) return router.replace('/login');
+        login(token, role, branch);
+        setBranchSlug(branch.slug);
+        const expected = `/admin/s/${branch.slug}`;
+        if (window.location.pathname !== expected && window.location.pathname !== '/admin') {
+          router.replace(expected);
+        } else {
+          setIsAuthorized(true);
+        }
+      }).catch(() => router.replace('/login'));
     } catch {
       router.replace('/login');
     }
-  }, [router]);
+  }, [router, login]);
 
   const handleLogout = () => {
     logout();
@@ -46,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Izquierda: volver (solo flecha en mobile, flecha+texto en desktop) */}
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push(branchSlug ? `/s/${branchSlug}` : '/')}
           className="flex items-center gap-1.5 text-white/40 hover:text-white transition-colors text-sm shrink-0"
           aria-label="Volver al menú"
         >

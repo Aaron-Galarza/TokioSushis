@@ -130,6 +130,7 @@ const OrderSchema = new Schema<iOrder>({
 
 OrderSchema.index({ branchId: 1, createdAt: -1 });
 OrderSchema.index({ branchId: 1, status: 1, createdAt: -1 });
+OrderSchema.index({ createdAt: -1 });
 OrderSchema.index({ branchId: 1, idempotencyKey: 1 }, {
   unique: true,
   partialFilterExpression: { idempotencyKey: { $type: 'string' } },
