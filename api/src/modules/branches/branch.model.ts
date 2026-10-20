@@ -11,6 +11,7 @@ export interface IBranch extends Document {
   timezone: string;
   phone?: string;
   whatsappPhone?: string;
+  galleryFolder?: string;
   active: boolean;
 }
 
@@ -33,6 +34,7 @@ const branchSchema = new Schema<IBranch>({
   timezone: { type: String, required: true, default: 'America/Argentina/Buenos_Aires' },
   phone: { type: String, trim: true },
   whatsappPhone: { type: String, trim: true },
+  galleryFolder: { type: String, trim: true },
   active: { type: Boolean, required: true, default: true },
 }, { timestamps: true });
 

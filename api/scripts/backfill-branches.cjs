@@ -33,6 +33,36 @@ const sourceCollections = [
   'users',
 ];
 
+const branchIndexes = {
+  categorias: [
+    [{ branchId: 1, name: 1 }, { unique: true }],
+    [{ branchId: 1, active: 1, order: 1 }, {}],
+  ],
+  productos: [[{ branchId: 1, active: 1, category: 1 }, {}]],
+  adicionals: [
+    [{ branchId: 1, active: 1 }, {}],
+    [{ branchId: 1, categories: 1 }, {}],
+  ],
+  coupons: [
+    [{ branchId: 1, code: 1 }, { unique: true }],
+    [{ branchId: 1, active: 1 }, {}],
+  ],
+  orders: [
+    [{ branchId: 1, createdAt: -1 }, {}],
+    [{ branchId: 1, status: 1, createdAt: -1 }, {}],
+  ],
+  configs: [[{ branchId: 1 }, { unique: true }]],
+  deliveryconfigs: [[{ branchId: 1 }, { unique: true }]],
+  analyticsdailies: [[{ branchId: 1, date: 1 }, { unique: true }]],
+  users: [[{ branchId: 1 }, {}]],
+};
+
+const retiredGlobalUniqueKeys = {
+  categorias: ['name'],
+  coupons: ['code'],
+  analyticsdailies: ['date'],
+};
+
 const missingBranch = { $or: [{ branchId: { $exists: false } }, { branchId: null }] };
 const filterFor = (collectionName) => collectionName === 'users'
   ? { ...missingBranch, role: { $ne: 'owner' } }
@@ -102,6 +132,11 @@ async function main() {
   if (Object.values(foreignAssignments).some((count) => count > 0)) {
     throw new Error('Hay documentos asignados a otra sucursal. Revisar manualmente antes de continuar.');
   }
+  for (const collectionName of ['configs', 'deliveryconfigs']) {
+    if (pending[collectionName] > 1) {
+      throw new Error(`${collectionName}: hay más de un documento global; resolver duplicados antes de migrar`);
+    }
+  }
   if (!apply) return;
 
   const backupDir = path.resolve(__dirname, '../../backups', `branch-backfill-${new Date().toISOString().replace(/[:.]/g, '-')}`);
@@ -128,15 +163,17 @@ async function main() {
       if (!branch) {
         const _id = new mongoose.Types.ObjectId();
         const now = new Date();
-        branch = { _id, slug, name, address, coordinates: { lat, lng },
+        branch = { _id, slug, name, address, coordinates: { lat, lng }, galleryFolder: 'TokyoSushis',
           timezone: 'America/Argentina/Buenos_Aires', active: true, createdAt: now, updatedAt: now };
         await branches.insertOne(branch, { session });
+      } else if (!branch.galleryFolder) {
+        await branches.updateOne({ _id: branch._id }, { $set: { galleryFolder: 'TokyoSushis' } }, { session });
       }
 
       for (const collectionName of collections) {
         const collection = db.collection(collectionName);
         const values = collectionName === 'users'
-          ? { branchId: branch._id, role: 'encargado', active: true }
+          ? { branchId: branch._id, role: 'encargado' }
           : { branchId: branch._id };
         await collection.updateMany(filterFor(collectionName), { $set: values }, { session });
         if (collectionName === 'users') {
@@ -152,6 +189,24 @@ async function main() {
     }, { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } });
   } finally {
     await session.endSession();
+  }
+
+  // First establish branch-specific constraints, then retire legacy global uniqueness.
+  // A failure leaves the branch assignment intact and this script can be rerun.
+  for (const collectionName of collections) {
+    const collection = db.collection(collectionName);
+    for (const [keys, options] of branchIndexes[collectionName] ?? []) {
+      await collection.createIndex(keys, options);
+    }
+    const oldIndexes = await collection.indexes();
+    for (const index of oldIndexes) {
+      const legacyKey = retiredGlobalUniqueKeys[collectionName]?.find(
+        (key) => index.unique && Object.keys(index.key).length === 1 && index.key[key] === 1,
+      );
+      if (legacyKey) await collection.dropIndex(index.name);
+    }
+    const remaining = await collection.countDocuments(filterFor(collectionName));
+    if (remaining !== 0) throw new Error(`${collectionName}: quedaron ${remaining} documentos sin sucursal`);
   }
 
   console.log(JSON.stringify({ applied: true, slug, backupDir, pending }, null, 2));
