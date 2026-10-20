@@ -3,26 +3,7 @@ import { sendError, sendSucces } from '../../utils/response'
 import * as CouponsService from './coupons.services'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { requireBranchId } from '../../middlewares/branch.middleware'
-
-const dayMap: Record<string, string> = {
-  domingo: 'sunday',
-  lunes: 'monday',
-  martes: 'tuesday',
-  miercoles: 'wednesday',
-  jueves: 'thursday',
-  viernes: 'friday',
-  sabado: 'saturday',
-}
-
-const getCurrentDay = () => {
-  const day = new Intl.DateTimeFormat('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    weekday: 'long',
-  }).format(new Date())
-
-  const normalized = day.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  return dayMap[normalized] ?? normalized
-}
+import { BranchModel } from '../branches/branch.model'
 
 export const getAllCoupons = asyncHandler(async (req: Request, res: Response) => {
   const coupons = await CouponsService.viewAll(requireBranchId(req))
@@ -37,16 +18,15 @@ export const createNewCoupon = asyncHandler(async (req: Request, res: Response) 
 export const validateCoupon = asyncHandler(async (req: Request, res: Response) => {
   const { code } = req.params
   const paymentMethod = req.body?.paymentMethod
-  const result = await CouponsService.search(requireBranchId(req), code as string)
+  const branchId = requireBranchId(req)
+  const [result, branch] = await Promise.all([
+    CouponsService.search(branchId, code as string),
+    BranchModel.findById(branchId).select('timezone').lean(),
+  ])
   if (!result) return sendError(res, 'Cupon no valido, inexistente o expirado', 400)
-
-  if (result.validPaymentMethods?.length && !result.validPaymentMethods.includes(paymentMethod)) {
-    return sendError(res, 'Cupon no valido para este metodo de pago', 400)
-  }
-
-  if (result.validDays?.length && !result.validDays.includes(getCurrentDay())) {
-    return sendError(res, 'Cupon no valido para el dia de hoy', 400)
-  }
+  if (!branch) return sendError(res, 'Sucursal no encontrada', 404)
+  const error = CouponsService.validateCoupon(result, paymentMethod, req.body?.deliveryType, branch.timezone)
+  if (error) return sendError(res, error, 400)
 
   return sendSucces(res, result)
 })

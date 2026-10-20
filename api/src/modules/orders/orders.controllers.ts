@@ -4,7 +4,7 @@ import { sendError, sendSucces } from '../../utils/response'
 import { validOrderStatus, OrderStatus } from './orders.model'
 import { getIO } from '../../socket/socket'
 import { AppError, friendlyAppErrorMessage } from '../../utils/AppError'
-import { Range } from '../../utils/dateRange'
+import { Range, VALID_RANGES } from '../../utils/dateRange'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { requireBranchId } from '../../middlewares/branch.middleware'
 
@@ -42,6 +42,7 @@ export const getAllOrders = asyncHandler(async (req: Request, res: Response) => 
 
 export const getOrdersRange = asyncHandler(async (req: Request, res: Response) => {
   const rango = (req.query.range as string) || 'hoy';
+  if (!VALID_RANGES.includes(rango as Range)) return sendError(res, 'Rango inválido', 400)
   const orders = await OrderService.getOrdersRange(requireBranchId(req), rango as Range)
   return sendSucces(res, orders, 200)
 })

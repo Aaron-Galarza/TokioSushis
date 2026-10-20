@@ -5,8 +5,8 @@ import * as AdicionalService from '../adicionales/adicionales.service'
 import { checkStoreStatus } from '../Schedules/Schedule.service'
 import { calculateDelivery } from '../delivery/delivery.service'
 import { AppError } from '../../utils/AppError'
-import { argToUTC } from '../../utils/Timezone'
-import { Range, getRangeStartDate } from '../../utils/dateRange'
+import { Range } from '../../utils/dateRange'
+import { localDate, nextDay, rangeStart, startOfLocalDayUtc } from '../../utils/branchTime'
 import { priceConfigurableItem, ConfiguratorError } from '../../utils/configuratorPricing'
 import mongoose from 'mongoose'
 import { createHash } from 'node:crypto'
@@ -36,7 +36,7 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
     // y el interceptor del front desloguea ante cualquier 403. "Local cerrado" es una regla de negocio, no un tema de sesión.
     throw new AppError(423, storeStatus.message || 'El negocio está cerrado en este momento')
   }
-  const branch = await BranchModel.findById(branchId).select('paymentMethods').lean()
+  const branch = await BranchModel.findById(branchId).select('paymentMethods timezone').lean()
   if (!branch || !branch.paymentMethods.includes(orderData.paymentMethod)) {
     throw new AppError(400, 'Este método de pago no está disponible en la sucursal')
   }
@@ -136,7 +136,7 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
     const coupon = await CouponService.search(branchId, orderData.couponCode)
     if (!coupon) throw new AppError(404, 'El cupón ingresado no es válido o ya no existe')
     
-    const couponError = CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType);
+    const couponError = CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType, branch.timezone);
     if (couponError) {
       throw new AppError(400, couponError);
     }
@@ -224,7 +224,7 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
         const coupon = await CouponModel.findOne({ branchId, code: orderData.couponCode.toUpperCase(),
           active: { $ne: false } }).session(session)
         if (!coupon || coupon.discountPercent !== discountPercent
-          || CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType)) {
+          || CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType, branch.timezone)) {
           throw new AppError(409, 'El cupón cambió. Revisá el pedido antes de enviarlo')
         }
       }
@@ -267,12 +267,15 @@ export const getAllOrders = async (branchId: string): Promise<iOrder[]> => {
 }
 
 export const getOrdersRange = async (branchId: string, range: Range): Promise<iOrder[]> => {
-  const start = argToUTC(getRangeStartDate(range));
-
-  const filter: any = { $gte: start };
-  if (range === 'ayer') filter.$lt = argToUTC(getRangeStartDate('hoy'));
-
-  return await OrderModel.find({ branchId, deleted: { $ne: true }, createdAt: filter }).lean().sort({ createdAt: -1 });
+  const branch = await BranchModel.findById(branchId).select('timezone').lean();
+  if (!branch) throw new AppError(404, 'Sucursal no encontrada');
+  const today = localDate(branch.timezone);
+  const first = rangeStart(today, range);
+  const lastExclusive = range === 'ayer' ? today : nextDay(today);
+  return await OrderModel.find({ branchId, deleted: { $ne: true }, createdAt: {
+    $gte: startOfLocalDayUtc(first, branch.timezone),
+    $lt: startOfLocalDayUtc(lastExclusive, branch.timezone),
+  } }).lean().sort({ createdAt: -1 });
 }
 
 const nextStatus: Partial<Record<OrderStatus, OrderStatus>> = {

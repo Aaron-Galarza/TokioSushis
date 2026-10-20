@@ -11,7 +11,8 @@
     "branch:create": "node scripts/create-branch.cjs",
     "user:create": "node scripts/create-user.cjs",
     "test:multibranch": "node tests/multi-branch.integration.cjs",
-    "test:migration": "node tests/branch-migration.integration.cjs"
+    "test:migration": "node tests/branch-migration.integration.cjs",
+    "test:branch-time": "node tests/branch-time.test.cjs"
   },
   "keywords": [],
   "author": "",

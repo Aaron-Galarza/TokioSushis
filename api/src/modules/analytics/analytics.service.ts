@@ -2,23 +2,7 @@ import { OrderModel } from '../orders/orders.model';
 import { BranchModel } from '../branches/branch.model';
 import { AppError } from '../../utils/AppError';
 import { Range } from '../../utils/dateRange';
-
-const localDate = (timezone: string): string => {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(new Date());
-  const value = (type: string) => parts.find((part) => part.type === type)?.value;
-  return `${value('year')}-${value('month')}-${value('day')}`;
-};
-
-const rangeStart = (today: string, range: Range): string => {
-  if (range === 'hoy') return today;
-  const day = new Date(`${today}T12:00:00.000Z`);
-  if (range === 'ayer') day.setUTCDate(day.getUTCDate() - 1);
-  if (range === 'semana') day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
-  if (range === 'mes') day.setUTCDate(1);
-  return day.toISOString().slice(0, 10);
-};
+import { localDate, rangeStart } from '../../utils/branchTime';
 
 // Orders are the sole source of truth. A failed status update cannot leave a separate counter out of sync.
 export const getAnalytics = async (branchId: string, range: Range) => {
