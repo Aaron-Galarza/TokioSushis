@@ -23,10 +23,11 @@ interface Props {
   setExpandedId: (id: string | null) => void;
   updateStatus: (id: string, status: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  canDelete?: boolean;
   onRefresh?: () => void;
 }
 
-export function OrdersPanel({ sFilter, setSFilter, oCounts, filteredOrders, expandedId, setExpandedId, updateStatus, onDelete, onRefresh }: Props) {
+export function OrdersPanel({ sFilter, setSFilter, oCounts, filteredOrders, expandedId, setExpandedId, updateStatus, onDelete, canDelete = true, onRefresh }: Props) {
   return (
     <>
       <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 mb-5">
@@ -67,6 +68,7 @@ export function OrdersPanel({ sFilter, setSFilter, oCounts, filteredOrders, expa
             onToggle={() => setExpandedId(expandedId === o._id ? null : o._id)}
             onStatus={updateStatus}
             onDelete={onDelete}
+            canDelete={canDelete}
             onRefresh={onRefresh}
           />
         ))}

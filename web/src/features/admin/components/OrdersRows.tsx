@@ -13,10 +13,11 @@ interface ORProps {
   onToggle: () => void;
   onStatus: (id: string, s: string) => void;
   onDelete: (id: string) => Promise<void>;
+  canDelete?: boolean;
   onRefresh?: () => void;
 }
 
-export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, onRefresh }: ORProps) {
+export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, canDelete = true, onRefresh }: ORProps) {
   const status = ORDER_STATUS[order.status as OrderStatusKey] ?? ORDER_STATUS.pending;
   const transition = STATUS_TRANSITIONS[order.status as OrderStatusKey];
   const num = formatOrderNumber(order);
@@ -96,9 +97,9 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, onRefr
           <button onClick={e => { e.stopPropagation(); handlePrint(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-primary/20 hover:text-primary text-white/30 transition-all" title="Imprimir comanda">
             <Printer className="w-4 h-4" />
           </button>
-          <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-red-500/20 hover:text-red-400 text-white/30 transition-all" title="Anular pedido">
+          {canDelete && <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-red-500/20 hover:text-red-400 text-white/30 transition-all" title="Anular pedido">
             <Trash2 className="w-4 h-4" />
-          </button>
+          </button>}
           <button onClick={e => { e.stopPropagation(); onToggle(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-white/10 text-white/30 transition-all">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>

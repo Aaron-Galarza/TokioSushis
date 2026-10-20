@@ -7,7 +7,7 @@ import { useAdminCrud } from './useAdminCrud';
 
 const BLANK = { code: '', discountPercent: '', active: true, validDays: [] as string[], validPaymentMethods: [] as string[] };
 
-export function useAdminCoupons() {
+export function useAdminCoupons(enabled = true) {
   const [coupons, setCoupons] = useState<any[]>([]);
 
   const reload = useCallback(async () => {
@@ -16,8 +16,8 @@ export function useAdminCoupons() {
 
   // 🚀 LA PIEZA FALTANTE: Ejecuta la carga inicial de los cupones al montar la pantalla
   useEffect(() => {
-    reload();
-  }, [reload]);
+    if (enabled) reload();
+  }, [enabled, reload]);
 
   const crud = useAdminCrud({
     blank: BLANK,
