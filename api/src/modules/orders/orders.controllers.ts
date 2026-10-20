@@ -28,8 +28,6 @@ export const createOrder = async (req: Request, res: Response) => {
     if (error instanceof AppError) {
       return sendError(res, friendlyAppErrorMessage(error), error.statusCode)
     }
-    const esErrorDeNegocio = error?.message && !error.message.includes('Cannot')
-    if (esErrorDeNegocio) return sendError(res, error.message, 400)
     console.error(`[ERROR] createOrder - ${error?.message}`)
     return sendError(res, 'Error al procesar el pedido', 500)
   }
@@ -65,7 +63,13 @@ export const updateStatusOrder = asyncHandler(async (req: Request, res: Response
   const order = await OrderService.update(branchId, id, status, deliveryCost, req.auth?.role === 'encargado' ? 'encargado' : 'admin')
   if (!order) return sendError(res, 'Pedido no encontrado', 404)
 
-  if (status) getIO().to(`branch:${branchId}`).emit('order-updated', { id, status })
+  if (status) {
+    try {
+      getIO().to(`branch:${branchId}`).emit('order-updated', { id, status })
+    } catch (socketError) {
+      console.error('[SOCKET] Estado guardado pero no se pudo notificar', socketError)
+    }
+  }
   return sendSucces(res, order, 200)
 })
 
@@ -76,6 +80,10 @@ export const deleteOrder = asyncHandler(async (req: Request, res: Response) => {
   const order = await OrderService.softDelete(branchId, id)
   if (!order) return sendError(res, 'Pedido no encontrado', 404)
 
-  getIO().to(`branch:${branchId}`).emit('order-deleted', { id: order._id })
+  try {
+    getIO().to(`branch:${branchId}`).emit('order-deleted', { id: order._id })
+  } catch (socketError) {
+    console.error('[SOCKET] Pedido cancelado pero no se pudo notificar', socketError)
+  }
   return sendSucces(res, order, 200)
 })
