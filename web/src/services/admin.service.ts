@@ -61,3 +61,6 @@ export const addKmRange = (maxKm: number, price: number) =>
   api.post('/delivery/config/ranges', { maxKm, price }).then(r => r.data.data?.data ?? []);
 export const deleteKmRange = (id: string) =>
   api.delete(`/delivery/config/ranges/${id}`).then(r => r.data.data?.data ?? []);
+export const fetchManagedBranch = () => api.get('/branches/admin/current').then(r => r.data.data);
+export const updateManagedBranch = (payload: Record<string, unknown>) =>
+  api.put('/branches/admin/current', payload).then(r => r.data.data);

@@ -11,6 +11,9 @@ export type PublicBranch = {
   timezone: string;
   phone?: string;
   whatsappPhone?: string;
+  paymentMethods: Array<'cash' | 'debito' | 'credito' | 'transferencia'>;
+  transferAlias?: string;
+  transferHolder?: string;
 };
 
 export const useBranchStore = create<{ branch: PublicBranch | null; setBranch: (branch: PublicBranch | null) => void }>((set) => ({

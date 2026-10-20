@@ -9,6 +9,7 @@ import api from '@/services/api';
 import type { Coupon } from '@/types';
 import { PAYMENT_LABELS, type PaymentKey } from '@/constants/admin';
 import { useBranchPath } from '@/hooks/useBranchPath';
+import { useBranchStore } from '@/stores/branch.store';
 
 type PaymentMethod = PaymentKey;
 export { type PaymentMethod };
@@ -16,6 +17,7 @@ export { type PaymentMethod };
 export function useCheckout() {
   const router = useRouter();
   const branchPath = useBranchPath();
+  const branch = useBranchStore((s) => s.branch);
   
   // ⚡ SELECTORES REACTIVOS DE ZUSTAND
   const items = useCartStore((state) => state.items);
@@ -123,6 +125,8 @@ export function useCheckout() {
         deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : null,
         paymentMethod: PAYMENT_LABELS[paymentMethod as PaymentKey] ?? paymentMethod,
         rawPaymentMethod: paymentMethod,
+        transferAlias: branch?.transferAlias,
+        transferHolder: branch?.transferHolder,
         notes: notes.trim(),
         items: items.map(item => ({
           title: item.product.title,

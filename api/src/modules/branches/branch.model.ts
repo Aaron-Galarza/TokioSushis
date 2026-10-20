@@ -11,6 +11,9 @@ export interface IBranch extends Document {
   timezone: string;
   phone?: string;
   whatsappPhone?: string;
+  paymentMethods: Array<'cash' | 'debito' | 'credito' | 'transferencia'>;
+  transferAlias?: string;
+  transferHolder?: string;
   galleryFolder?: string;
   active: boolean;
 }
@@ -34,6 +37,9 @@ const branchSchema = new Schema<IBranch>({
   timezone: { type: String, required: true, default: 'America/Argentina/Buenos_Aires' },
   phone: { type: String, trim: true },
   whatsappPhone: { type: String, trim: true },
+  paymentMethods: { type: [String], enum: ['cash', 'debito', 'credito', 'transferencia'], default: ['cash', 'debito', 'credito', 'transferencia'] },
+  transferAlias: { type: String, trim: true },
+  transferHolder: { type: String, trim: true },
   galleryFolder: { type: String, trim: true },
   active: { type: Boolean, required: true, default: true },
 }, { timestamps: true });
