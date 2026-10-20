@@ -1,9 +1,13 @@
-import { JwtPayload } from "jsonwebtoken";
+import type { UserRole } from '../middlewares/auth.middleware';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: string | JwtPayload; // Aquí definís que 'user' es opcional y puede ser el payload del JWT
+      auth?: {
+        userId: string;
+        role: UserRole;
+        branchId: string | null;
+      };
     }
   }
 }

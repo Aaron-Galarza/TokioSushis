@@ -135,7 +135,17 @@ async function main() {
 
       for (const collectionName of collections) {
         const collection = db.collection(collectionName);
-        await collection.updateMany(filterFor(collectionName), { $set: { branchId: branch._id } }, { session });
+        const values = collectionName === 'users'
+          ? { branchId: branch._id, role: 'encargado', active: true }
+          : { branchId: branch._id };
+        await collection.updateMany(filterFor(collectionName), { $set: values }, { session });
+        if (collectionName === 'users') {
+          await collection.updateMany(
+            { branchId: branch._id, active: { $exists: false } },
+            { $set: { active: true } },
+            { session },
+          );
+        }
         const remaining = await collection.countDocuments(filterFor(collectionName), { session });
         if (remaining !== 0) throw new Error(`${collectionName}: quedaron ${remaining} documentos sin sucursal`);
       }
