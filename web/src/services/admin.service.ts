@@ -9,8 +9,8 @@ export const updateOrderStatus = (id: string, status: string, deliveryCost?: num
 export const updateOrderDeliveryCost = (id: string, deliveryCost: number) =>
   api.put(`/orders/admin/${id}`, { deliveryCost });
 export const deleteOrder = (id: string) => api.delete(`/orders/admin/${id}`);
-export const createAdminOrder = (payload: Record<string, any>) =>
-  api.post('/orders', payload, { headers: { 'Idempotency-Key': crypto.randomUUID() } }).then(r => r.data);
+export const createAdminOrder = (payload: Record<string, any>, idempotencyKey: string) =>
+  api.post('/orders', payload, { headers: { 'Idempotency-Key': idempotencyKey } }).then(r => r.data);
 export const setProductStock = (id: string, stock: number) =>
   api.patch(`/products/admin/${id}/stock`, { stock });
 
