@@ -10,6 +10,7 @@ interface OrderItem {
   quantity: number;
   price: number;
   addons?: OrderItemAddon[];
+  configSummary?: string;
 }
 
 interface OrderItemListProps {
@@ -36,6 +37,9 @@ export function OrderItemList({ items }: OrderItemListProps) {
                 ${(item.price * item.quantity)?.toLocaleString('es-AR')}
               </span>
             </div>
+            {item.configSummary && (
+              <p className="text-[11px] text-white/40 pl-4 mt-0.5">{item.configSummary}</p>
+            )}
             {item.addons && item.addons.length > 0 && (
               <p className="text-[11px] text-white/30 pl-4 mt-0.5">
                 + {item.addons.map((a) => `${a.quantity}x ${a.title}`).join(', ')}

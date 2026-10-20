@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { Plus, Minus, X, ShoppingBag, Loader2, ChevronDown, Landmark } from 'lucide-react';
 import { AddressAutocomplete } from '@/features/checkout/components/AddressAutocomplete';
+import { ProductConfiguratorModal } from '@/features/menu-configurator/components/ProductConfiguratorModal';
 import { useQuickOrder } from '../hooks/useQuickOrder';
 import type { AddressResult } from '@/features/checkout/hooks/useAddressSearch';
+import type { Product } from '@/types';
 import { PAYMENT_LABELS, TRANSFER_INFO } from '@/constants/admin';
 
 interface Props {
@@ -30,15 +33,28 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
     deliveryLoading,
     deliveryError,
     items,
-    setItems,
     submitting,
     error,
     total,
     addProduct,
+    addConfiguredProduct,
     updateQty,
     updateAddonQty,
+    removeItem,
     handleSubmit,
   } = useQuickOrder(products, onSuccess);
+
+  const [configProduct, setConfigProduct] = useState<Product | null>(null);
+
+  const handleSelectProduct = (productId: string) => {
+    const prod = products.find((p: any) => p._id === productId);
+    if (!prod) return;
+    if (prod.configurator?.enabled) {
+      setConfigProduct(prod as Product);
+    } else {
+      addProduct(productId);
+    }
+  };
 
   return (
     <div className="mb-4">
@@ -158,7 +174,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
             <select
               onChange={(e) => {
                 if (e.target.value) {
-                  addProduct(e.target.value);
+                  handleSelectProduct(e.target.value);
                   e.target.value = '';
                 }
               }}
@@ -170,7 +186,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                 .filter((p: any) => p.active)
                 .map((p: any) => (
                   <option key={p._id} value={p._id}>
-                    {p.title} — ${p.price?.toLocaleString('es-AR')}
+                    {p.title} — ${p.price?.toLocaleString('es-AR')}{p.configurator?.enabled ? '  (configurable)' : ''}
                   </option>
                 ))}
             </select>
@@ -192,30 +208,35 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                       }))
                 );
                 return (
-                  <div key={item.productId} className="bg-[#111] border border-white/5 rounded-lg p-3">
+                  <div key={item.uid} className="bg-[#111] border border-white/5 rounded-lg p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm text-white font-medium truncate flex-1 min-w-0">
-                        {item.title}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white font-medium truncate block">
+                          {item.title}
+                        </span>
+                        {item.configSummary && (
+                          <span className="text-[11px] text-white/40 leading-snug block truncate">{item.configSummary}</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-xs text-primary hidden xs:inline">
                           ${item.price.toLocaleString('es-AR')}
                         </span>
                         <button
-                          onClick={() => updateQty(item.productId, -1)}
+                          onClick={() => updateQty(item.uid, -1)}
                           className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all shrink-0"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="text-sm text-white w-4 text-center shrink-0">{item.quantity}</span>
                         <button
-                          onClick={() => updateQty(item.productId, 1)}
+                          onClick={() => updateQty(item.uid, 1)}
                           className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all shrink-0"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
                         <button
-                          onClick={() => setItems(items.filter((i) => i.productId !== item.productId))}
+                          onClick={() => removeItem(item.uid)}
                           className="w-6 h-6 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition-all shrink-0"
                         >
                           <X className="w-3 h-3" />
@@ -241,7 +262,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                             >
                               <span
                                 onClick={() => {
-                                  if (quantity === 0) updateAddonQty(item.productId, a, 1);
+                                  if (quantity === 0) updateAddonQty(item.uid, a, 1);
                                 }}
                                 className={quantity === 0 ? 'cursor-pointer' : ''}
                               >
@@ -252,7 +273,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                                 <div className="flex items-center gap-1 ml-1 pl-1 border-l border-black/20">
                                   <button
                                     type="button"
-                                    onClick={() => updateAddonQty(item.productId, a, -1)}
+                                    onClick={() => updateAddonQty(item.uid, a, -1)}
                                     className="w-3.5 h-3.5 rounded-sm bg-black/10 hover:bg-black/20 flex items-center justify-center text-black"
                                   >
                                     <Minus className="w-2 h-2" />
@@ -260,7 +281,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                                   <span className="font-bold min-w-[8px] text-center">{quantity}</span>
                                   <button
                                     type="button"
-                                    onClick={() => updateAddonQty(item.productId, a, 1)}
+                                    onClick={() => updateAddonQty(item.uid, a, 1)}
                                     className="w-3.5 h-3.5 rounded-sm bg-black/10 hover:bg-black/20 flex items-center justify-center text-black"
                                   >
                                     <Plus className="w-2 h-2" />
@@ -301,6 +322,18 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
 
           {error && <p className="text-red-400 text-xs">{error}</p>}
         </div>
+      )}
+
+      {configProduct && (
+        <ProductConfiguratorModal
+          isOpen={!!configProduct}
+          onClose={() => setConfigProduct(null)}
+          product={configProduct}
+          isStoreOpen
+          onConfigure={(result) => {
+            addConfiguredProduct(configProduct, result.price, result.selections, result.summary);
+          }}
+        />
       )}
     </div>
   );

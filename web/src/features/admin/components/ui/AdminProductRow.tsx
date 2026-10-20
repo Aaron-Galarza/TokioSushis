@@ -11,6 +11,7 @@ interface AdminProductRowProps {
     active: boolean;
     controlStock?: boolean;
     stock?: number;
+    configurator?: { enabled?: boolean };
   };
   catName: string;
   onToggle: () => void;
@@ -29,6 +30,11 @@ export function AdminProductRow({ product, catName, onToggle, onEdit, onDelete }
           <p className={`font-semibold text-sm truncate ${product.active ? 'text-white' : 'text-white/40 line-through'}`}>
             {product.title}
           </p>
+          {product.configurator?.enabled && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 bg-primary/20 text-primary">
+              Configurable
+            </span>
+          )}
           {product.controlStock && (
             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
               (product.stock ?? 0) > 0 ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'

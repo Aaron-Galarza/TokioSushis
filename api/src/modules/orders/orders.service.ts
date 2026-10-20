@@ -8,6 +8,7 @@ import { calculateDelivery } from '../delivery/delivery.service'
 import { AppError } from '../../utils/AppError'
 import { argToUTC } from '../../utils/Timezone'
 import { Range, getRangeStartDate } from '../../utils/dateRange'
+import { priceConfigurableItem, ConfiguratorError } from '../../utils/configuratorPricing'
 
 // Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
 const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
@@ -60,13 +61,41 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
         )
       }
  
+      // Producto configurable: validar selecciones y recalcular precio en el server
+      let price = product.price
+      let configSummary: string | undefined
+      let selections: iCartItem['selections']
+
+      if (product.configurator && product.configurator.enabled) {
+        try {
+          const priced = priceConfigurableItem(product.price, product.configurator, item.selections)
+          price = priced.finalPrice
+          configSummary = priced.summary
+          selections = priced.selections.map((s) => ({
+            stepId: s.stepId,
+            stepLabel: s.stepLabel,
+            optionId: s.optionId,
+            label: s.label,
+            price: s.price,
+            kind: s.kind,
+          }))
+        } catch (e) {
+          if (e instanceof ConfiguratorError) {
+            throw new AppError(400, `${product.title}: ${e.message}`)
+          }
+          throw e
+        }
+      }
+
       return {
         productId: item.productId,
         title:     product.title,
-        price:     product.price,
+        price,
         quantity:  item.quantity,
-        addons
-      }
+        addons,
+        configSummary,
+        selections,
+      };
     })
   )
 

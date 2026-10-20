@@ -1,5 +1,39 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type ConfigStepType = 'single' | 'multiple';
+export type ConfigStepMode = 'absolute' | 'delta';
+export type ConfigOptionKind = 'selection' | 'exclusion';
+
+export interface iConfigOption {
+  id: string;
+  label: string;
+  description?: string;
+  price: number;
+  kind: ConfigOptionKind;
+  isExtra?: boolean;
+  defaultSelected?: boolean;
+  active?: boolean;
+}
+
+export interface iConfigStep {
+  id: string;
+  label: string;
+  title: string;
+  description?: string;
+  type: ConfigStepType;
+  mode: ConfigStepMode;
+  min: number;
+  max: number;
+  required: boolean;
+  options: iConfigOption[];
+}
+
+export interface iConfigurator {
+  enabled: boolean;
+  key: string;
+  steps: iConfigStep[];
+}
+
 export interface iProducto extends Document {
   title: string;
   price: number;
@@ -7,9 +41,40 @@ export interface iProducto extends Document {
   image?: string;
   category: mongoose.Types.ObjectId;
   active: boolean;
-  controlStock:boolean;
-  stock:number
+  controlStock: boolean;
+  stock: number;
+  configurator?: iConfigurator;
 }
+
+const ConfigOptionSchema = new Schema<iConfigOption>({
+  id: { type: String, required: true, trim: true },
+  label: { type: String, required: true, trim: true },
+  description: { type: String },
+  price: { type: Number, default: 0, min: 0 },
+  kind: { type: String, enum: ['selection', 'exclusion'], default: 'selection' },
+  isExtra: { type: Boolean, default: false },
+  defaultSelected: { type: Boolean, default: false },
+  active: { type: Boolean, default: true },
+}, { _id: false });
+
+const ConfigStepSchema = new Schema<iConfigStep>({
+  id: { type: String, required: true, trim: true },
+  label: { type: String, required: true, trim: true },
+  title: { type: String, required: true, trim: true },
+  description: { type: String },
+  type: { type: String, enum: ['single', 'multiple'], default: 'single' },
+  mode: { type: String, enum: ['absolute', 'delta'], default: 'delta' },
+  min: { type: Number, default: 0, min: 0 },
+  max: { type: Number, default: 0, min: 0 },
+  required: { type: Boolean, default: false },
+  options: { type: [ConfigOptionSchema], default: [] },
+}, { _id: false });
+
+const ConfiguratorSchema = new Schema<iConfigurator>({
+  enabled: { type: Boolean, default: false },
+  key: { type: String, default: '', trim: true },
+  steps: { type: [ConfigStepSchema], default: [] },
+}, { _id: false });
 
 const ProductoSchema = new Schema<iProducto>({
   title: {
@@ -41,12 +106,16 @@ const ProductoSchema = new Schema<iProducto>({
   },
   controlStock: {
     type: Boolean,
-    default: false
+    default: false,
   },
   stock: {
     type: Number,
     default: 0,
-    min: 0
+    min: 0,
+  },
+  configurator: {
+    type: ConfiguratorSchema,
+    default: undefined,
   },
 }, {
   timestamps: true,

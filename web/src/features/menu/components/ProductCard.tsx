@@ -6,6 +6,7 @@ import { useCartStore } from '@/stores/cart.store';
 import { formatPrice } from '@/lib/format';
 import { cloudinaryImage } from '@/lib/image';
 import type { Product } from '@/types';
+import { ProductConfiguratorModal } from '@/features/menu-configurator/components/ProductConfiguratorModal';
 
 interface ProductCardProps {
   product: Product;
@@ -16,57 +17,80 @@ interface ProductCardProps {
 export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
   const addItem = useCartStore((state) => state.addItem);
   const [imageError, setImageError] = useState(false);
+  const [showConfigurator, setShowConfigurator] = useState(false);
 
   const isOutOfStock = product.controlStock === true && (product.stock ?? 0) <= 0;
   const isButtonDisabled = !isStoreOpen || !product.available || isOutOfStock;
+
+  const needsConfiguration = product.configurator?.enabled === true;
 
   const isValidImage =
     typeof product.image === 'string' &&
     (product.image.startsWith('http') || product.image.startsWith('/'));
 
+  const handleAddClick = () => {
+    if (isButtonDisabled) return;
+    if (needsConfiguration) {
+      setShowConfigurator(true);
+    } else {
+      addItem(product, 1, []);
+    }
+  };
+
   return (
-    <article className="flex items-center gap-4 rounded-2xl border border-white/8 bg-[#141414] px-4 py-3.5 transition-all hover:border-white/15 hover:bg-[#1A1A1A]">
+    <>
+      <article className="flex items-center gap-4 rounded-2xl border border-white/8 bg-[#141414] px-4 py-3.5 transition-all hover:border-white/15 hover:bg-[#1A1A1A]">
 
-      {/* Text content */}
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-white text-sm leading-snug truncate">{product.title}</h3>
-        <p className="mt-0.5 text-xs text-white/45 line-clamp-2 leading-relaxed">{product.description}</p>
-        <p className="mt-2 font-bold text-primary text-base">{formatPrice(product.price)}</p>
-      </div>
-
-      {/* Image + button */}
-      <div className="relative shrink-0">
-        <div className="w-[88px] h-[88px] rounded-xl overflow-hidden bg-zinc-800">
-          {!imageError && isValidImage ? (
-            <img
-              src={cloudinaryImage(product.image, 400)}
-              alt={product.title}
-              className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale opacity-50' : ''}`}
-              loading="lazy"
-              decoding="async"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white/20 text-2xl">
-              🍣
-            </div>
-          )}
+        {/* Text content */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-white text-sm leading-snug truncate">{product.title}</h3>
+          <p className="mt-0.5 text-xs text-white/45 line-clamp-2 leading-relaxed">{product.description}</p>
+          <p className="mt-2 font-bold text-primary text-base">{formatPrice(product.price)}</p>
         </div>
 
-        {/* + button overlaid at bottom-right of image */}
-        <button
-          onClick={() => !isButtonDisabled && addItem(product, 1, [])}
-          disabled={isButtonDisabled}
-          className={`absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${
-            isButtonDisabled
-              ? 'bg-zinc-700 text-white/30 cursor-not-allowed'
-              : 'bg-white text-primary hover:scale-110'
-          }`}
-          aria-label={isOutOfStock ? 'Sin stock' : 'Agregar al carrito'}
-        >
-          {isOutOfStock ? <PackageX className="w-3.5 h-3.5" /> : <Plus className="w-4 h-4" />}
-        </button>
-      </div>
-    </article>
+        {/* Image + button */}
+        <div className="relative shrink-0">
+          <div className="w-[88px] h-[88px] rounded-xl overflow-hidden bg-zinc-800">
+            {!imageError && isValidImage ? (
+              <img
+                src={cloudinaryImage(product.image, 400)}
+                alt={product.title}
+                className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale opacity-50' : ''}`}
+                loading="lazy"
+                decoding="async"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white/20 text-2xl">
+                🍣
+              </div>
+            )}
+          </div>
+
+          {/* + button overlaid at bottom-right of image */}
+          <button
+            onClick={handleAddClick}
+            disabled={isButtonDisabled}
+            className={`absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${
+              isButtonDisabled
+                ? 'bg-zinc-700 text-white/30 cursor-not-allowed'
+                : 'bg-white text-primary hover:scale-110'
+            }`}
+            aria-label={isOutOfStock ? 'Sin stock' : needsConfiguration ? 'Configurar y agregar' : 'Agregar al carrito'}
+          >
+            {isOutOfStock ? <PackageX className="w-3.5 h-3.5" /> : <Plus className="w-4 h-4" />}
+          </button>
+        </div>
+      </article>
+
+      {needsConfiguration && (
+        <ProductConfiguratorModal
+          isOpen={showConfigurator}
+          onClose={() => setShowConfigurator(false)}
+          product={product}
+          isStoreOpen={isStoreOpen}
+        />
+      )}
+    </>
   );
 };

@@ -8,12 +8,18 @@ const CartAddonSchema = z.object({
     .max(10, 'La cantidad del adicional no puede superar 10'),
 });
 
+const CartSelectionSchema = z.object({
+  stepId: z.string().min(1, 'El ID del paso es requerido'),
+  optionId: z.string().min(1, 'El ID de la opción es requerido'),
+});
+
 const CartItemSchema = z.object({
   productId: z.string().min(1, 'El ID del producto es requerido'),
   quantity: z.number({ message: 'La cantidad debe ser un numero' })
     .int()
     .min(1, 'La cantidad debe ser al menos 1'),
   addons: z.array(CartAddonSchema).optional(),
+  selections: z.array(CartSelectionSchema).optional(),
 });
 
 const CoordinatesSchema = z.object({
