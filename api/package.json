@@ -9,7 +9,9 @@
     "seed": "ts-node-dev --transpile-only scripts/seed.ts",
     "migrate:branches": "node scripts/backfill-branches.cjs",
     "branch:create": "node scripts/create-branch.cjs",
-    "user:create": "node scripts/create-user.cjs"
+    "user:create": "node scripts/create-user.cjs",
+    "test:multibranch": "node tests/multi-branch.integration.cjs",
+    "test:migration": "node tests/branch-migration.integration.cjs"
   },
   "keywords": [],
   "author": "",
