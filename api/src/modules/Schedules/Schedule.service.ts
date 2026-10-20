@@ -1,6 +1,7 @@
 import { ConfigModel, IDaySchedule, IConfig } from './Schedule.module';
 import { BranchModel } from '../branches/branch.model';
 import { AppError } from '../../utils/AppError';
+import { localDate } from '../../utils/branchTime';
 
 // Reemplazo robusto para limpiar tildes (Unicode block de diacríticos)
 const normalizeDayName = (value?: string) =>
@@ -28,29 +29,32 @@ export const checkStoreStatus = async (branchId: string) => {
     };
   }
 
-  // 🕒 OBTENER TIEMPO SEGURO EN ARGENTINA
   const now = new Date();
-  
-  // Convertimos de forma exacta la fecha actual al huso de Argentina
-  const argString = now.toLocaleString('en-US', { timeZone: branch.timezone });
-  const argDate = new Date(argString);
-
-  // Extraemos las variables numéricas reales de forma nativa
-  const hourNum = argDate.getHours();
-  const minuteNum = argDate.getMinutes();
-  
-  // Armamos el string garantizando que vaya estrictamente de "00:00" a "23:59"
-  const currentTime = `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
-
-  // Obtenemos el nombre del día en español utilizando la fecha ya adaptada a Argentina
-  const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long', timeZone: branch.timezone });
-  const dayName = dayFormatter.format(now);
+  const currentTime = new Intl.DateTimeFormat('en-GB', {
+    timeZone: branch.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(now);
+  const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+  const dayIndex = new Date(`${localDate(branch.timezone, now)}T12:00:00Z`).getUTCDay();
+  const dayName = weekdays[dayIndex];
+  const previousDayName = weekdays[(dayIndex + 6) % 7];
 
   const todaySchedule = config.dailySchedule.find(
     (schedule) => normalizeDayName(schedule.day) === normalizeDayName(dayName),
   );
 
-  if (!todaySchedule || !todaySchedule.isStoreOpen) {
+  const previousSchedule = config.dailySchedule.find(
+    (schedule) => normalizeDayName(schedule.day) === normalizeDayName(previousDayName),
+  );
+  const openFromPreviousDay = !!previousSchedule?.isStoreOpen
+    && previousSchedule.openTime > previousSchedule.closeTime
+    && currentTime <= previousSchedule.closeTime;
+  const openToday = !!todaySchedule?.isStoreOpen && (
+    todaySchedule.openTime <= todaySchedule.closeTime
+      ? currentTime >= todaySchedule.openTime && currentTime <= todaySchedule.closeTime
+      : currentTime >= todaySchedule.openTime
+  );
+
+  if (!todaySchedule?.isStoreOpen && !openFromPreviousDay) {
     return {
       ...baseResponse,
       isOpen: false,
@@ -60,13 +64,13 @@ export const checkStoreStatus = async (branchId: string) => {
   }
 
   // 🚪 VALIDACIÓN DE APERTURA GENERAL Y DE RANGOS DE HORARIO
-  const isOpen = config.isOpen && currentTime >= todaySchedule.openTime && currentTime <= todaySchedule.closeTime;
+  const isOpen = config.isOpen && (openToday || openFromPreviousDay);
 
   return {
     ...baseResponse,
     isOpen,
-    message: isOpen ? 'Estamos cocinando!' : `Abrimos a las ${todaySchedule.openTime}`,
-    schedule: todaySchedule,
+    message: isOpen ? 'Estamos cocinando!' : `Abrimos a las ${todaySchedule?.openTime ?? 'consultar'}`,
+    schedule: openFromPreviousDay ? previousSchedule : todaySchedule,
   };
 };
 

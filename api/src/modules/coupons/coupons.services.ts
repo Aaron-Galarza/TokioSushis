@@ -1,5 +1,5 @@
 import { iCoupon, CouponModel } from './coupons.model';
-import { argDate, argWeekday } from '../../utils/Timezone'; // Usamos tu utilidad para sincronizar con Argentina
+import { localWeekday } from '../../utils/branchTime';
 
 const normalizeCouponData = (data: Partial<iCoupon> & { Code?: string; Percent?: number }) => {
   const normalized: any = { ...data };
@@ -46,14 +46,15 @@ export const deleteById = async (branchId: string, id: string): Promise<iCoupon 
  */
 export const validateCoupon = (
   coupon: any, 
-  paymentMethod: string, 
-  deliveryType: string
+  paymentMethod: string | undefined,
+  deliveryType: string | undefined,
+  timezone: string,
 ): string | null => {
   
   // Validacion de Dias de la Semana (campo real del schema: validDays, en ingles como CDAYS)
   if (coupon.validDays && coupon.validDays.length > 0) {
     const esDiaValido = coupon.validDays.some(
-      (d: string) => d.toString().trim().toLowerCase() === argWeekday()
+      (d: string) => d.toString().trim().toLowerCase() === localWeekday(timezone)
     );
 
     if (!esDiaValido) {
@@ -63,6 +64,7 @@ export const validateCoupon = (
 
   // Validación de Métodos de Pago (campo real del schema: validPaymentMethods)
   if (coupon.validPaymentMethods && coupon.validPaymentMethods.length > 0) {
+    if (!paymentMethod) return 'Seleccioná un método de pago para validar el cupón';
     const metodoPagoNormalizado = paymentMethod.trim().toLowerCase();
     const esMetodoValido = coupon.validPaymentMethods.some(
       (m: string) => m.trim().toLowerCase() === metodoPagoNormalizado
