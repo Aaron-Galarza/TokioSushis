@@ -2,6 +2,8 @@ const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
+const fs = require('node:fs');
+const { createHash } = require('node:crypto');
 
 const uri = process.env.MONGODB_TEST_URI;
 if (!uri || !/^mongodb:\/\/(?:127\.0\.0\.1|localhost):\d+\/tokio_multibranch_test_[a-z0-9]+(?:\?|$)/.test(uri)) {
@@ -40,6 +42,16 @@ async function main() {
 
   const applied = runMigration(true);
   assert.equal(applied.status, 0, applied.stderr || applied.stdout);
+  const backupDir = /Respaldo EJSON local completo: ([^\r\n]+)/.exec(applied.stdout)?.[1];
+  assert.ok(backupDir);
+  const manifest = JSON.parse(fs.readFileSync(path.join(backupDir, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.databaseName, new URL(uri).pathname.slice(1));
+  for (const [collection, info] of Object.entries(manifest.backupCounts)) {
+    const content = fs.readFileSync(path.join(backupDir, `${collection}.jsonl`));
+    assert.equal(createHash('sha256').update(content).digest('hex'), info.sha256);
+    assert.equal(content.toString().trim().split('\n').length, info.count);
+    assert.ok(Array.isArray(manifest.backupIndexes[collection]));
+  }
   const branch = await db.collection('branches').findOne({ slug: 'original' });
   assert.ok(branch);
   assert.equal(branch.galleryFolder, 'TokyoSushis');
