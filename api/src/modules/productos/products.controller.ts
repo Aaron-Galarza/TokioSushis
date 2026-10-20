@@ -48,6 +48,13 @@ export const activeStatusProduct = asyncHandler(async (req: Request, res: Respon
   return sendSucces(res, product, 200)
 })
 
+export const updateStock = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string }
+  const product = await ProductService.setStock(requireBranchId(req), id, req.body.stock)
+  if (!product) return sendError(res, 'Producto no encontrado', 404)
+  return sendSucces(res, product, 200)
+})
+
 export const deleteProduct = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params as { id: string }
   const result = await ProductService.deleteById(requireBranchId(req), id)

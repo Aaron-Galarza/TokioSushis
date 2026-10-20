@@ -67,5 +67,7 @@ export const create = async (branchId: string, data: Partial<iProducto>): Promis
 };
 
 export const modify = crud.modify;
+export const setStock = async (branchId: string, id: string, stock: number): Promise<iProducto | null> =>
+  ProductModel.findOneAndUpdate({ _id: id, branchId }, { $set: { stock } }, { returnDocument: 'after', runValidators: true });
 export const toggleActive = crud.toggleActive;
 export const deleteById = crud.deleteById;
