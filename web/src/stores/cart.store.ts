@@ -23,6 +23,7 @@ const areSameSelections = (a: CartSelection[] = [], b: CartSelection[] = []) => 
 };
 
 interface CartState {
+  branchSlug: string | null;
   items: CartItem[];
   deliveryType: 'pickup' | 'delivery';
   paymentMethod: 'cash' | 'debito' | 'credito' | 'transferencia' | null; // 💳 Sincronizado
@@ -37,6 +38,7 @@ interface CartState {
   updateQuantity: (index: number, quantity: number) => void;
   updateItemAddon: (itemIndex: number, addon: Addon, delta: number) => void;
   clearCart: () => void;
+  switchBranch: (slug: string) => void;
 
   setDeliveryType: (type: 'pickup' | 'delivery') => void;
   setPaymentMethod: (method: 'cash' | 'debito' | 'credito' | 'transferencia' | null) => void; // 💳 Sincronizado
@@ -53,6 +55,7 @@ interface CartState {
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
+      branchSlug: null,
       items: [],
       deliveryType: 'pickup',
       paymentMethod: null,
@@ -127,6 +130,16 @@ export const useCartStore = create<CartState>()(
       }),
 
       clearCart: () => set({ items: [], coupon: null, paymentMethod: null }),
+      switchBranch: (slug) => set((state) => state.branchSlug === slug ? state : ({
+        branchSlug: slug,
+        items: [],
+        coupon: null,
+        paymentMethod: null,
+        deliveryAddress: '',
+        deliveryCoordinates: null,
+        distanceKm: 0,
+        deliveryCost: 0,
+      })),
       setDeliveryType: (type) => set({ deliveryType: type }),
       setPaymentMethod: (method) => set({ paymentMethod: method }),
       setCoupon: (coupon) => set({ coupon }),
@@ -152,6 +165,6 @@ export const useCartStore = create<CartState>()(
         return { itemCount, subtotal, discount, surcharge, total };
       },
     }),
-    { name: 'american-way-cart-storage', storage: createJSONStorage(() => localStorage) }
+    { name: 'tokyo-branch-cart-storage', storage: createJSONStorage(() => sessionStorage) }
   )
 );

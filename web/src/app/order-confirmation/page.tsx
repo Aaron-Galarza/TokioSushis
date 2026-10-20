@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, MapPin, Wallet, Bike, ShoppingBag, ArrowLeft, UtensilsCrossed, FileText, Landmark } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
 import { TRANSFER_INFO } from '@/constants/admin';
+import { useBranchPath } from '@/hooks/useBranchPath';
 
 interface OrderSnapshot {
   orderNumber?: number;
@@ -31,6 +32,7 @@ interface OrderSnapshot {
 
 export default function OrderConfirmationPage() {
   const router = useRouter();
+  const branchPath = useBranchPath();
   const [order, setOrder] = useState<OrderSnapshot | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -57,7 +59,7 @@ export default function OrderConfirmationPage() {
       <main className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center px-4">
         <p className="text-white/40 text-sm mb-4">No encontramos información de tu pedido.</p>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push(branchPath())}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-white/50 hover:text-white text-sm font-semibold transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -262,7 +264,7 @@ export default function OrderConfirmationPage() {
         </div>
 
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push(branchPath())}
           className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-white/10 text-white/50 hover:text-white hover:border-white/25 text-sm font-semibold transition-all active:scale-95"
         >
           <ArrowLeft className="w-4 h-4" />

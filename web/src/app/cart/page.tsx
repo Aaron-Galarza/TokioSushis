@@ -5,8 +5,10 @@ import { ArrowLeft, ShoppingBag, ArrowRight, Trash2 } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { CartItemCard } from "@/features/cart/components/CartItemCard";
 import { CartEmpty } from "@/features/cart/components/CartEmpty";
+import { useBranchPath } from '@/hooks/useBranchPath';
 
 export default function CartPage() {
+  const branchPath = useBranchPath();
   const { items, getTotals, clearCart } = useCartStore();
 
   if (items.length === 0) {
@@ -14,7 +16,7 @@ export default function CartPage() {
       <div className="min-h-screen bg-background flex flex-col pt-6">
         <header className="w-full p-4">
           <Link
-            href="/"
+            href={branchPath()}
             className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10 text-white/70 hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -34,7 +36,7 @@ export default function CartPage() {
         <div className="max-w-2xl mx-auto px-3 sm:px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href="/"
+              href={branchPath()}
               className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/90"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -88,7 +90,7 @@ export default function CartPage() {
             </div>
 
             <Link
-              href="/checkout"
+              href={branchPath('/checkout')}
               className="flex-1 bg-primary text-black font-extrabold text-base sm:text-lg py-3.5 px-5 rounded-xl hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
             >
               Continuar

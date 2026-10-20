@@ -44,6 +44,11 @@ api.interceptors.request.use(
       return config;
     }
 
+    const slug = /^\/s\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/|$)/.exec(window.location.pathname)?.[1];
+    if (slug) {
+      config.headers.set('X-Branch-Slug', slug);
+    }
+
     try {
       const { useAuthStore } = await loadAuthStoreModule();
       const token = useAuthStore.getState().token;

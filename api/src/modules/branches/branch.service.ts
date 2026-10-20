@@ -5,3 +5,6 @@ export const findActiveBranchBySlug = async (slug: string) => {
     .select('name slug address coordinates timezone phone whatsappPhone')
     .lean();
 };
+
+export const listActiveBranches = async () =>
+  BranchModel.find({ active: true }).select('name slug address').sort({ name: 1 }).lean();

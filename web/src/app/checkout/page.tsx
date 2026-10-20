@@ -11,8 +11,10 @@ import { CheckoutForm } from '@/features/checkout/components/CheckoutForm';
 import { CouponSection } from '@/features/checkout/components/CouponSection';
 import { SummarySection } from '@/features/checkout/components/SummarySection';
 import { PAYMENT_LABELS, TRANSFER_INFO } from '@/constants/admin';
+import { useBranchPath } from '@/hooks/useBranchPath';
 
 export default function CheckoutPage() {
+  const branchPath = useBranchPath();
   const {
     items, deliveryType, coupon, isDeliveryLoading,
     name, setName, phone, setPhone,
@@ -36,7 +38,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-background flex flex-col font-sans">
       <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-xl border-b border-white/10 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-3.5 flex items-center gap-3">
-          <Link href="/cart" className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/90">
+          <Link href={branchPath('/cart')} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/90">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="font-heading text-xl tracking-wide text-white mt-1">FINALIZAR PEDIDO</h1>

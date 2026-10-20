@@ -4,11 +4,13 @@ import { ShoppingCart, Lock } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/stores/cart.store';
+import { useBranchPath } from '@/hooks/useBranchPath';
 
 const emptySubscribe = () => () => {};
 
 export function Header() {
   const router = useRouter();
+  const branchPath = useBranchPath();
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const cartCount = useCartStore((state) => state.getTotals().itemCount);
 
@@ -27,7 +29,7 @@ export function Header() {
 
         {/* Centro: Logo + texto */}
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push(branchPath())}
           className="group flex flex-1 items-center justify-center gap-2 transition-opacity hover:opacity-80 min-w-0"
           aria-label="Ir al inicio"
         >
@@ -45,7 +47,7 @@ export function Header() {
 
         {/* Derecha: Carrito */}
         <button
-          onClick={() => router.push('/cart')}
+          onClick={() => router.push(branchPath('/cart'))}
           className="relative flex rounded-lg border border-white/10 bg-white/5 p-2 text-white transition-all hover:bg-white/10 active:scale-95 shrink-0"
           aria-label="Abrir carrito"
         >
