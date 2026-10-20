@@ -42,3 +42,8 @@ next-env.d.ts
 **/node_modules/
 **/.next/
 .VSCodeCounter/
+
+# Local implementation notes and database backups
+/docs/
+/backups/
+/package-lock.json
