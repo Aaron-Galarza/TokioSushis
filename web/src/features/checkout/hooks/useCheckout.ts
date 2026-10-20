@@ -116,35 +116,36 @@ export function useCheckout() {
       }
       const res = await api.post('/orders', payload, { headers: { 'Idempotency-Key': attempt!.key } });
       sessionStorage.removeItem('pending_order_attempt');
-      const orderNumber = res.data?.data?.orderNumber;
+      const savedOrder = res.data.data;
+      const orderNumber = savedOrder.orderNumber || savedOrder._id?.slice(-4);
 
-      sessionStorage.setItem('order_confirmation', JSON.stringify({
+      sessionStorage.setItem(`order_confirmation:${branch?.slug}`, JSON.stringify({
         orderNumber,
-        customerName: name.trim(),
-        deliveryType,
-        deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : null,
-        paymentMethod: PAYMENT_LABELS[paymentMethod as PaymentKey] ?? paymentMethod,
-        rawPaymentMethod: paymentMethod,
+        customerName: savedOrder.customer.name,
+        deliveryType: savedOrder.deliveryType,
+        deliveryAddress: savedOrder.delivery?.address || null,
+        paymentMethod: PAYMENT_LABELS[savedOrder.paymentMethod as PaymentKey] ?? savedOrder.paymentMethod,
+        rawPaymentMethod: savedOrder.paymentMethod,
         transferAlias: branch?.transferAlias,
         transferHolder: branch?.transferHolder,
-        notes: notes.trim(),
-        items: items.map(item => ({
-          title: item.product.title,
+        notes: savedOrder.notes || '',
+        items: savedOrder.items.map((item: any) => ({
+          title: item.title,
           quantity: item.quantity,
-          price: item.product.price,
+          price: item.price,
           configSummary: item.configSummary,
-          addons: item.addons.map(a => ({
-            name: a.addon.name,
+          addons: (item.addons || []).map((a: any) => ({
+            name: a.title,
             quantity: a.quantity,
-            price: a.addon.price,
+            price: a.price,
           })),
-          itemTotal: item.itemTotal,
+          itemTotal: item.quantity * (item.price + (item.addons || []).reduce((sum: number, addon: any) => sum + addon.price * addon.quantity, 0)),
         })),
-        subtotal,
-        discount,
-        surcharge, // ⚡ Se persiste el recargo calculado para la pantalla final
-        total,
-        couponCode: coupon ? couponCode.trim() : null,
+        subtotal: savedOrder.subtotal,
+        discount: savedOrder.subtotal * savedOrder.discountPercent / 100,
+        surcharge: savedOrder.surcharge,
+        total: savedOrder.total,
+        couponCode: savedOrder.couponCode || null,
       }));
 
       router.push(branchPath('/order-confirmation'));
