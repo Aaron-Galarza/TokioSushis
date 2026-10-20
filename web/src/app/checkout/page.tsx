@@ -10,7 +10,6 @@ import { AddressMap } from '@/features/checkout/components/AddressMap';
 import { CheckoutForm } from '@/features/checkout/components/CheckoutForm';
 import { CouponSection } from '@/features/checkout/components/CouponSection';
 import { SummarySection } from '@/features/checkout/components/SummarySection';
-import { DeliveryAddressWarningModal } from '@/features/checkout/components/DeliveryAddressWarningModal';
 import { PAYMENT_LABELS, TRANSFER_INFO } from '@/constants/admin';
 
 export default function CheckoutPage() {
@@ -21,7 +20,6 @@ export default function CheckoutPage() {
     paymentMethod, setPaymentMethod,
     couponCode, couponLoading, couponError, validateCoupon, handleCouponInput,
     submitting, submitError, isConfirmDisabled, handleConfirmOrder,
-    unresolvedAddressModal, confirmUnresolvedDelivery, cancelUnresolvedDelivery,
     subtotal, discount, total, surcharge
   } = useCheckout();
 
@@ -171,11 +169,6 @@ export default function CheckoutPage() {
 
       </main>
 
-      <DeliveryAddressWarningModal
-        isOpen={unresolvedAddressModal}
-        onConfirm={confirmUnresolvedDelivery}
-        onCancel={cancelUnresolvedDelivery}
-      />
     </div>
   );
 }

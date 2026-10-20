@@ -9,6 +9,9 @@ import { AppError } from '../../utils/AppError'
 import { argToUTC } from '../../utils/Timezone'
 import { Range, getRangeStartDate } from '../../utils/dateRange'
 import { priceConfigurableItem, ConfiguratorError } from '../../utils/configuratorPricing'
+import mongoose from 'mongoose'
+import { createHash } from 'node:crypto'
+import { ProductModel } from '../productos/products.model'
 
 // Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
 const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
@@ -16,7 +19,13 @@ const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total
   return { total: baseTotal + surcharge, surcharge }
 }
 
-export const createOrder = async (branchId: string, orderData: any): Promise<iOrder> => {
+export const createOrder = async (branchId: string, orderData: any, idempotencyKey: string): Promise<{ order: iOrder; created: boolean }> => {
+  const requestHash = createHash('sha256').update(JSON.stringify(orderData)).digest('hex')
+  const existing = await OrderModel.findOne({ branchId, idempotencyKey })
+  if (existing) {
+    if (existing.requestHash !== requestHash) throw new AppError(409, 'La clave del pedido ya se usó con otros datos')
+    return { order: existing, created: false }
+  }
  
   const storeStatus = await checkStoreStatus(branchId)
   if (!storeStatus.isOpen) {
@@ -31,6 +40,7 @@ export const createOrder = async (branchId: string, orderData: any): Promise<iOr
       const product = await ProductService.viewById(branchId, item.productId)
       if (!product) throw new AppError(404, `Producto ${item.productId} no encontrado`)
  
+      if (!product.active) throw new AppError(400, `El producto "${product.title}" no está disponible`)
       if (product.controlStock) {
         if (product.stock <= 0) {
           throw new AppError(400, `El producto "${product.title}" se encuentra agotado`)
@@ -39,8 +49,6 @@ export const createOrder = async (branchId: string, orderData: any): Promise<iOr
           throw new AppError(400, `Stock insuficiente para "${product.title}". Disponibles: ${product.stock}, solicitados: ${item.quantity}`)
         }
         
-        product.stock -= item.quantity
-        await product.save()
       }
 
       let addons: iCartAddon[] = []
@@ -49,6 +57,7 @@ export const createOrder = async (branchId: string, orderData: any): Promise<iOr
           item.addons.map(async (a: any) => {
             const adicional = await AdicionalService.viewById(branchId, a.addonId)
             if (!adicional) throw new AppError(404, `Adicional ${a.addonId} no encontrado`)
+            if (!adicional.active) throw new AppError(400, `El adicional "${adicional.title}" no está disponible`)
             const addonName = adicional.title ?? 'Adicional'
             return {
               addonId:  a.addonId,
@@ -135,17 +144,11 @@ export const createOrder = async (branchId: string, orderData: any): Promise<iOr
 
     const hasCoordinates = typeof coordinates?.lat === 'number' && typeof coordinates?.lng === 'number'
 
-    if (hasCoordinates) {
-      try {
-        const deliveryCalculation = await calculateDelivery(branchId, coordinates.lat, coordinates.lng)
-        deliveryCost = deliveryCalculation.deliveryCost
-        delivery.distanceKm = deliveryCalculation.distanceKm
-        total += deliveryCost
-      } catch (error) {
-        // 📦 Mapbox no pudo calcular la ruta: el pedido se crea igual y el costo se coordina por WhatsApp
-        console.error('[DELIVERY_CALC_ERROR]', error)
-      }
-    }
+    if (!hasCoordinates) throw new AppError(400, 'Faltan coordenadas para calcular el envío')
+    const deliveryCalculation = await calculateDelivery(branchId, coordinates.lat, coordinates.lng)
+    deliveryCost = deliveryCalculation.deliveryCost
+    delivery.distanceKm = deliveryCalculation.distanceKm
+    total += deliveryCost
   }
 
   // 🔥 RECARGO POR TARJETA DE CRÉDITO (15%)
@@ -164,6 +167,8 @@ export const createOrder = async (branchId: string, orderData: any): Promise<iOr
  
   const newOrder = new OrderModel({
     branchId,
+    idempotencyKey,
+    requestHash,
     customer:      orderData.customer,
     items,
     deliveryType:  orderData.deliveryType,
@@ -178,9 +183,40 @@ export const createOrder = async (branchId: string, orderData: any): Promise<iOr
     notes:         sanitizedNotes
   })
  
-  const saved = await newOrder.save()
+  let saved: iOrder
+  try {
+    saved = await mongoose.connection.transaction(async (session) => {
+      const quantities = new Map<string, number>()
+      for (const item of items) {
+        quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity)
+      }
+      for (const [productId, quantity] of quantities) {
+        const product = await ProductModel.findOne({ _id: productId, branchId, active: true }).session(session)
+        if (!product) throw new AppError(400, 'Un producto ya no está disponible')
+        if (product.controlStock) {
+          const updated = await ProductModel.updateOne(
+            { _id: productId, branchId, active: true, controlStock: true, stock: { $gte: quantity } },
+            { $inc: { stock: -quantity } },
+            { session },
+          )
+          if (updated.modifiedCount !== 1) throw new AppError(409, `Stock insuficiente para "${product.title}"`)
+        }
+      }
+      await newOrder.save({ session })
+      return newOrder
+    })
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      const duplicate = await OrderModel.findOne({ branchId, idempotencyKey })
+      if (duplicate) {
+        if (duplicate.requestHash !== requestHash) throw new AppError(409, 'La clave del pedido ya se usó con otros datos')
+        return { order: duplicate, created: false }
+      }
+    }
+    throw error
+  }
   console.log(`[PEDIDO] Nuevo pedido ${saved._id} - ${saved.customer.name} - $${saved.total}`)
-  return saved
+  return { order: saved, created: true }
 }
 
 export const getAllOrders = async (branchId: string): Promise<iOrder[]> => {
