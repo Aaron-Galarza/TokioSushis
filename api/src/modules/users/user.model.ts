@@ -3,7 +3,9 @@ import mongoose, { Schema, Document } from 'mongoose'
 export interface iUser extends Document {
   email: string
   passwordHash: string
-  role: 'admin'
+  role: 'admin' | 'encargado' | 'owner'
+  branchId?: mongoose.Types.ObjectId
+  active: boolean
 }
 
 const UserSchema = new Schema<iUser>({
@@ -20,9 +22,16 @@ const UserSchema = new Schema<iUser>({
   },
   role: {
     type: String,
-    enum: ['admin'],
-    default: 'admin'
-  }
+    enum: ['admin', 'encargado', 'owner'],
+    required: true
+  },
+  branchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Branch',
+    required: function (this: iUser) { return this.role !== 'owner' },
+    index: true
+  },
+  active: { type: Boolean, required: true, default: true }
 }, { timestamps: true })
 
 export const UserModel = mongoose.model<iUser>('User', UserSchema)

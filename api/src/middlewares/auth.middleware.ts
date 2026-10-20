@@ -1,30 +1,52 @@
-import { Response, Request, NextFunction } from "express";
-import * as jwt from 'jsonwebtoken'
-import { sendError } from "../utils/response";
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import { BranchModel } from '../modules/branches/branch.model';
+import { UserModel } from '../modules/users/user.model';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendError } from '../utils/response';
 
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+export type UserRole = 'admin' | 'encargado' | 'owner';
 
-    const JWT_SECRET = process.env.JWT_SECRET 
+export const authenticate = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return sendError(res, 'Falta configuración de seguridad', 500);
 
-    if (!JWT_SECRET) {
-        return sendError(res, 'Error interno: Falta Configuracion de seguridad', 500)
+  const authorization = req.get('authorization') ?? '';
+  const token = /^Bearer\s+(\S+)$/i.exec(authorization)?.[1];
+  if (!token) return sendError(res, 'Acceso denegado', 401);
+
+  let decoded: jwt.JwtPayload;
+  try {
+    const payload = jwt.verify(token, secret);
+    if (typeof payload === 'string' || typeof payload.id !== 'string' || !mongoose.isValidObjectId(payload.id)) {
+      return sendError(res, 'Token inválido', 401);
     }
+    decoded = payload;
+  } catch {
+    return sendError(res, 'Token inválido o expirado', 401);
+  }
 
-    const authHeader = req.get('authorization')
+  const user = await UserModel.findById(decoded.id).select('role branchId active').lean();
+  if (!user || !user.active) return sendError(res, 'Cuenta deshabilitada o inexistente', 401);
 
-    if (!authHeader || !authHeader.startsWith('Bearer')) {
-        return sendError(res, 'Acceso denegado. No autorizado', 401)
-    }
+  const branchId = user.role === 'owner' ? null : user.branchId?.toString() ?? null;
+  if (user.role !== 'owner') {
+    if (!branchId) return sendError(res, 'Cuenta sin sucursal asignada', 403);
+    const branchActive = await BranchModel.exists({ _id: branchId, active: true });
+    if (!branchActive) return sendError(res, 'Sucursal deshabilitada o inexistente', 403);
+  }
 
-    const token = authHeader.split(' ')[1]
+  req.auth = { userId: user._id.toString(), role: user.role, branchId };
+  next();
+});
 
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload
-        req.user = decoded
-        next()
-    } catch (error) {
-        return sendError(res, 'Token invalido o expirado', 403)
-    }
+export const authorize = (...roles: UserRole[]) => (req: Request, res: Response, next: NextFunction) => {
+  if (!req.auth) return sendError(res, 'Acceso denegado', 401);
+  if (!roles.includes(req.auth.role)) return sendError(res, 'Permisos insuficientes', 403);
+  next();
+};
 
-}
+// Alias transitorio para las rutas existentes; cada acción tendrá permisos específicos.
+export const isAdmin = [authenticate, authorize('admin', 'encargado')];
 

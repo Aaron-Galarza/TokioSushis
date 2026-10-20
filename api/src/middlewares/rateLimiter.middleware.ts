@@ -23,3 +23,11 @@ export const geocodingLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 })
+
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, error: 'Demasiados intentos de acceso. Intentá de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})

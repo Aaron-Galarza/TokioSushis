@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import * as jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import * as UserService from './user.services'
+import { BranchModel } from '../branches/branch.model'
 import { sendError, sendSucces } from '../../utils/response'
 import { asyncHandler } from '../../utils/asyncHandler'
 
@@ -13,7 +14,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const user = await UserService.findByEmail(email)
-  if (!user) {
+  if (!user || !user.active) {
     return sendError(res, 'Credenciales inválidas', 401)
   }
 
@@ -22,12 +23,22 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     return sendError(res, 'Credenciales inválidas', 401)
   }
 
-  // user._id es el ObjectId de Mongo; .toString() lo convierte a string para el token
+  const branch = user.role === 'owner' ? null : await BranchModel.findOne({
+    _id: user.branchId,
+    active: true,
+  }).select('name slug').lean();
+  if (user.role !== 'owner' && !branch) {
+    return sendError(res, 'Cuenta sin sucursal activa', 403)
+  }
+
   const token = jwt.sign(
-    { id: user._id.toString(), email: user.email, role: 'admin' },
+    { id: user._id.toString() },
     process.env.JWT_SECRET!,
     { expiresIn: '4h' }
   )
 
-  return res.json({ success: true, data: { message: 'Bienvenido, Admin', token } })
+  return res.json({ success: true, data: {
+    message: 'Bienvenido', token, role: user.role,
+    branch: branch ? { id: branch._id.toString(), name: branch.name, slug: branch.slug } : null,
+  } })
 })
