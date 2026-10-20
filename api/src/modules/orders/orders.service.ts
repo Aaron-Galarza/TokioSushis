@@ -12,6 +12,8 @@ import mongoose from 'mongoose'
 import { createHash } from 'node:crypto'
 import { ProductModel } from '../productos/products.model'
 import { BranchModel } from '../branches/branch.model'
+import { AdicionalModel } from '../adicionales/adicionales.model'
+import { CouponModel } from '../coupons/coupons.model'
 
 // Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
 const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
@@ -38,13 +40,15 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
     throw new AppError(400, 'Este método de pago no está disponible en la sucursal')
   }
  
+  const productVersions: number[] = []
   const items: iCartItem[] = await Promise.all(
-    orderData.items.map(async (item: any) => {
+    orderData.items.map(async (item: any, index: number) => {
  
       const product = await ProductService.viewById(branchId, item.productId)
       if (!product) throw new AppError(404, `Producto ${item.productId} no encontrado`)
  
       if (!product.active) throw new AppError(400, `El producto "${product.title}" no está disponible`)
+      productVersions[index] = (product.get('updatedAt') as Date | undefined)?.getTime() ?? 0
       if (product.controlStock) {
         if (product.stock <= 0) {
           throw new AppError(400, `El producto "${product.title}" se encuentra agotado`)
@@ -190,16 +194,39 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
   let saved: iOrder
   try {
     saved = await mongoose.connection.transaction(async (session) => {
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index]
+        const product = await ProductModel.findOne({ _id: item.productId, branchId, active: true,
+          deleted: { $ne: true } }).session(session)
+        if (!product || ((product.get('updatedAt') as Date | undefined)?.getTime() ?? 0) !== productVersions[index]) {
+          throw new AppError(409, 'El menú cambió. Revisá el pedido antes de enviarlo')
+        }
+        for (const addon of item.addons ?? []) {
+          const current = await AdicionalModel.findOne({ _id: addon.addonId, branchId, active: true }).session(session)
+          if (!current || current.price !== addon.price) {
+            throw new AppError(409, 'Un adicional cambió. Revisá el pedido antes de enviarlo')
+          }
+        }
+      }
+      if (orderData.couponCode) {
+        const coupon = await CouponModel.findOne({ branchId, code: orderData.couponCode.toUpperCase(),
+          active: { $ne: false } }).session(session)
+        if (!coupon || coupon.discountPercent !== discountPercent
+          || CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType)) {
+          throw new AppError(409, 'El cupón cambió. Revisá el pedido antes de enviarlo')
+        }
+      }
       const quantities = new Map<string, number>()
       for (const item of items) {
         quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity)
       }
       for (const [productId, quantity] of quantities) {
-        const product = await ProductModel.findOne({ _id: productId, branchId, active: true }).session(session)
+        const product = await ProductModel.findOne({ _id: productId, branchId, active: true,
+          deleted: { $ne: true } }).session(session)
         if (!product) throw new AppError(400, 'Un producto ya no está disponible')
         if (product.controlStock) {
           const updated = await ProductModel.updateOne(
-            { _id: productId, branchId, active: true, controlStock: true, stock: { $gte: quantity } },
+            { _id: productId, branchId, active: true, deleted: { $ne: true }, controlStock: true, stock: { $gte: quantity } },
             { $inc: { stock: -quantity } },
             { session },
           )

@@ -42,6 +42,7 @@ export interface iProducto extends Document {
   image?: string;
   category: mongoose.Types.ObjectId;
   active: boolean;
+  deleted: boolean;
   controlStock: boolean;
   stock: number;
   configurator?: iConfigurator;
@@ -104,6 +105,7 @@ const ProductoSchema = new Schema<iProducto>({
     type: Boolean,
     default: true,
   },
+  deleted: { type: Boolean, default: false },
   controlStock: {
     type: Boolean,
     default: false,
