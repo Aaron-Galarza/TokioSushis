@@ -7,6 +7,7 @@ import { ScheduleSection } from './ScheduleSection';
 import { BannerSection } from './BannerSection';
 import { RainSection } from './RainSection';
 import { RangesSection } from './RangesSection';
+import { BranchSettingsSection } from './BranchSettingsSection';
 
 export function ConfigTab() {
   const {
@@ -22,6 +23,7 @@ export function ConfigTab() {
 
   return (
     <div className="flex flex-col gap-5 md:gap-6">
+      <BranchSettingsSection />
       {/* ═══ FILA SUPERIOR: BANNER (ancho completo) ═══ */}
       <BannerSection
         banner={banner}

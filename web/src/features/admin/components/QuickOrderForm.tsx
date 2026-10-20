@@ -7,7 +7,8 @@ import { ProductConfiguratorModal } from '@/features/menu-configurator/component
 import { useQuickOrder } from '../hooks/useQuickOrder';
 import type { AddressResult } from '@/features/checkout/hooks/useAddressSearch';
 import type { Product } from '@/types';
-import { PAYMENT_LABELS, TRANSFER_INFO } from '@/constants/admin';
+import { PAYMENT_LABELS } from '@/constants/admin';
+import { useBranchStore } from '@/stores/branch.store';
 
 interface Props {
   products: any[];
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function QuickOrderForm({ products, addons, onSuccess }: Props) {
+  const branch = useBranchStore((s) => s.branch);
   const {
     open,
     setOpen,
@@ -111,7 +113,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
 
             {/* Selector de Pago */}
             <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs font-semibold h-[38px]">
-              {Object.entries(PAYMENT_LABELS).map(([v, l]) => (
+              {Object.entries(PAYMENT_LABELS).filter(([v]) => branch?.paymentMethods.includes(v as keyof typeof PAYMENT_LABELS)).map(([v, l]) => (
                 <button
                   key={v}
                   type="button"
@@ -129,7 +131,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
           {paymentMethod === 'transferencia' && (
             <div className="flex items-center gap-2 bg-[#111] border border-primary/20 rounded-lg px-3 py-2 text-xs text-white/70">
               <Landmark className="w-3.5 h-3.5 text-primary shrink-0" />
-              Recordá al cliente: <span className="font-semibold text-white">{TRANSFER_INFO.alias}</span> — Titular {TRANSFER_INFO.holder}
+              Recordá al cliente: <span className="font-semibold text-white">{branch?.transferAlias}</span> — Titular {branch?.transferHolder}
             </div>
           )}
 

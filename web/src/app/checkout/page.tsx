@@ -10,11 +10,13 @@ import { AddressMap } from '@/features/checkout/components/AddressMap';
 import { CheckoutForm } from '@/features/checkout/components/CheckoutForm';
 import { CouponSection } from '@/features/checkout/components/CouponSection';
 import { SummarySection } from '@/features/checkout/components/SummarySection';
-import { PAYMENT_LABELS, TRANSFER_INFO } from '@/constants/admin';
+import { PAYMENT_LABELS } from '@/constants/admin';
 import { useBranchPath } from '@/hooks/useBranchPath';
+import { useBranchStore } from '@/stores/branch.store';
 
 export default function CheckoutPage() {
   const branchPath = useBranchPath();
+  const branch = useBranchStore((s) => s.branch);
   const {
     items, deliveryType, coupon, isDeliveryLoading,
     name, setName, phone, setPhone,
@@ -28,7 +30,7 @@ export default function CheckoutPage() {
   const [copied, setCopied] = useState(false);
   const handleCopyAlias = async () => {
     try {
-      await navigator.clipboard.writeText(TRANSFER_INFO.alias);
+      await navigator.clipboard.writeText(branch?.transferAlias || '');
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {}
@@ -78,7 +80,7 @@ export default function CheckoutPage() {
         <section>
           <h2 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3 px-1">Método de pago</h2>
           <div className="flex gap-2">
-            {Object.entries(PAYMENT_LABELS).map(([method, label]) => (
+            {Object.entries(PAYMENT_LABELS).filter(([method]) => branch?.paymentMethods.includes(method as keyof typeof PAYMENT_LABELS)).map(([method, label]) => (
               <button 
                 key={method} 
                 onClick={() => setPaymentMethod(method as any)}
@@ -102,7 +104,7 @@ export default function CheckoutPage() {
               <div className="flex items-center justify-between gap-3 bg-[#111] rounded-lg px-3 py-2.5">
                 <div>
                   <p className="text-[11px] text-white/40 uppercase tracking-wider">Transferencia a</p>
-                  <p className="text-white font-semibold text-sm">{TRANSFER_INFO.alias}</p>
+                  <p className="text-white font-semibold text-sm">{branch?.transferAlias}</p>
                 </div>
                 <button
                   onClick={handleCopyAlias}
@@ -114,7 +116,7 @@ export default function CheckoutPage() {
               </div>
               <div>
                 <p className="text-[11px] text-white/40 uppercase tracking-wider">Titular</p>
-                <p className="text-white font-semibold text-sm">{TRANSFER_INFO.holder}</p>
+                <p className="text-white font-semibold text-sm">{branch?.transferHolder}</p>
               </div>
               <p className="text-[11px] text-white/40 leading-relaxed">
                 Realizá la transferencia y enviános el comprobante por WhatsApp para confirmar tu pedido.

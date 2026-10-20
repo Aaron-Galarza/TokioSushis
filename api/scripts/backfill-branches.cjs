@@ -166,10 +166,21 @@ async function main() {
         const _id = new mongoose.Types.ObjectId();
         const now = new Date();
         branch = { _id, slug, name, address, coordinates: { lat, lng }, galleryFolder: 'TokyoSushis',
+          whatsappPhone: '5493624622366',
+          paymentMethods: ['cash', 'debito', 'credito', 'transferencia'],
+          transferAlias: 'Tokyo.nx', transferHolder: 'Román Augusto Gomez',
           timezone: 'America/Argentina/Buenos_Aires', active: true, createdAt: now, updatedAt: now };
         await branches.insertOne(branch, { session });
-      } else if (!branch.galleryFolder) {
-        await branches.updateOne({ _id: branch._id }, { $set: { galleryFolder: 'TokyoSushis' } }, { session });
+      } else {
+        const branchDefaults = {};
+        if (!branch.galleryFolder) branchDefaults.galleryFolder = 'TokyoSushis';
+        if (!branch.paymentMethods) branchDefaults.paymentMethods = ['cash', 'debito', 'credito', 'transferencia'];
+        if (!branch.transferAlias) branchDefaults.transferAlias = 'Tokyo.nx';
+        if (!branch.transferHolder) branchDefaults.transferHolder = 'Román Augusto Gomez';
+        if (!branch.whatsappPhone) branchDefaults.whatsappPhone = '5493624622366';
+        if (Object.keys(branchDefaults).length) {
+          await branches.updateOne({ _id: branch._id }, { $set: branchDefaults }, { session });
+        }
       }
 
       for (const collectionName of collections) {

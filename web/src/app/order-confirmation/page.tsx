@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, MapPin, Wallet, Bike, ShoppingBag, ArrowLeft, UtensilsCrossed, FileText, Landmark } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
-import { TRANSFER_INFO } from '@/constants/admin';
 import { useBranchPath } from '@/hooks/useBranchPath';
 
 interface OrderSnapshot {
@@ -14,6 +13,8 @@ interface OrderSnapshot {
   deliveryAddress: string | null;
   paymentMethod: string;
   rawPaymentMethod?: string;
+  transferAlias?: string;
+  transferHolder?: string;
   notes: string; // Recibido desde el sessionStorage
   items: {
     title: string;
@@ -169,10 +170,10 @@ export default function OrderConfirmationPage() {
               <div>
                 <p className="text-xs text-white/40 uppercase tracking-wider">Datos para transferir</p>
                 <p className="text-sm text-white">
-                  Transferencia a: <span className="font-semibold">{TRANSFER_INFO.alias}</span>
+                  Transferencia a: <span className="font-semibold">{order.transferAlias}</span>
                 </p>
                 <p className="text-sm text-white">
-                  Titular: <span className="font-semibold">{TRANSFER_INFO.holder}</span>
+                  Titular: <span className="font-semibold">{order.transferHolder}</span>
                 </p>
               </div>
             </div>

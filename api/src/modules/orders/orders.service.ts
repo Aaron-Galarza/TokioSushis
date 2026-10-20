@@ -11,6 +11,7 @@ import { priceConfigurableItem, ConfiguratorError } from '../../utils/configurat
 import mongoose from 'mongoose'
 import { createHash } from 'node:crypto'
 import { ProductModel } from '../productos/products.model'
+import { BranchModel } from '../branches/branch.model'
 
 // Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
 const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
@@ -31,6 +32,10 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
     // 423 (Locked) y no 403: el 403 está reservado por el middleware de auth para token inválido/expirado,
     // y el interceptor del front desloguea ante cualquier 403. "Local cerrado" es una regla de negocio, no un tema de sesión.
     throw new AppError(423, storeStatus.message || 'El negocio está cerrado en este momento')
+  }
+  const branch = await BranchModel.findById(branchId).select('paymentMethods').lean()
+  if (!branch || !branch.paymentMethods.includes(orderData.paymentMethod)) {
+    throw new AppError(400, 'Este método de pago no está disponible en la sucursal')
   }
  
   const items: iCartItem[] = await Promise.all(
