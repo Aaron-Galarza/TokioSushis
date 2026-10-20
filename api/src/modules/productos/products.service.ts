@@ -1,9 +1,6 @@
 import mongoose from 'mongoose';
 import { iProducto, ProductModel } from './products.model';
 import { CategoriaModel } from '../categorias/categorias.model';
-import { makeCrud } from '../../utils/crudFactory';
-
-const crud = makeCrud(ProductModel);
 
 const isObjectId = (value: unknown): value is mongoose.Types.ObjectId | string =>
   typeof value === 'string'
@@ -37,7 +34,7 @@ const sortByCategory = (products: any[]) =>
   products.sort((a: any, b: any) => (a.category?.order ?? 0) - (b.category?.order ?? 0));
 
 export const viewAll = async (branchId: string): Promise<iProducto[]> => {
-  const products = await ProductModel.find({ branchId })
+  const products = await ProductModel.find({ branchId, deleted: { $ne: true } })
     .select('title description price image category active controlStock stock configurator createdAt updatedAt')
     .lean();
 
@@ -45,7 +42,7 @@ export const viewAll = async (branchId: string): Promise<iProducto[]> => {
 };
 
 export const viewActive = async (branchId: string): Promise<iProducto[]> => {
-  const products = await ProductModel.find({ branchId, active: true })
+  const products = await ProductModel.find({ branchId, active: true, deleted: { $ne: true } })
     .select('title description price image category active controlStock stock configurator')
     .lean();
 
@@ -54,7 +51,7 @@ export const viewActive = async (branchId: string): Promise<iProducto[]> => {
 };
 
 export const viewById = async (branchId: string, id: string): Promise<iProducto | null> => {
-  return await ProductModel.findOne({ _id: id, branchId });
+  return await ProductModel.findOne({ _id: id, branchId, deleted: { $ne: true } });
 };
 
 export const create = async (branchId: string, data: Partial<iProducto>): Promise<iProducto> => {
@@ -66,8 +63,21 @@ export const create = async (branchId: string, data: Partial<iProducto>): Promis
   return await newProduct.save();
 };
 
-export const modify = crud.modify;
+export const modify = async (branchId: string, id: string, data: Partial<iProducto>): Promise<iProducto | null> => {
+  const safeData = { ...data };
+  delete (safeData as Record<string, unknown>).branchId;
+  delete (safeData as Record<string, unknown>).deleted;
+  return ProductModel.findOneAndUpdate({ _id: id, branchId, deleted: { $ne: true } },
+    { $set: safeData }, { returnDocument: 'after', runValidators: true });
+};
 export const setStock = async (branchId: string, id: string, stock: number): Promise<iProducto | null> =>
-  ProductModel.findOneAndUpdate({ _id: id, branchId }, { $set: { stock } }, { returnDocument: 'after', runValidators: true });
-export const toggleActive = crud.toggleActive;
-export const deleteById = crud.deleteById;
+  ProductModel.findOneAndUpdate({ _id: id, branchId, deleted: { $ne: true } }, { $set: { stock } }, { returnDocument: 'after', runValidators: true });
+export const toggleActive = async (branchId: string, id: string): Promise<iProducto | null> => {
+  const product = await ProductModel.findOne({ _id: id, branchId, deleted: { $ne: true } });
+  if (!product) return null;
+  product.active = !product.active;
+  return product.save();
+};
+export const deleteById = async (branchId: string, id: string): Promise<iProducto | null> =>
+  ProductModel.findOneAndUpdate({ _id: id, branchId, deleted: { $ne: true } },
+    { $set: { deleted: true, active: false } }, { returnDocument: 'after' });
