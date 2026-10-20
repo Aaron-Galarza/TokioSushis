@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import * as CategoriaController from './categorias.controller'
 import { isAdmin } from '../../middlewares/auth.middleware'
+import { resolvePublicBranch } from '../../middlewares/branch.middleware'
 import { validate } from '../../middlewares/validate.middleware'
 import { createCategoriaSchema, updateCategoriaSchema } from './categorias.schema'
 
 const router = Router()
 
-router.get('/', CategoriaController.getActiveCategorias)
+router.get('/', resolvePublicBranch, CategoriaController.getActiveCategorias)
 
 router.get('/admin', isAdmin, CategoriaController.getCategorias)
 router.post('/admin', isAdmin, validate(createCategoriaSchema), CategoriaController.createCategoria)

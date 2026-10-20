@@ -34,6 +34,7 @@ export type PaymentMethod = 'cash' | 'debito' | 'credito' | 'transferencia';
 export const validPaymentMethods: PaymentMethod[] = ['cash', 'debito', 'credito', 'transferencia'];
 
 export interface iOrder extends Document {
+  branchId: mongoose.Types.ObjectId;
   customer: {
     name: string;
     phone: string;
@@ -90,6 +91,7 @@ const CartItemSchema = new Schema<iCartItem>({
 }, { _id: false });
 
 const OrderSchema = new Schema<iOrder>({
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
   customer: {
     name: { type: String, required: [true, 'El nombre del cliente es obligatorio'] },
     phone: { type: String, required: [true, 'El telefono del cliente es obligatorio'] },
@@ -122,7 +124,7 @@ const OrderSchema = new Schema<iOrder>({
   deleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
-OrderSchema.index({ createdAt: -1 });
-OrderSchema.index({ status: 1 });
+OrderSchema.index({ branchId: 1, createdAt: -1 });
+OrderSchema.index({ branchId: 1, status: 1, createdAt: -1 });
 
 export const OrderModel = mongoose.model<iOrder>('Order', OrderSchema);

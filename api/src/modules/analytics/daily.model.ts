@@ -7,6 +7,7 @@ interface IProductEntry {
 }
 
 export interface IDailyAnalytics extends Document {
+  branchId: mongoose.Types.ObjectId;
   date: string; // "YYYY-MM-DD"
   total: number;
   efectivo: number;
@@ -20,11 +21,10 @@ export interface IDailyAnalytics extends Document {
 
 const dailyAnalyticsSchema = new Schema<IDailyAnalytics>(
   {
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
     date: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
     },
     total: { type: Number, default: 0 },
     efectivo: { type: Number, default: 0 },
@@ -47,6 +47,8 @@ const dailyAnalyticsSchema = new Schema<IDailyAnalytics>(
   },
   { timestamps: true }
 );
+
+dailyAnalyticsSchema.index({ branchId: 1, date: 1 }, { unique: true });
 
 export const DailyAnalyticsModel = mongoose.model<IDailyAnalytics>(
   'AnalyticsDaily',

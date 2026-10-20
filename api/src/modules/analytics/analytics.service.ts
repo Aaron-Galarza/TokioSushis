@@ -17,12 +17,13 @@ interface AnalyticsStats {
 
 // ─── Consulta principal ──────────────────────────────────
 
-export const getAnalytics = async (range: Range): Promise<AnalyticsStats> => {
+export const getAnalytics = async (branchId: string, range: Range): Promise<AnalyticsStats> => {
 
   const startDate = getRangeStartDate(range);
   const endDate = range === 'ayer' ? startDate : argDate();
 
   const dailies = await DailyAnalyticsModel.find({
+    branchId,
     date: { $gte: startDate, $lte: endDate },
   }).lean();
 
@@ -82,7 +83,7 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
     'credito';
 
   await DailyAnalyticsModel.findOneAndUpdate(
-    { date },
+    { branchId: order.branchId, date },
     {
       $inc: {
         total: order.total,
@@ -103,7 +104,7 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
 export const revertAnalyticsOnDelivery = async (order: iOrder) => {
   const date = argDate(new Date(order.createdAt));
 
-  const daily = await DailyAnalyticsModel.findOne({ date });
+  const daily = await DailyAnalyticsModel.findOne({ branchId: order.branchId, date });
   if (!daily) {
     console.warn(`[ANALYTICS] REVERT ignorado — no hay registro para ${date}`);
     return;
@@ -131,7 +132,7 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
   const safeCredito       = (!isCash && !isDebito && !isTransferencia) ? Math.min(order.total, daily.credito ?? 0) : 0;
 
   await DailyAnalyticsModel.findOneAndUpdate(
-    { date },
+    { branchId: order.branchId, date },
     {
       $inc: {
         total: -safeTotal,

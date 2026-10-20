@@ -35,6 +35,7 @@ export interface iConfigurator {
 }
 
 export interface iProducto extends Document {
+  branchId: mongoose.Types.ObjectId;
   title: string;
   price: number;
   description?: string;
@@ -77,6 +78,7 @@ const ConfiguratorSchema = new Schema<iConfigurator>({
 }, { _id: false });
 
 const ProductoSchema = new Schema<iProducto>({
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
   title: {
     type: String,
     required: [true, 'El titulo es obligatorio'],
@@ -94,7 +96,6 @@ const ProductoSchema = new Schema<iProducto>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Categoria',
     required: [true, 'La categoria es obligatoria'],
-    index: true,
   },
   image: {
     type: String,
@@ -102,7 +103,6 @@ const ProductoSchema = new Schema<iProducto>({
   active: {
     type: Boolean,
     default: true,
-    index: true,
   },
   controlStock: {
     type: Boolean,
@@ -120,5 +120,7 @@ const ProductoSchema = new Schema<iProducto>({
 }, {
   timestamps: true,
 });
+
+ProductoSchema.index({ branchId: 1, active: 1, category: 1 });
 
 export const ProductModel = mongoose.model<iProducto>('Producto', ProductoSchema);

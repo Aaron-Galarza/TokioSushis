@@ -16,9 +16,9 @@ const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total
   return { total: baseTotal + surcharge, surcharge }
 }
 
-export const createOrder = async (orderData: any): Promise<iOrder> => {
+export const createOrder = async (branchId: string, orderData: any): Promise<iOrder> => {
  
-  const storeStatus = await checkStoreStatus()
+  const storeStatus = await checkStoreStatus(branchId)
   if (!storeStatus.isOpen) {
     // 423 (Locked) y no 403: el 403 está reservado por el middleware de auth para token inválido/expirado,
     // y el interceptor del front desloguea ante cualquier 403. "Local cerrado" es una regla de negocio, no un tema de sesión.
@@ -28,7 +28,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   const items: iCartItem[] = await Promise.all(
     orderData.items.map(async (item: any) => {
  
-      const product = await ProductService.viewById(item.productId)
+      const product = await ProductService.viewById(branchId, item.productId)
       if (!product) throw new AppError(404, `Producto ${item.productId} no encontrado`)
  
       if (product.controlStock) {
@@ -47,7 +47,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
       if (item.addons && item.addons.length > 0) {
         addons = await Promise.all(
           item.addons.map(async (a: any) => {
-            const adicional = await AdicionalService.viewById(a.addonId)
+            const adicional = await AdicionalService.viewById(branchId, a.addonId)
             if (!adicional) throw new AppError(404, `Adicional ${a.addonId} no encontrado`)
             const addonName = adicional.title ?? 'Adicional'
             return {
@@ -108,7 +108,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   let total = subTotal
   let discountPercent = 0
   if (orderData.couponCode) {
-    const coupon = await CouponService.search(orderData.couponCode)
+    const coupon = await CouponService.search(branchId, orderData.couponCode)
     if (!coupon) throw new AppError(404, 'El cupón ingresado no es válido o ya no existe')
     
     const couponError = CouponService.validateCoupon(coupon, orderData.paymentMethod, orderData.deliveryType);
@@ -137,7 +137,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
 
     if (hasCoordinates) {
       try {
-        const deliveryCalculation = await calculateDelivery(coordinates.lat, coordinates.lng)
+        const deliveryCalculation = await calculateDelivery(branchId, coordinates.lat, coordinates.lng)
         deliveryCost = deliveryCalculation.deliveryCost
         delivery.distanceKm = deliveryCalculation.distanceKm
         total += deliveryCost
@@ -163,6 +163,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   }
  
   const newOrder = new OrderModel({
+    branchId,
     customer:      orderData.customer,
     items,
     deliveryType:  orderData.deliveryType,
@@ -182,27 +183,28 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   return saved
 }
 
-export const getAllOrders = async (): Promise<iOrder[]> => {
-  return await OrderModel.find({ deleted: { $ne: true } }).sort({ createdAt: -1 })
+export const getAllOrders = async (branchId: string): Promise<iOrder[]> => {
+  return await OrderModel.find({ branchId, deleted: { $ne: true } }).sort({ createdAt: -1 })
 }
 
-export const getOrdersRange = async (range: Range): Promise<iOrder[]> => {
+export const getOrdersRange = async (branchId: string, range: Range): Promise<iOrder[]> => {
   const start = argToUTC(getRangeStartDate(range));
 
   const filter: any = { $gte: start };
   if (range === 'ayer') filter.$lt = argToUTC(getRangeStartDate('hoy'));
 
-  return await OrderModel.find({ deleted: { $ne: true }, createdAt: filter }).lean().sort({ createdAt: -1 });
+  return await OrderModel.find({ branchId, deleted: { $ne: true }, createdAt: filter }).lean().sort({ createdAt: -1 });
 }
 
 // Reemplazar la función update en orders.service.ts
 
 export const update = async (
+  branchId: string,
   id: string,
   newStatus: OrderStatus,
   newDeliveryCost?: number   
 ): Promise<iOrder | null> => {
-  const oldOrder = await OrderModel.findById(id);
+  const oldOrder = await OrderModel.findOne({ _id: id, branchId });
   if (!oldOrder) return null;
 
   const oldStatus = oldOrder.status;
@@ -224,8 +226,8 @@ export const update = async (
     updateData.total = Math.max(0, recalculated.total);
   }
 
-  const updatedOrder = await OrderModel.findByIdAndUpdate(
-    id,
+  const updatedOrder = await OrderModel.findOneAndUpdate(
+    { _id: id, branchId },
     updateData,
     { returnDocument: 'after' }
   );
@@ -249,7 +251,7 @@ export const update = async (
   if (newStatus && oldStatus !== 'cancelled' && newStatus === 'cancelled') {
     console.log(`[STOCK] Devolviendo stock por cancelacion del pedido ${updatedOrder._id}`);
     for (const item of oldOrder.items) {
-      const product = await ProductService.viewById(item.productId);
+      const product = await ProductService.viewById(branchId, item.productId);
       if (product && product.controlStock) {
         product.stock += item.quantity;
         await product.save();
@@ -261,8 +263,8 @@ export const update = async (
   return updatedOrder;
 };
 
-export const softDelete = async (id: string): Promise<iOrder | null> => {
-  const order = await OrderModel.findById(id);
+export const softDelete = async (branchId: string, id: string): Promise<iOrder | null> => {
+  const order = await OrderModel.findOne({ _id: id, branchId });
   if (!order) return null;
   if (order.deleted) return order;
 
@@ -275,7 +277,7 @@ export const softDelete = async (id: string): Promise<iOrder | null> => {
   if (order.status !== 'cancelled') {
     console.log(`[STOCK] Devolviendo stock por anulacion del pedido ${order._id}`);
     for (const item of order.items) {
-      const product = await ProductService.viewById(item.productId);
+      const product = await ProductService.viewById(branchId, item.productId);
       if (product && product.controlStock) {
         product.stock += item.quantity;
         await product.save();

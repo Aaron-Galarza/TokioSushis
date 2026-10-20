@@ -7,14 +7,14 @@ const crud = makeCrud(AdicionalModel);
 const ACTIVE_SELECT = 'title price categories active';
 const CATEGORY_POPULATE = 'name active';
 
-export const viewAll = async (): Promise<iAdicional[]> => {
-  return await AdicionalModel.find().populate('categories', CATEGORY_POPULATE);
+export const viewAll = async (branchId: string): Promise<iAdicional[]> => {
+  return await AdicionalModel.find({ branchId }).populate({ path: 'categories', select: CATEGORY_POPULATE, match: { branchId } });
 };
 
-export const viewActive = async (): Promise<iAdicional[]> => {
-  return await AdicionalModel.find({ active: true })
+export const viewActive = async (branchId: string): Promise<iAdicional[]> => {
+  return await AdicionalModel.find({ branchId, active: true })
     .select(ACTIVE_SELECT)
-    .populate('categories', CATEGORY_POPULATE)
+    .populate({ path: 'categories', select: CATEGORY_POPULATE, match: { branchId } })
     .lean() as iAdicional[];
 };
 
@@ -22,8 +22,9 @@ export const viewActive = async (): Promise<iAdicional[]> => {
  * 🔥 Trae los adicionales activos que correspondan a la categoría solicitada
  * O aquellos que apliquen a todas las categorías (array categories vacío)
  */
-export const viewByCategory = async (categoryId: string): Promise<iAdicional[]> => {
+export const viewByCategory = async (branchId: string, categoryId: string): Promise<iAdicional[]> => {
   return await AdicionalModel.find({
+    branchId,
     active: true,
     $or: [
       { categories: categoryId },          // Si el ID está incluido en el array
@@ -31,16 +32,16 @@ export const viewByCategory = async (categoryId: string): Promise<iAdicional[]> 
     ],
   })
     .select(ACTIVE_SELECT)
-    .populate('categories', CATEGORY_POPULATE)
+    .populate({ path: 'categories', select: CATEGORY_POPULATE, match: { branchId } })
     .lean() as iAdicional[];
 };
 
-export const viewById = async (id: string): Promise<iAdicional | null> => {
-  return await AdicionalModel.findById(id);
+export const viewById = async (branchId: string, id: string): Promise<iAdicional | null> => {
+  return await AdicionalModel.findOne({ _id: id, branchId });
 };
 
-export const create = async (data: Partial<iAdicional>): Promise<iAdicional> => {
-  const newAdicional = new AdicionalModel(data);
+export const create = async (branchId: string, data: Partial<iAdicional>): Promise<iAdicional> => {
+  const newAdicional = new AdicionalModel({ ...data, branchId });
   return await newAdicional.save();
 };
 

@@ -1,12 +1,13 @@
 import { Router } from "express";
 import * as ProductController from './products.controller'
 import { isAdmin } from '../../middlewares/auth.middleware';
+import { resolvePublicBranch } from '../../middlewares/branch.middleware';
 import { validate } from '../../middlewares/validate.middleware';
 import { createProductSchema, updateProductSchema } from './products.schema';
 
 const router = Router()
 
-router.get('/', ProductController.getActiveProducts)
+router.get('/', resolvePublicBranch, ProductController.getActiveProducts)
 
 router.get('/admin', isAdmin, ProductController.getProducts)
 router.post('/admin', isAdmin, validate(createProductSchema), ProductController.createNewProduct)

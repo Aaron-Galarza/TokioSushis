@@ -6,11 +6,13 @@ import { getIO } from '../../socket/socket'
 import { AppError, friendlyAppErrorMessage } from '../../utils/AppError'
 import { Range } from '../../utils/dateRange'
 import { asyncHandler } from '../../utils/asyncHandler'
+import { requireBranchId } from '../../middlewares/branch.middleware'
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const order = await OrderService.createOrder(req.body)
-    getIO().to('admins').emit('new-order', order)
+    const branchId = requireBranchId(req)
+    const order = await OrderService.createOrder(branchId, req.body)
+    getIO().to(`branch:${branchId}`).emit('new-order', order)
     return sendSucces(res, order, 201)
   } catch (error: any) {
     if (error instanceof AppError) {
@@ -24,13 +26,13 @@ export const createOrder = async (req: Request, res: Response) => {
 }
 
 export const getAllOrders = asyncHandler(async (req: Request, res: Response) => {
-  const orders = await OrderService.getAllOrders()
+  const orders = await OrderService.getAllOrders(requireBranchId(req))
   return sendSucces(res, orders, 200)
 })
 
 export const getOrdersRange = asyncHandler(async (req: Request, res: Response) => {
   const rango = (req.query.range as string) || 'hoy';
-  const orders = await OrderService.getOrdersRange(rango as Range)
+  const orders = await OrderService.getOrdersRange(requireBranchId(req), rango as Range)
   return sendSucces(res, orders, 200)
 })
 
@@ -48,19 +50,21 @@ export const updateStatusOrder = asyncHandler(async (req: Request, res: Response
     return sendError(res, 'Costo de envío inválido', 400)
   }
 
-  const order = await OrderService.update(id, status, deliveryCost)
+  const branchId = requireBranchId(req)
+  const order = await OrderService.update(branchId, id, status, deliveryCost)
   if (!order) return sendError(res, 'Pedido no encontrado', 404)
 
-  if (status) getIO().to('admins').emit('order-updated', { id, status })
+  if (status) getIO().to(`branch:${branchId}`).emit('order-updated', { id, status })
   return sendSucces(res, order, 200)
 })
 
 export const deleteOrder = asyncHandler(async (req: Request, res: Response) => {
   const id = req.params.id as string
 
-  const order = await OrderService.softDelete(id)
+  const branchId = requireBranchId(req)
+  const order = await OrderService.softDelete(branchId, id)
   if (!order) return sendError(res, 'Pedido no encontrado', 404)
 
-  getIO().to('admins').emit('order-deleted', { id: order._id })
+  getIO().to(`branch:${branchId}`).emit('order-deleted', { id: order._id })
   return sendSucces(res, order, 200)
 })

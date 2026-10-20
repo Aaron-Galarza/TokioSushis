@@ -1,24 +1,16 @@
 import { AppError } from './AppError';
 
-const getStoreCoordinates = () => {
-  const storeLat = Number(process.env.STORE_LAT);
-  const storeLng = Number(process.env.STORE_LNG);
-
-  if (!Number.isFinite(storeLat) || !Number.isFinite(storeLng)) {
-    throw new AppError(500, 'Faltan las coordenadas del local');
-  }
-
-  return { storeLat, storeLng };
-};
-export const calculateDistanceKm = async (clientLat: number, clientLng: number): Promise<number> => {
+export const calculateDistanceKm = async (
+  clientLat: number, clientLng: number, storeLat: number, storeLng: number,
+): Promise<number> => {
   const token = process.env.MAPBOX_TOKEN;
   if (!token) {
     throw new AppError(500, 'Falta MAPBOX_TOKEN en el servidor');
   }
 
   // 1. Obtener coordenadas del local y limpiar cualquier espacio fantasma
-  const storeLatStr = String(process.env.STORE_LAT).trim();
-  const storeLngStr = String(process.env.STORE_LNG).trim();
+  const storeLatStr = String(storeLat).trim();
+  const storeLngStr = String(storeLng).trim();
   
   const clientLatStr = String(clientLat).trim();
   const clientLngStr = String(clientLng).trim();

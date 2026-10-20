@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface iCoupon extends Document {
+  branchId: mongoose.Types.ObjectId;
   code: string;
   discountPercent: number;
   active: boolean;
@@ -9,10 +10,10 @@ export interface iCoupon extends Document {
 }
 
 const CouponSchema = new Schema<iCoupon>({
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
   code: {
     type: String,
     required: [true, 'El codigo del cupon es obligatorio'],
-    unique: true,
     trim: true,
     uppercase: true,
   },
@@ -25,7 +26,6 @@ const CouponSchema = new Schema<iCoupon>({
   active: {
     type: Boolean,
     default: true,
-    index: true,
   },
   validDays: {
     type: [String],
@@ -37,5 +37,8 @@ const CouponSchema = new Schema<iCoupon>({
     default: [],
   },
 }, { timestamps: true });
+
+CouponSchema.index({ branchId: 1, code: 1 }, { unique: true });
+CouponSchema.index({ branchId: 1, active: 1 });
 
 export const CouponModel = mongoose.model<iCoupon>('Coupon', CouponSchema);

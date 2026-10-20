@@ -3,19 +3,20 @@ import * as ConfigService from './Schedule.service';
 import { ConfigModel } from './Schedule.module';
 import { sendSucces, sendError } from '../../utils/response';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { requireBranchId } from '../../middlewares/branch.middleware';
 
 export const getStatus = asyncHandler(async (req: Request, res: Response) => {
-    const status = await ConfigService.checkStoreStatus();
+    const status = await ConfigService.checkStoreStatus(requireBranchId(req));
     return sendSucces(res, status);
 });
 
 export const getAdminConfig = asyncHandler(async (req: Request, res: Response) => {
-    const config = await ConfigModel.getOrCreateConfig();
+    const config = await ConfigModel.getOrCreateConfig(requireBranchId(req));
     return sendSucces(res, config);
 });
 
 export const closeStore = asyncHandler(async (req: Request, res: Response) => {
-    const status = await ConfigService.closeStore();
+    const status = await ConfigService.closeStore(requireBranchId(req));
     return sendSucces(res, status);
 });
 
@@ -29,7 +30,7 @@ export const updateSchedule = asyncHandler(async (req: Request, res: Response) =
         return sendError(res, 'Debes enviar al menos un día con su configuración', 400);
     }
 
-    const config = await ConfigService.updateSchedule(updates);
+    const config = await ConfigService.updateSchedule(requireBranchId(req), updates);
     return sendSucces(res, config);
 });
 
@@ -39,6 +40,6 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
         return sendError(res, 'El campo banner debe ser una URL en formato string', 400);
     }
 
-    const config = await ConfigService.updateBanner(banner);
+    const config = await ConfigService.updateBanner(requireBranchId(req), banner);
     return sendSucces(res, config);
 });

@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import * as AdicionalController from './adicionales.controller'
 import { isAdmin } from '../../middlewares/auth.middleware'
+import { resolvePublicBranch } from '../../middlewares/branch.middleware'
 import { validate } from '../../middlewares/validate.middleware'
 import { createAdicionalSchema, updateAdicionalSchema } from './adicionales.schema'
 
 const router = Router()
 
-router.get('/', AdicionalController.getActiveAdicionales)
+router.get('/', resolvePublicBranch, AdicionalController.getActiveAdicionales)
 
 router.get('/admin', isAdmin, AdicionalController.getAdicionales)
 router.post('/admin', isAdmin, validate(createAdicionalSchema), AdicionalController.createAdicional)
