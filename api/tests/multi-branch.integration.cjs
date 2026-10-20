@@ -130,6 +130,34 @@ async function main() {
   })).status, 200);
   assert.equal((await ProductModel.findById(productA._id)).stock, 1);
 
+  const originalSave = OrderModel.prototype.save;
+  OrderModel.prototype.save = async function () { throw new Error('injected order write failure'); };
+  try {
+    const failed = await request(url, '/orders', {
+      method: 'POST', slug: a.slug, key: 'write-failure-001', body: payload(limited._id),
+    });
+    assert.equal(failed.status, 500);
+    assert.equal((await ProductModel.findById(limited._id)).stock, 1);
+    assert.equal(await OrderModel.countDocuments({ branchId: a._id, idempotencyKey: 'write-failure-001' }), 0);
+  } finally {
+    OrderModel.prototype.save = originalSave;
+  }
+
+  const originalTo = getIO().to;
+  getIO().to = () => { throw new Error('injected socket failure'); };
+  try {
+    const savedWithoutSocket = await request(url, '/orders', {
+      method: 'POST', slug: a.slug, key: 'socket-failure-001', body: payload(noStock._id),
+    });
+    assert.equal(savedWithoutSocket.status, 201);
+    assert.equal(await OrderModel.countDocuments({ branchId: a._id, idempotencyKey: 'socket-failure-001' }), 1);
+    assert.equal((await request(url, `/orders/admin/${savedWithoutSocket.body.data._id}`, {
+      method: 'PUT', token: token(cashier), body: { status: 'in-preparation' },
+    })).status, 200);
+  } finally {
+    getIO().to = originalTo;
+  }
+
   const second = await request(url, '/orders', {
     method: 'POST', slug: a.slug, key: 'second-order-0001', body: payload(productA._id),
   });
