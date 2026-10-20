@@ -9,10 +9,11 @@ interface Props {
   imageError: boolean;
   onImageError: () => void;
   addons: CartAddon[];
+  configSummary?: string;
   onRemove: () => void;
 }
 
-export function CartItemHeader({ title, price, imageSrc, imageError, onImageError, addons, onRemove }: Props) {
+export function CartItemHeader({ title, price, imageSrc, imageError, onImageError, addons, configSummary, onRemove }: Props) {
   return (
     <div className="flex gap-3">
       <div className="relative shrink-0 w-20 h-20 bg-zinc-950 rounded-xl overflow-hidden border border-white/10 ring-1 ring-white/5">
@@ -32,6 +33,10 @@ export function CartItemHeader({ title, price, imageSrc, imageError, onImageErro
         </div>
 
         <p className="text-xs font-medium text-white/55 mt-0.5">{formatPrice(price)} c/u</p>
+
+        {configSummary && (
+          <p className="mt-1.5 text-xs text-white/60 leading-snug">{configSummary}</p>
+        )}
 
         {addons.length > 0 && (
           <div className="mt-2 space-y-1 bg-white/5 p-2 rounded-lg border border-white/10">

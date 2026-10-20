@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { menuService } from '@/services/menu.service';
 import type { Product, Category, Addon } from '@/types';
 
-const CACHE_KEY = 'tokio_menu_cache';
+const CACHE_KEY = 'tokio_menu_cache_v2';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 type CachePayload = { products: Product[]; categories: Category[] };

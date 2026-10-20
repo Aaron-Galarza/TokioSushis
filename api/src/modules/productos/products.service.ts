@@ -38,7 +38,7 @@ const sortByCategory = (products: any[]) =>
 
 export const viewAll = async (): Promise<iProducto[]> => {
   const products = await ProductModel.find()
-    .select('title description price image category active controlStock stock createdAt updatedAt')
+    .select('title description price image category active controlStock stock configurator createdAt updatedAt')
     .lean();
 
   return await attachCategories(products) as iProducto[];
@@ -46,7 +46,7 @@ export const viewAll = async (): Promise<iProducto[]> => {
 
 export const viewActive = async (): Promise<iProducto[]> => {
   const products = await ProductModel.find({ active: true })
-    .select('title description price image category active controlStock stock')
+    .select('title description price image category active controlStock stock configurator')
     .lean();
 
   const withCategories = await attachCategories(products);

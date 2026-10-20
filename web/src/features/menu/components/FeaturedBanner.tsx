@@ -8,16 +8,16 @@ interface HeroProps {
   banner: string;
   isOpen: boolean;
   loading: boolean;
-  searchQuery: string;
-  onSearch: (q: string) => void;
+  searchQuery?: string;
+  onSearch?: (q: string) => void;
 }
 
 export const FeaturedBanner = ({
   banner,
   isOpen,
   loading,
-  searchQuery,
-  onSearch,
+  searchQuery = '',
+  onSearch = () => {},
 }: HeroProps) => {
   const [localSearch, setLocalSearch] = useState(searchQuery);
 

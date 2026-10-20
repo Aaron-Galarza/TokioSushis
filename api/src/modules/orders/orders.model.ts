@@ -11,12 +11,23 @@ export interface iCartAddon {
   quantity: number;
 }
 
+export interface iCartSelection {
+  stepId: string;
+  stepLabel?: string;
+  optionId: string;
+  label: string;
+  price?: number;
+  kind?: 'selection' | 'exclusion';
+}
+
 export interface iCartItem {
   productId: string;
   title: string;
   price: number;
   quantity: number;
   addons?: iCartAddon[];
+  configSummary?: string;
+  selections?: iCartSelection[];
 }
 
 export type PaymentMethod = 'cash' | 'debito' | 'credito' | 'transferencia';
@@ -59,12 +70,23 @@ const CartAddonSchema = new Schema<iCartAddon>({
   quantity: { type: Number, required: true, min: 1, max: 10 },
 }, { _id: false });
 
+const CartSelectionSchema = new Schema<iCartSelection>({
+  stepId: { type: String, required: true },
+  stepLabel: { type: String },
+  optionId: { type: String, required: true },
+  label: { type: String, required: true },
+  price: { type: Number, default: 0 },
+  kind: { type: String, enum: ['selection', 'exclusion'] },
+}, { _id: false });
+
 const CartItemSchema = new Schema<iCartItem>({
   productId: { type: String, required: true },
   title: { type: String, required: true },
   price: { type: Number, required: true, min: 0 },
   quantity: { type: Number, required: true, min: 1 },
   addons: { type: [CartAddonSchema], default: [] },
+  configSummary: { type: String },
+  selections: { type: [CartSelectionSchema], default: undefined },
 }, { _id: false });
 
 const OrderSchema = new Schema<iOrder>({

@@ -10,6 +10,7 @@ import { useAdminCrud } from './useAdminCrud';
 const PBLANK = {
   title: '', price: '', description: '', image: '',
   category: '', active: true, controlStock: false, stock: '0',
+  configurator: { enabled: false, key: '', steps: [] as any[] },
 };
 const ABLANK = { title: '', price: '', categories: [] as string[], active: true };
 const CBLANK = { name: '', order: '0', active: true, icon: '' };
@@ -46,6 +47,9 @@ export function useAdminMenu() {
       };
       if (form.controlStock) pl.stock = Number(form.stock);
       if (form.image.trim()) pl.image = form.image.trim();
+      pl.configurator = form.configurator?.enabled
+        ? form.configurator
+        : { enabled: false, key: '', steps: [] };
       return pl;
     },
     fromItem: (p: any) => ({
@@ -53,6 +57,9 @@ export function useAdminMenu() {
       image: p.image || '',
       category: typeof p.category === 'object' ? p.category._id : p.category,
       active: p.active, controlStock: p.controlStock ?? false, stock: String(p.stock ?? 0),
+      configurator: p.configurator
+        ? JSON.parse(JSON.stringify(p.configurator))
+        : { enabled: false, key: '', steps: [] },
     }),
   });
 

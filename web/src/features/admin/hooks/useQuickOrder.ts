@@ -6,14 +6,20 @@ import { createAdminOrder } from '@/services/admin.service';
 import type { PaymentKey } from '@/constants/admin';
 
 export interface LineItem {
+  uid: string;
   productId: string;
   title: string;
   price: number;
   quantity: number;
   addons: { addonId: string; title: string; price: number; quantity: number }[];
+  selections?: { stepId: string; optionId: string }[];
+  configSummary?: string;
 }
 
 const BLANK_CUSTOMER = { name: '', phone: '' };
+
+const selectionKey = (selections?: { stepId: string; optionId: string }[]) =>
+  (selections ?? []).map((s) => `${s.stepId}=${s.optionId}`).sort().join('|');
 
 export function useQuickOrder(products: any[], onSuccess: () => void) {
   const [open, setOpen] = useState(false);
@@ -55,26 +61,55 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
   const addProduct = (productId: string) => {
     const prod = products.find((p: any) => p._id === productId);
     if (!prod) return;
-    const exists = items.find(i => i.productId === productId);
+    const exists = items.find(i => i.uid === productId);
     if (exists) {
-      setItems(items.map(i => i.productId === productId ? { ...i, quantity: i.quantity + 1 } : i));
+      setItems(items.map(i => i.uid === productId ? { ...i, quantity: i.quantity + 1 } : i));
     } else {
-      setItems([...items, { productId: prod._id, title: prod.title, price: prod.price, quantity: 1, addons: [] }]);
+      setItems([...items, { uid: productId, productId: prod._id, title: prod.title, price: prod.price, quantity: 1, addons: [] }]);
     }
   };
 
-  const updateQty = (productId: string, delta: number) => {
+  const addConfiguredProduct = (
+    product: any,
+    price: number,
+    selections: { stepId: string; optionId: string; label?: string }[],
+    summary: string,
+  ) => {
+    const key = selectionKey(selections);
+    const uid = key ? `${product._id}:${key}` : product._id;
+    const cleanSelections = selections.map((s) => ({ stepId: s.stepId, optionId: s.optionId }));
+    const exists = items.find(i => i.uid === uid);
+    if (exists) {
+      setItems(items.map(i => i.uid === uid ? { ...i, quantity: i.quantity + 1 } : i));
+    } else {
+      setItems([
+        ...items,
+        {
+          uid,
+          productId: product._id,
+          title: product.title,
+          price,
+          quantity: 1,
+          addons: [],
+          selections: cleanSelections,
+          configSummary: summary,
+        },
+      ]);
+    }
+  };
+
+  const updateQty = (uid: string, delta: number) => {
     setItems(prev =>
       prev
-        .map(i => (i.productId === productId ? { ...i, quantity: i.quantity + delta } : i))
+        .map(i => (i.uid === uid ? { ...i, quantity: i.quantity + delta } : i))
         .filter(i => i.quantity > 0)
     );
   };
 
-  const updateAddonQty = (productId: string, addon: any, delta: number) => {
+  const updateAddonQty = (uid: string, addon: any, delta: number) => {
     setItems(prev =>
       prev.map(item => {
-        if (item.productId !== productId) return item;
+        if (item.uid !== uid) return item;
 
         const exists = item.addons.find(a => a.addonId === addon._id);
 
@@ -98,6 +133,8 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
       })
     );
   };
+
+  const removeItem = (uid: string) => setItems(prev => prev.filter(i => i.uid !== uid));
 
   const subtotal = items.reduce((sum, i) => {
     const addonsTotal = i.addons.reduce((s, a) => s + a.price * a.quantity, 0);
@@ -139,6 +176,7 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
           productId: i.productId,
           quantity: i.quantity,
           addons: i.addons.map(a => ({ addonId: a.addonId, quantity: a.quantity })),
+          ...(i.selections && i.selections.length > 0 ? { selections: i.selections } : {}),
         })),
         deliveryType,
         paymentMethod,
@@ -176,8 +214,10 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
     error,
     total,
     addProduct,
+    addConfiguredProduct,
     updateQty,
     updateAddonQty,
+    removeItem,
     handleSubmit,
   };
 }

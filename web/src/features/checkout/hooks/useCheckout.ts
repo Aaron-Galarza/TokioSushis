@@ -92,6 +92,9 @@ export function useCheckout() {
           productId: item.product.id,
           quantity: item.quantity,
           addons: item.addons.map(a => ({ addonId: a.addon.id, quantity: a.quantity })),
+          ...(item.selections && item.selections.length > 0
+            ? { selections: item.selections.map(s => ({ stepId: s.stepId, optionId: s.optionId })) }
+            : {}),
         })),
         deliveryType,
         paymentMethod,
@@ -117,6 +120,7 @@ export function useCheckout() {
           title: item.product.title,
           quantity: item.quantity,
           price: item.product.price,
+          configSummary: item.configSummary,
           addons: item.addons.map(a => ({
             name: a.addon.name,
             quantity: a.quantity,

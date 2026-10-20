@@ -19,7 +19,7 @@ export const CartItemCard = ({ item, index }: CartItemCardProps) => {
   const removeItem      = useCartStore(s => s.removeItem);
   const updateItemAddon = useCartStore(s => s.updateItemAddon);
 
-  const { product, quantity, addons, itemTotal } = item;
+  const { product, quantity, addons, itemTotal, configSummary } = item;
 
   const [isRemoving, setIsRemoving] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -57,6 +57,7 @@ export const CartItemCard = ({ item, index }: CartItemCardProps) => {
         imageError={imageError}
         onImageError={() => setImageError(true)}
         addons={addons}
+        configSummary={configSummary}
         onRemove={handleRemove}
       />
 
