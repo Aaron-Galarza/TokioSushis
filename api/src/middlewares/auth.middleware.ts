@@ -48,6 +48,6 @@ export const authorize = (...roles: UserRole[]) => (req: Request, res: Response,
   next();
 };
 
-// Alias transitorio para las rutas existentes; cada acción tendrá permisos específicos.
-export const isAdmin = [authenticate, authorize('admin', 'encargado')];
+export const staffAccess = [authenticate, authorize('admin', 'encargado')];
+export const managerAccess = [authenticate, authorize('encargado')];
 

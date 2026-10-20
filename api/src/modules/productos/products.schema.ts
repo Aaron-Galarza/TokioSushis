@@ -43,3 +43,4 @@ export const createProductSchema = z.object({
 });
 
 export const updateProductSchema = createProductSchema.partial();
+export const updateProductStockSchema = z.object({ stock: z.number().int().min(0) }).strict();
