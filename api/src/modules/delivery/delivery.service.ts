@@ -17,11 +17,8 @@ export const calculateDelivery = async (branchId: string, lat: number | string, 
   let baseCost = 0;
 
   const matched = config.kmRanges.find((r) => distanceKm <= r.maxKm);
-  if (matched) {
-    baseCost = matched.price;
-  } else if (config.kmRanges.length > 0) {
-    baseCost = config.kmRanges[config.kmRanges.length - 1].price;
-  }
+  if (!matched) throw new AppError(422, 'La dirección está fuera del rango de envío de esta sucursal');
+  baseCost = matched.price;
 
   const rainSurcharge = config.isRaining ? config.extraRain : 0;
   const finalCost = baseCost + rainSurcharge;

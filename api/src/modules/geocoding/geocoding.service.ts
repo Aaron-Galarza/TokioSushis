@@ -3,6 +3,7 @@ export interface GeocodeResult {
   lat: number;
   lng: number;
 }
+import { BranchModel } from '../branches/branch.model';
 
 // ─── Cache en memoria con TTL (sin escrituras a la BD) ──────────────────────
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
@@ -32,8 +33,8 @@ const normalizeQuery = (q: string): string =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-export const googleGeocode = async (query: string): Promise<GeocodeResult[]> => {
-  const key = normalizeQuery(query);
+export const googleGeocode = async (query: string, branchId: string): Promise<GeocodeResult[]> => {
+  const key = `${branchId}:${normalizeQuery(query)}`;
 
   const cached = cache.get(key);
   if (cached) {
@@ -55,14 +56,17 @@ export const googleGeocode = async (query: string): Promise<GeocodeResult[]> => 
     return [];
   }
 
+  const branch = await BranchModel.findById(branchId).select('coordinates').lean();
+  if (!branch) return [];
+
   const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
   url.searchParams.set('address', query.trim());
   url.searchParams.set('key', apiKey);
   url.searchParams.set('region', 'ar');
   url.searchParams.set('language', 'es');
   url.searchParams.set('components', 'country:AR');
-  // bounds del Gran Resistencia (suroeste,noreste en lat,lng)
-  url.searchParams.set('bounds', '-27.4915,-59.0526|-27.4022,-58.8953');
+  const { lat, lng } = branch.coordinates;
+  url.searchParams.set('bounds', `${lat - 0.1},${lng - 0.1}|${lat + 0.1},${lng + 0.1}`);
 
   let response: Response;
   try {

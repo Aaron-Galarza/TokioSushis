@@ -1,166 +1,66 @@
-import { DailyAnalyticsModel } from './daily.model';
-import { iOrder } from '../orders/orders.model';
-import { argDate } from '../../utils/Timezone';
-import { Range, getRangeStartDate } from '../../utils/dateRange';
+import { OrderModel } from '../orders/orders.model';
+import { BranchModel } from '../branches/branch.model';
+import { AppError } from '../../utils/AppError';
+import { Range } from '../../utils/dateRange';
 
-// ─── Tipos Sincronizados ─────────────────────────────────
-
-interface AnalyticsStats {
-  total: number;
-  efectivo: number;
-  debito: number;
-  credito: number;
-  transferencia: number;
-  entregados: number;
-  topProduct: { title: string; quantity: number } | null;
-}
-
-// ─── Consulta principal ──────────────────────────────────
-
-export const getAnalytics = async (branchId: string, range: Range): Promise<AnalyticsStats> => {
-
-  const startDate = getRangeStartDate(range);
-  const endDate = range === 'ayer' ? startDate : argDate();
-
-  const dailies = await DailyAnalyticsModel.find({
-    branchId,
-    date: { $gte: startDate, $lte: endDate },
-  }).lean();
-
-  if (dailies.length === 0) {
-    return { total: 0, efectivo: 0, debito: 0, credito: 0, transferencia: 0, entregados: 0, topProduct: null };
-  }
-
-  const productMap: Record<string, { qty: number; title: string }> = {};
-  let total = 0, efectivo = 0, debito = 0, credito = 0, transferencia = 0, entregados = 0;
-
-  for (const day of dailies) {
-    total         += day.total ?? 0;
-    efectivo      += day.efectivo ?? 0;
-    debito        += day.debito ?? 0; // 💳 Nuevos acumuladores mapeados
-    credito       += day.credito ?? 0;
-    transferencia += day.transferencia ?? 0;
-    entregados    += day.entregados ?? 0;
-
-    const products = day.products;
-    if (!products) continue;
-
-    const entries = products instanceof Map
-      ? [...products.entries()]
-      : Object.entries(products);
-
-    for (const [productId, data] of entries) {
-      const entry = data as { qty: number; title: string };
-      if (!productMap[productId]) {
-        productMap[productId] = { qty: 0, title: entry.title || 'Sin nombre' };
-      }
-      productMap[productId].qty += entry.qty ?? 0;
-    }
-  }
-
-  return { total, efectivo, debito, credito, transferencia, entregados, topProduct: getTopProduct(productMap) };
+const localDate = (timezone: string): string => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const value = (type: string) => parts.find((part) => part.type === type)?.value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
 };
 
-// ─── Escribir en daily cuando una orden se entrega ───────
-
-export const updateAnalyticsOnDelivery = async (order: iOrder) => {
-  const date = argDate(new Date(order.createdAt));
-
-  const incUpdates: Record<string, number> = {};
-  const setUpdates: Record<string, string> = {};
-
-  for (const item of order.items) {
-    const key = `products.${item.productId}`;
-    incUpdates[`${key}.qty`] = (incUpdates[`${key}.qty`] ?? 0) + item.quantity;
-    setUpdates[`${key}.title`] = item.title;
-  }
-
-  // Desglose limpio condicional por pasarela real
-  const methodKey =
-    order.paymentMethod === 'cash' ? 'efectivo' :
-    order.paymentMethod === 'debito' ? 'debito' :
-    order.paymentMethod === 'transferencia' ? 'transferencia' :
-    'credito';
-
-  await DailyAnalyticsModel.findOneAndUpdate(
-    { branchId: order.branchId, date },
-    {
-      $inc: {
-        total: order.total,
-        entregados: 1,
-        [methodKey]: order.total, // Suma dinámicamente al casillero correspondiente
-        ...incUpdates,
-      },
-      $set: setUpdates,
-    },
-    { upsert: true }
-  );
-
-  console.log(`[ANALYTICS] ADD → ${date} | $${order.total} por ${order.paymentMethod}`);
+const rangeStart = (today: string, range: Range): string => {
+  if (range === 'hoy') return today;
+  const day = new Date(`${today}T12:00:00.000Z`);
+  if (range === 'ayer') day.setUTCDate(day.getUTCDate() - 1);
+  if (range === 'semana') day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+  if (range === 'mes') day.setUTCDate(1);
+  return day.toISOString().slice(0, 10);
 };
 
-// ─── Revertir cuando una orden delivered se cancela ──────
+// Orders are the sole source of truth. A failed status update cannot leave a separate counter out of sync.
+export const getAnalytics = async (branchId: string, range: Range) => {
+  const branch = await BranchModel.findById(branchId).select('timezone').lean();
+  if (!branch) throw new AppError(404, 'Sucursal no encontrada');
+  const today = localDate(branch.timezone);
+  const start = rangeStart(today, range);
+  const end = range === 'ayer' ? start : today;
 
-export const revertAnalyticsOnDelivery = async (order: iOrder) => {
-  const date = argDate(new Date(order.createdAt));
+  const [result] = await OrderModel.aggregate([
+    { $match: { branchId: branch._id, status: 'delivered', deleted: { $ne: true } } },
+    { $addFields: { localDate: { $dateToString: {
+      format: '%Y-%m-%d', date: '$createdAt', timezone: branch.timezone,
+    } } } },
+    { $match: { localDate: { $gte: start, $lte: end } } },
+    { $facet: {
+      totals: [{ $group: {
+        _id: null,
+        total: { $sum: '$total' },
+        entregados: { $sum: 1 },
+        efectivo: { $sum: { $cond: [{ $eq: ['$paymentMethod', 'cash'] }, '$total', 0] } },
+        debito: { $sum: { $cond: [{ $eq: ['$paymentMethod', 'debito'] }, '$total', 0] } },
+        credito: { $sum: { $cond: [{ $eq: ['$paymentMethod', 'credito'] }, '$total', 0] } },
+        transferencia: { $sum: { $cond: [{ $eq: ['$paymentMethod', 'transferencia'] }, '$total', 0] } },
+      } }],
+      products: [
+        { $unwind: '$items' },
+        { $group: { _id: '$items.productId', title: { $first: '$items.title' }, quantity: { $sum: '$items.quantity' } } },
+        { $sort: { quantity: -1 } }, { $limit: 1 },
+      ],
+    } },
+  ]);
 
-  const daily = await DailyAnalyticsModel.findOne({ branchId: order.branchId, date });
-  if (!daily) {
-    console.warn(`[ANALYTICS] REVERT ignorado — no hay registro para ${date}`);
-    return;
-  }
-
-  const incUpdates: Record<string, number> = {};
-
-  for (const item of order.items) {
-    const key = `products.${item.productId}.qty`;
-    const currentQty = daily.products?.get(item.productId)?.qty ?? 0;
-    incUpdates[key] = (incUpdates[key] ?? 0) - Math.min(item.quantity, currentQty);
-  }
-
-  const safeTotal      = Math.min(order.total, daily.total);
-  const safeEntregados = Math.min(1, daily.entregados);
-
-  // Reversión precisa según método
-  const isCash = order.paymentMethod === 'cash';
-  const isDebito = order.paymentMethod === 'debito';
-  const isTransferencia = order.paymentMethod === 'transferencia';
-
-  const safeEfectivo      = isCash ? Math.min(order.total, daily.efectivo ?? 0) : 0;
-  const safeDebito        = isDebito ? Math.min(order.total, daily.debito ?? 0) : 0;
-  const safeTransferencia = isTransferencia ? Math.min(order.total, daily.transferencia ?? 0) : 0;
-  const safeCredito       = (!isCash && !isDebito && !isTransferencia) ? Math.min(order.total, daily.credito ?? 0) : 0;
-
-  await DailyAnalyticsModel.findOneAndUpdate(
-    { branchId: order.branchId, date },
-    {
-      $inc: {
-        total: -safeTotal,
-        entregados: -safeEntregados,
-        efectivo: -safeEfectivo,
-        debito: -safeDebito,
-        credito: -safeCredito,
-        transferencia: -safeTransferencia,
-        ...incUpdates,
-      },
-    }
-  );
-
-  console.log(`[ANALYTICS] REVERT → ${date} | $${order.total}`);
+  const totals = result.totals[0];
+  const top = result.products[0];
+  return {
+    total: totals?.total ?? 0,
+    efectivo: totals?.efectivo ?? 0,
+    debito: totals?.debito ?? 0,
+    credito: totals?.credito ?? 0,
+    transferencia: totals?.transferencia ?? 0,
+    entregados: totals?.entregados ?? 0,
+    topProduct: top ? { title: top.title, quantity: top.quantity } : null,
+  };
 };
-
-// ─── Helper ──────────────────────────────────────────────
-
-function getTopProduct(
-  productMap: Record<string, { qty: number; title: string }>
-): { title: string; quantity: number } | null {
-  let topId: string | null = null;
-  let maxQty = 0;
-
-  for (const [id, data] of Object.entries(productMap)) {
-    if (data.qty > maxQty) { maxQty = data.qty; topId = id; }
-  }
-
-  if (!topId) return null;
-  return { title: productMap[topId].title, quantity: maxQty };
-}
