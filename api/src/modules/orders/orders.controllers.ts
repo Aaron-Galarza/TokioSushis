@@ -11,9 +11,19 @@ import { requireBranchId } from '../../middlewares/branch.middleware'
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const branchId = requireBranchId(req)
-    const order = await OrderService.createOrder(branchId, req.body)
-    getIO().to(`branch:${branchId}`).emit('new-order', order)
-    return sendSucces(res, order, 201)
+    const idempotencyKey = req.get('idempotency-key') ?? ''
+    if (!/^[a-zA-Z0-9_-]{16,128}$/.test(idempotencyKey)) {
+      return sendError(res, 'Clave de pedido inválida o faltante', 400)
+    }
+    const { order, created } = await OrderService.createOrder(branchId, req.body, idempotencyKey)
+    if (created) {
+      try {
+        getIO().to(`branch:${branchId}`).emit('new-order', order)
+      } catch (socketError) {
+        console.error('[SOCKET] Pedido guardado pero no se pudo notificar', socketError)
+      }
+    }
+    return sendSucces(res, order, created ? 201 : 200)
   } catch (error: any) {
     if (error instanceof AppError) {
       return sendError(res, friendlyAppErrorMessage(error), error.statusCode)

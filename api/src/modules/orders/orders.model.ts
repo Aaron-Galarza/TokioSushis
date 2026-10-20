@@ -35,6 +35,8 @@ export const validPaymentMethods: PaymentMethod[] = ['cash', 'debito', 'credito'
 
 export interface iOrder extends Document {
   branchId: mongoose.Types.ObjectId;
+  idempotencyKey?: string;
+  requestHash?: string;
   customer: {
     name: string;
     phone: string;
@@ -92,6 +94,8 @@ const CartItemSchema = new Schema<iCartItem>({
 
 const OrderSchema = new Schema<iOrder>({
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+  idempotencyKey: { type: String },
+  requestHash: { type: String },
   customer: {
     name: { type: String, required: [true, 'El nombre del cliente es obligatorio'] },
     phone: { type: String, required: [true, 'El telefono del cliente es obligatorio'] },
@@ -126,5 +130,9 @@ const OrderSchema = new Schema<iOrder>({
 
 OrderSchema.index({ branchId: 1, createdAt: -1 });
 OrderSchema.index({ branchId: 1, status: 1, createdAt: -1 });
+OrderSchema.index({ branchId: 1, idempotencyKey: 1 }, {
+  unique: true,
+  partialFilterExpression: { idempotencyKey: { $type: 'string' } },
+});
 
 export const OrderModel = mongoose.model<iOrder>('Order', OrderSchema);
