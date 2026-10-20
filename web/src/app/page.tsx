@@ -1,54 +1,29 @@
 'use client';
 
-import { useMenu } from '@/features/menu/hooks/useMenu';
-import { useStoreStatus } from '@/features/menu/hooks/useStoreStatus';
-import { FeaturedBanner } from '@/features/menu/components/FeaturedBanner';
-import { CategoryFilter } from '@/features/menu/components/CategoryFilter'; // <--- El import recuperado
-import { ProductList } from '@/features/menu/components/ProductList';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import api from '@/services/api';
 
-export default function HomePage() {
-  const { isOpen, loading: statusLoading, banner } = useStoreStatus();
-  const {
-    categories,
-    loading: menuLoading,
-    error: menuError,
-    selectedCategory,
-    filteredProducts,
-    selectCategory,
-    setSearch,
-    searchQuery,
-  } = useMenu();
+type Branch = { _id: string; slug: string; name: string; address: string };
 
-  return (
-    <main className="flex min-h-screen flex-col">
-      {/* 1. Sección del Banner Superior */}
-      <FeaturedBanner
-        banner={banner}
-        isOpen={isOpen}
-        loading={statusLoading}
-        searchQuery={searchQuery}
-        onSearch={setSearch}
-      />
+export default function BranchSelectionPage() {
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [error, setError] = useState(false);
 
-      {/* 2. Barra de Navegación de Categorías (Autónoma, limpia y estilizada) */}
-      <CategoryFilter
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={selectCategory}
-      />
+  useEffect(() => {
+    api.get('/branches').then((res) => setBranches(res.data.data ?? [])).catch(() => setError(true));
+  }, []);
 
-      {/* 3. Listado de Productos */}
-      <section id="product-list-top" className="mx-auto w-full max-w-2xl px-4 pb-14 pt-8">
-        <ProductList
-          products={filteredProducts}
-          loading={menuLoading}
-          error={menuError}
-          isStoreOpen={isOpen}
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onRetry={() => window.location.reload()}
-        />
-      </section>
-    </main>
-  );
+  return <main className="mx-auto max-w-xl px-5 py-12">
+    <h1 className="font-heading text-3xl text-primary">Elegí tu sucursal</h1>
+    <p className="mt-2 text-white/70">El menú, los precios y el envío se calculan para la sucursal que elijas.</p>
+    {error && <p className="mt-6 text-red-400">No se pudieron cargar las sucursales.</p>}
+    <div className="mt-8 grid gap-3">
+      {branches.map((branch) => <Link key={branch._id} href={`/s/${branch.slug}`}
+        className="rounded-xl border border-white/15 bg-white/5 p-5 hover:border-primary/60">
+        <strong className="block text-lg">{branch.name}</strong>
+        <span className="text-sm text-white/60">{branch.address}</span>
+      </Link>)}
+    </div>
+  </main>;
 }
