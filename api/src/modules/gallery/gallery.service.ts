@@ -1,7 +1,12 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { AppError } from '../../utils/AppError';
+import { BranchModel } from '../branches/branch.model';
 
-const FOLDER_NAME = 'TokyoSushis';
+const getBranchFolder = async (branchId: string): Promise<string> => {
+  const branch = await BranchModel.findById(branchId).select('galleryFolder').lean();
+  if (!branch) throw new AppError(404, 'Sucursal no encontrada');
+  return branch.galleryFolder || `TokyoSushis/branches/${branchId}`;
+};
 
 const ensureConfig = () => {
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
@@ -14,13 +19,14 @@ const ensureConfig = () => {
   });
 };
 
-export const uploadImage = async (fileBuffer: Buffer, originalName: string): Promise<string> => {
+export const uploadImage = async (branchId: string, fileBuffer: Buffer, originalName: string): Promise<string> => {
   ensureConfig();
+  const folder = await getBranchFolder(branchId);
   return new Promise((resolve, reject) => {
     const cleanName = originalName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "_");
     const uniquePublicId = `${cleanName}_${Date.now()}`;
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: FOLDER_NAME, public_id: uniquePublicId, format: 'webp', transformation: [{ quality: 'auto', fetch_format: 'auto' }] },
+      { folder, public_id: uniquePublicId, format: 'webp', transformation: [{ quality: 'auto', fetch_format: 'auto' }] },
       (error, result) => {
         if (error || !result) {
           console.error("❌ ERROR EN UPLOAD CLOUDINARY:", error);
@@ -33,16 +39,19 @@ export const uploadImage = async (fileBuffer: Buffer, originalName: string): Pro
   });
 };
 
-export const getGalleryImages = async () => {
+export const getGalleryImages = async (branchId: string) => {
   try {
     ensureConfig();
+    const folder = await getBranchFolder(branchId);
     const response = await cloudinary.api.resources({
       type: 'upload',
-      prefix: `${FOLDER_NAME}/`,
+      prefix: `${folder}/`,
       max_results: 100
     });
     if (!response.resources) return [];
-    const images = response.resources.map((resource: any) => ({
+    const images = response.resources.filter((resource: any) =>
+      resource.public_id.startsWith(`${folder}/`) && !resource.public_id.slice(folder.length + 1).includes('/')
+    ).map((resource: any) => ({
       id: resource.public_id.split('/').pop(), // nombre sin carpeta → usado como ID
       name: resource.public_id.split('/').pop(),
       url: resource.secure_url,
@@ -56,10 +65,11 @@ export const getGalleryImages = async () => {
   }
 };
 
-export const deleteImage = async (imageId: string): Promise<void> => {
+export const deleteImage = async (branchId: string, imageId: string): Promise<void> => {
   ensureConfig();
-  // El public_id completo en Cloudinary incluye la carpeta
-  const publicId = `${FOLDER_NAME}/${imageId}`;
+  if (!/^[a-zA-Z0-9_-]+$/.test(imageId)) throw new AppError(400, 'ID de imagen inválido');
+  const folder = await getBranchFolder(branchId);
+  const publicId = `${folder}/${imageId}`;
   const result = await cloudinary.uploader.destroy(publicId);
   if (result.result !== 'ok' && result.result !== 'not found') {
     throw new AppError(500, `Error al eliminar imagen: ${result.result}`);
