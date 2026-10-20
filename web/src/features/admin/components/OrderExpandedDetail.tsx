@@ -5,16 +5,18 @@ import { MapPin, Bike, Check, XCircle, ArrowRight } from 'lucide-react';
 import { OrderItemList } from './ui/OrderItemList';
 import { updateOrderDeliveryCost } from '@/services/admin.service';
 import { formatOrderReadyWhatsAppLink } from '../utils/whatsappMessage';
+import type { OrderBranch } from '../utils/orderBranch';
 
 interface OrderExpandedDetailProps {
   order: any;
   isDelivery: boolean;
   transition: any;
-  onStatus: (id: string, s: string) => void;
+  onStatus: (id: string, s: string) => Promise<void>;
   onRefresh?: () => void;
+  branch: OrderBranch | null;
 }
 
-export function OrderExpandedDetail({ order, isDelivery, transition, onStatus, onRefresh }: OrderExpandedDetailProps) {
+export function OrderExpandedDetail({ order, isDelivery, transition, onStatus, onRefresh, branch }: OrderExpandedDetailProps) {
   const [editingCost, setEditingCost] = useState(false);
   const [costInput, setCostInput] = useState(String(order.deliveryCost ?? 0));
   const [savingCost, setSavingCost] = useState(false);
@@ -32,19 +34,24 @@ export function OrderExpandedDetail({ order, isDelivery, transition, onStatus, o
     }
   };
 
-  const handleTransitionClick = () => {
+  const handleTransitionClick = async () => {
     // 1. Primero, ejecutamos el cambio de estado normal en la DB
-    onStatus(order._id, transition.next);
+    try {
+      await onStatus(order._id, transition.next);
+    } catch {
+      alert('No se pudo actualizar el pedido. Intentá de nuevo.');
+      return;
+    }
 
     // 2. Si el estado al que lo estamos pasando es 'ready' (Terminado), preguntamos:
-    if (transition.next === 'ready') {
+    if (transition.next === 'ready' && branch) {
       const wantsToNotify = window.confirm(
         `¿Deseás avisarle por WhatsApp a ${order.customer?.name || 'el cliente'} que su pedido está listo?`
       );
 
       if (wantsToNotify) {
         if (order.customer?.phone) {
-          const url = formatOrderReadyWhatsAppLink(order.customer.phone, order);
+          const url = formatOrderReadyWhatsAppLink(order.customer.phone, order, branch);
           window.open(url, '_blank');
         } else {
           alert('Este cliente no tiene un número de teléfono registrado.');

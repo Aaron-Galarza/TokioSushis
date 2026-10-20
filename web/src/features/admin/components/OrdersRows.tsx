@@ -6,18 +6,20 @@ import { formatWhatsAppLink } from '../utils/whatsappMessage';
 import { formatOrderNumber } from '@/lib/format';
 import { ORDER_STATUS, STATUS_TRANSITIONS, type OrderStatusKey } from '@/constants/orderStatus';
 import { OrderExpandedDetail } from './OrderExpandedDetail';
+import type { OrderBranch } from '../utils/orderBranch';
 
 interface ORProps {
   order: any;
   expanded: boolean;
   onToggle: () => void;
-  onStatus: (id: string, s: string) => void;
+  onStatus: (id: string, s: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   canDelete?: boolean;
   onRefresh?: () => void;
+  branch: OrderBranch | null;
 }
 
-export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, canDelete = true, onRefresh }: ORProps) {
+export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, canDelete = true, onRefresh, branch }: ORProps) {
   const status = ORDER_STATUS[order.status as OrderStatusKey] ?? ORDER_STATUS.pending;
   const transition = STATUS_TRANSITIONS[order.status as OrderStatusKey];
   const num = formatOrderNumber(order);
@@ -31,7 +33,8 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, canDel
   };
 
   const handlePrint = () => {
-    const htmlContent = generateComandaHTML(order);
+    if (!branch) return;
+    const htmlContent = generateComandaHTML(order, branch);
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(iframe);
@@ -55,7 +58,7 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, canDel
                 <span className="text-white/30 text-xs">#{num}</span>
                 {order.customer?.phone && (
                   <a
-                    href={formatWhatsAppLink(order.customer.phone, order)}
+                    href={branch ? formatWhatsAppLink(order.customer.phone, order, branch) : undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
@@ -94,7 +97,7 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, canDel
         </button>
 
         <div className="flex flex-col gap-2 shrink-0">
-          <button onClick={e => { e.stopPropagation(); handlePrint(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-primary/20 hover:text-primary text-white/30 transition-all" title="Imprimir comanda">
+          <button disabled={!branch} onClick={e => { e.stopPropagation(); handlePrint(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-primary/20 hover:text-primary text-white/30 transition-all disabled:opacity-30" title="Imprimir comanda">
             <Printer className="w-4 h-4" />
           </button>
           {canDelete && <button onClick={e => { e.stopPropagation(); handleDelete(); }} className="p-2 rounded-lg bg-[#2A2A2A] hover:bg-red-500/20 hover:text-red-400 text-white/30 transition-all" title="Anular pedido">
@@ -114,6 +117,7 @@ export function OrderRow({ order, expanded, onToggle, onStatus, onDelete, canDel
           transition={transition}
           onStatus={onStatus}
           onRefresh={onRefresh}
+          branch={branch}
         />
       )}
     </div>

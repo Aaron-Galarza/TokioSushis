@@ -1,9 +1,14 @@
+ 'use client';
+
+import { useEffect, useState } from 'react';
 import { AdminCard } from './ui/AdminCard';
 import { OrdersPanel } from './OrdersPanel';
 import { QuickOrderForm } from './QuickOrderForm';
 import type { useAdminOrders } from '../hooks/useAdminOrders';
 import type { useAdminMenu } from '../hooks/useAdminMenu';
 import type { AdminRange } from '@/services/admin.service';
+import { fetchManagedBranch } from '@/services/admin.service';
+import type { OrderBranch } from '../utils/orderBranch';
 
 type OrdersHook = ReturnType<typeof useAdminOrders>;
 type MenuHook   = ReturnType<typeof useAdminMenu>;
@@ -17,6 +22,8 @@ const TIME_FILTERS: { v: AdminRange; l: string }[] = [
 ];
 
 export function OrdersTab({ hook, menu, canDelete = true }: { hook: OrdersHook; menu: MenuHook; canDelete?: boolean }) {
+  const [branch, setBranch] = useState<OrderBranch | null>(null);
+  useEffect(() => { fetchManagedBranch().then(setBranch).catch(() => setBranch(null)); }, []);
   return (
     <AdminCard>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -58,6 +65,7 @@ export function OrdersTab({ hook, menu, canDelete = true }: { hook: OrdersHook; 
         onDelete={hook.removeOrder}
         canDelete={canDelete}
         onRefresh={hook.reload}
+        branch={branch}
       />
     </AdminCard>
   );

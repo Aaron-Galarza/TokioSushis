@@ -1,5 +1,5 @@
-import { TRANSFER_INFO } from '@/constants/admin';
 import { formatOrderNumber } from '@/lib/format';
+import type { OrderBranch } from './orderBranch';
 
 const cleanPhoneNumber = (phone: string): string => {
   const digits = phone.replace(/\D/g, '');
@@ -16,7 +16,7 @@ function getFriendlyPaymentMethod(method: string, deliveryType: string): string 
   return payLabels[method] || method || 'A confirmar';
 }
 
-export function formatWhatsAppLink(phone: string, order: any): string {
+export function formatWhatsAppLink(phone: string, order: any, branch: OrderBranch): string {
   if (!phone) return '#';
   const cleanPhone = cleanPhoneNumber(phone);
 
@@ -46,7 +46,7 @@ export function formatWhatsAppLink(phone: string, order: any): string {
 
   const paymentLabel = getFriendlyPaymentMethod(order.paymentMethod, order.deliveryType);
   const transferInfo = order.paymentMethod === 'transferencia'
-    ? `\nTransferencia a: ${TRANSFER_INFO.alias}\nTitular: ${TRANSFER_INFO.holder}`
+    ? `\nTransferencia a: ${branch.transferAlias || 'A confirmar'}\nTitular: ${branch.transferHolder || 'A confirmar'}`
     : '';
 
   let financialBreakdown = `Total a abonar: $${order.total?.toLocaleString('es-AR')}`;
@@ -59,7 +59,7 @@ export function formatWhatsAppLink(phone: string, order: any): string {
       `  Total Final: $${order.total?.toLocaleString('es-AR')}`;
   }
 
-  const text = `¡Hola ${customerName}! Desde Tokyo Sushis queremos confirmar tu pedido #${orderId}.
+  const text = `¡Hola ${customerName}! Desde ${branch.name} queremos confirmar tu pedido #${orderId}.
 
 Tu pedido:
 ${itemsList}
@@ -75,7 +75,7 @@ ${financialBreakdown}
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
 
-export function formatOrderReadyWhatsAppLink(phone: string, order: any): string {
+export function formatOrderReadyWhatsAppLink(phone: string, order: any, branch: OrderBranch): string {
   if (!phone) return '#';
   const cleanPhone = cleanPhoneNumber(phone);
 
@@ -92,7 +92,7 @@ export function formatOrderReadyWhatsAppLink(phone: string, order: any): string 
     actionReminder += `\n\nRecordatorio: Te estaremos enviando el Link de Pago para que puedas procesar el abonado con tarjeta de crédito de forma segura.`;
   }
 
-  const text = `¡Hola ${customerName}! Tu pedido #${orderId} de Tokyo Sushis ya está listo.
+  const text = `¡Hola ${customerName}! Tu pedido #${orderId} de ${branch.name} ya está listo.
 
 ${actionReminder}
 

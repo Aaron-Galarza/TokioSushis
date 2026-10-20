@@ -170,7 +170,7 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
     setSubmitting(true);
     setError(null);
     try {
-      await createAdminOrder({
+      const payload = {
         customer: { name: customer.name, phone: customer.phone, address: deliveryType === 'delivery' ? address : undefined },
         items: items.map(i => ({
           productId: i.productId,
@@ -181,7 +181,20 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
         deliveryType,
         paymentMethod,
         ...(deliveryType === 'delivery' && coords ? { delivery: { address, coordinates: coords } } : {}),
-      });
+      };
+      const attemptStorageKey = `pending_admin_order_attempt:${window.location.pathname}`;
+      const serializedPayload = JSON.stringify(payload);
+      let attempt: { payload: string; key: string } | null = null;
+      try {
+        const stored = sessionStorage.getItem(attemptStorageKey);
+        attempt = stored ? JSON.parse(stored) : null;
+      } catch { /* A fresh key is created below. */ }
+      if (attempt?.payload !== serializedPayload) {
+        attempt = { payload: serializedPayload, key: crypto.randomUUID() };
+        sessionStorage.setItem(attemptStorageKey, JSON.stringify(attempt));
+      }
+      await createAdminOrder(payload, attempt.key);
+      sessionStorage.removeItem(attemptStorageKey);
       reset();
       setOpen(false);
       onSuccess();

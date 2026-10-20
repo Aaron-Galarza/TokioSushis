@@ -1,6 +1,7 @@
 import { OrderRow } from './OrdersRows';
 import { ORDER_STATUS, type OrderStatusKey } from '@/constants/orderStatus';
 import type { SF } from '../hooks/useAdminOrders';
+import type { OrderBranch } from '../utils/orderBranch';
 
 // Mapeo de filtros del panel → claves de ORDER_STATUS
 // 'completed' en el filtro corresponde a 'ready' en la DB
@@ -25,9 +26,10 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   canDelete?: boolean;
   onRefresh?: () => void;
+  branch?: OrderBranch | null;
 }
 
-export function OrdersPanel({ sFilter, setSFilter, oCounts, filteredOrders, expandedId, setExpandedId, updateStatus, onDelete, canDelete = true, onRefresh }: Props) {
+export function OrdersPanel({ sFilter, setSFilter, oCounts, filteredOrders, expandedId, setExpandedId, updateStatus, onDelete, canDelete = true, onRefresh, branch = null }: Props) {
   return (
     <>
       <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 mb-5">
@@ -64,6 +66,7 @@ export function OrdersPanel({ sFilter, setSFilter, oCounts, filteredOrders, expa
           <OrderRow
             key={o._id}
             order={o}
+            branch={branch}
             expanded={expandedId === o._id}
             onToggle={() => setExpandedId(expandedId === o._id ? null : o._id)}
             onStatus={updateStatus}
