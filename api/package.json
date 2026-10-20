@@ -7,7 +7,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed": "ts-node-dev --transpile-only scripts/seed.ts",
-    "migrate:branches": "node scripts/backfill-branches.cjs"
+    "migrate:branches": "node scripts/backfill-branches.cjs",
+    "branch:create": "node scripts/create-branch.cjs",
+    "user:create": "node scripts/create-user.cjs"
   },
   "keywords": [],
   "author": "",

@@ -173,11 +173,11 @@ async function main() {
         await branches.insertOne(branch, { session });
       } else {
         const branchDefaults = {};
-        if (!branch.galleryFolder) branchDefaults.galleryFolder = 'TokyoSushis';
-        if (!branch.paymentMethods) branchDefaults.paymentMethods = ['cash', 'debito', 'credito', 'transferencia'];
-        if (!branch.transferAlias) branchDefaults.transferAlias = 'Tokyo.nx';
-        if (!branch.transferHolder) branchDefaults.transferHolder = 'Román Augusto Gomez';
-        if (!branch.whatsappPhone) branchDefaults.whatsappPhone = '5493624622366';
+        if (branch.galleryFolder === undefined) branchDefaults.galleryFolder = 'TokyoSushis';
+        if (branch.paymentMethods === undefined) branchDefaults.paymentMethods = ['cash', 'debito', 'credito', 'transferencia'];
+        if (branch.transferAlias === undefined) branchDefaults.transferAlias = 'Tokyo.nx';
+        if (branch.transferHolder === undefined) branchDefaults.transferHolder = 'Román Augusto Gomez';
+        if (branch.whatsappPhone === undefined) branchDefaults.whatsappPhone = '5493624622366';
         if (Object.keys(branchDefaults).length) {
           await branches.updateOne({ _id: branch._id }, { $set: branchDefaults }, { session });
         }
