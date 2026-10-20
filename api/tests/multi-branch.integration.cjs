@@ -7,6 +7,7 @@ const { BranchModel } = require('../dist/modules/branches/branch.model');
 const { UserModel } = require('../dist/modules/users/user.model');
 const { CategoriaModel } = require('../dist/modules/categorias/categorias.model');
 const { ProductModel } = require('../dist/modules/productos/products.model');
+const { AdicionalModel } = require('../dist/modules/adicionales/adicionales.model');
 const { ConfigModel } = require('../dist/modules/Schedules/Schedule.module');
 const { OrderModel } = require('../dist/modules/orders/orders.model');
 
@@ -81,9 +82,19 @@ async function main() {
   assert.equal((await request(url, '/categories/admin', {
     method: 'POST', token: token(manager), body: { name: 'Maki' },
   })).status, 201);
+  assert.equal((await request(url, `/categories/admin/${catB._id}`, {
+    method: 'DELETE', token: token(manager),
+  })).status, 409);
 
   const payload = (productId) => ({ customer: { name: 'Cliente', phone: '123456789' },
     items: [{ productId: productId.toString(), quantity: 1 }], deliveryType: 'pickup', paymentMethod: 'cash' });
+  const otherCategory = await CategoriaModel.create({ branchId: a._id, name: 'Other', active: true });
+  const wrongAddon = await AdicionalModel.create({ branchId: a._id, title: 'Wrong', price: 10,
+    categories: [otherCategory._id], active: true });
+  const invalidAddonOrder = payload(limited._id);
+  invalidAddonOrder.items[0].addons = [{ addonId: wrongAddon._id.toString(), quantity: 1 }];
+  assert.equal((await request(url, '/orders', { method: 'POST', slug: a.slug,
+    key: 'wrong-addon-00001', body: invalidAddonOrder })).status, 400);
   assert.equal((await request(url, '/orders', {
     method: 'POST', slug: b.slug, key: 'cross-branch-0001', body: payload(productA._id),
   })).status, 404);

@@ -1,5 +1,8 @@
 import { iCategoria, CategoriaModel } from './categorias.model';
 import { makeCrud } from '../../utils/crudFactory';
+import { ProductModel } from '../productos/products.model';
+import { AdicionalModel } from '../adicionales/adicionales.model';
+import { AppError } from '../../utils/AppError';
 
 const crud = makeCrud(CategoriaModel);
 
@@ -25,4 +28,11 @@ export const create = async (branchId: string, data: Partial<iCategoria>): Promi
 
 export const modify = crud.modify;
 export const toggleActive = crud.toggleActive;
-export const deleteById = crud.deleteById;
+export const deleteById = async (branchId: string, id: string): Promise<iCategoria | null> => {
+  const [product, addon] = await Promise.all([
+    ProductModel.exists({ branchId, category: id, deleted: { $ne: true } }),
+    AdicionalModel.exists({ branchId, categories: id }),
+  ]);
+  if (product || addon) throw new AppError(409, 'La categoría tiene productos o adicionales asociados');
+  return crud.deleteById(branchId, id);
+};
