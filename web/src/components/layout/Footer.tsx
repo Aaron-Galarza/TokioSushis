@@ -1,6 +1,8 @@
 import { Clock, MapPin, Phone } from 'lucide-react';
+import { useBranchStore } from '@/stores/branch.store';
 
 export function Footer() {
+  const branch = useBranchStore((s) => s.branch);
   return (
     <footer className="relative mt-20 overflow-hidden">
       {/* Decorative top border with gradient */}
@@ -22,26 +24,24 @@ export function Footer() {
             <div className="bg-gradient-to-br from-muted/50 to-transparent rounded-lg p-4 border border-border/50 hover:border-primary/30 transition-all flex flex-col items-center">
               <Clock className="w-5 h-5 text-primary mb-2" />
               <h3 className="text-white text-sm mb-1">Horarios</h3>
-              <p className="text-muted-foreground text-xs">Lun - Dom</p>
-              <p className="text-muted-foreground text-xs">19:30 - 23:45</p>
+              <p className="text-muted-foreground text-xs">Consultá el horario de tu sucursal en el menú.</p>
             </div>
 
             {/* Dirección (Clickeable al Mapa) */}
             <a
-              href="https://www.google.com/maps/search/?api=1&query=-27.4561,-59.0021"
+              href={branch ? `https://www.google.com/maps/search/?api=1&query=${branch.coordinates.lat},${branch.coordinates.lng}` : '/'}
               target="_blank"
               rel="noopener noreferrer"
               className="group bg-gradient-to-br from-muted/50 to-transparent rounded-lg p-4 border border-border/50 hover:border-primary/30 transition-all flex flex-col items-center cursor-pointer"
             >
               <MapPin className="w-5 h-5 text-primary mb-2 group-hover:scale-110 transition-transform" />
               <h3 className="text-white text-sm mb-1">Dirección</h3>
-              <p className="text-muted-foreground text-xs group-hover:text-primary transition-colors">Roldán 585</p>
-              <p className="text-muted-foreground text-xs group-hover:text-primary transition-colors">Resistencia, Chaco</p>
+              <p className="text-muted-foreground text-xs group-hover:text-primary transition-colors">{branch?.address || 'Elegí una sucursal'}</p>
             </a>
 
             {/* WhatsApp */}
             <a
-              href="https://wa.me/5493624622366"
+              href={branch?.whatsappPhone ? `https://wa.me/${branch.whatsappPhone.replace(/\D/g, '')}` : '/'}
               target="_blank"
               rel="noopener noreferrer"
               className="group bg-gradient-to-br from-muted/50 to-transparent rounded-lg p-4 border border-border/50 hover:border-primary/30 transition-all flex flex-col items-center"
@@ -49,7 +49,7 @@ export function Footer() {
               <Phone className="w-5 h-5 text-primary mb-2 group-hover:scale-110 transition-transform" />
               <h3 className="text-white text-sm mb-1">WhatsApp</h3>
               <span className="text-primary hover:text-primary/80 text-xs transition-colors">
-                +54 9 3624 62-2366
+                {branch?.whatsappPhone || 'Consultá tu sucursal'}
               </span>
             </a>
 

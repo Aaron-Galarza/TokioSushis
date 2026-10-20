@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { X } from 'lucide-react';
+import { useBranchStore } from '@/stores/branch.store';
 
 interface MapPickerProps {
   isOpen: boolean;
@@ -19,9 +20,12 @@ export const MapPicker = ({
   isOpen,
   onClose,
   onSelectCoordinates,
-  initialLat = -27.4559739,
-  initialLng = -59.0020127,
+  initialLat: requestedLat,
+  initialLng: requestedLng,
 }: MapPickerProps) => {
+  const branch = useBranchStore((s) => s.branch);
+  const initialLat = requestedLat ?? branch?.coordinates.lat ?? 0;
+  const initialLng = requestedLng ?? branch?.coordinates.lng ?? 0;
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const marker = useRef<mapboxgl.Marker | null>(null);

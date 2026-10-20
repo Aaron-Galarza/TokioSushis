@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import api from '@/services/api';
+import { useBranchStore } from '@/stores/branch.store';
 
 const AUTH_STORAGE_KEY = 'american-way-auth-storage';
 
@@ -29,6 +30,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (role === 'owner') return router.replace('/owner');
         if (!['admin', 'encargado'].includes(role) || !branch?.slug) return router.replace('/login');
         login(token, role, branch);
+        api.get(`/branches/${branch.slug}`).then((branchRes) =>
+          useBranchStore.getState().setBranch(branchRes.data.data)).catch(() => {});
         setBranchSlug(branch.slug);
         const expected = `/admin/s/${branch.slug}`;
         if (window.location.pathname !== expected && window.location.pathname !== '/admin') {

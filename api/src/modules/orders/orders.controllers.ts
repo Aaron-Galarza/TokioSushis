@@ -61,7 +61,7 @@ export const updateStatusOrder = asyncHandler(async (req: Request, res: Response
   }
 
   const branchId = requireBranchId(req)
-  const order = await OrderService.update(branchId, id, status, deliveryCost)
+  const order = await OrderService.update(branchId, id, status, deliveryCost, req.auth?.role === 'encargado' ? 'encargado' : 'admin')
   if (!order) return sendError(res, 'Pedido no encontrado', 404)
 
   if (status) getIO().to(`branch:${branchId}`).emit('order-updated', { id, status })

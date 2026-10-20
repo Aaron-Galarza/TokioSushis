@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import api from '@/services/api';
+import { useBranchStore } from '@/stores/branch.store';
 
 export interface AddressResult {
   placeName: string;
@@ -14,15 +16,8 @@ export interface AddressResult {
 // para ahorrar la cuota gratuita de Google.
 const fetchGoogleGeocode = async (query: string, signal: AbortSignal): Promise<AddressResult[]> => {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-    const url = new URL(`${apiUrl}/geocoding/google`);
-    url.searchParams.append('query', query);
-
-    const response = await fetch(url.toString(), { signal });
-    if (!response.ok) return [];
-
-    const json = await response.json();
-    const data = json?.data ?? [];
+    const response = await api.get('/geocoding/google', { params: { query }, signal });
+    const data = response.data?.data ?? [];
     return (Array.isArray(data) ? data : []).map((r: any) => ({
       placeName: r.placeName,
       lat: r.lat,
@@ -35,6 +30,7 @@ const fetchGoogleGeocode = async (query: string, signal: AbortSignal): Promise<A
 };
 
 export const useAddressSearch = (query: string) => {
+  const coordinates = useBranchStore((s) => s.branch?.coordinates);
   const [results, setResults] = useState<AddressResult[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -55,8 +51,9 @@ export const useAddressSearch = (query: string) => {
         const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
         if (!token) throw new Error('Falta el token de Mapbox');
 
-        const storeLng = Number(process.env.NEXT_PUBLIC_STORE_LNG) || -58.9630312;
-        const storeLat = Number(process.env.NEXT_PUBLIC_STORE_LAT) || -27.4379852;
+        if (!coordinates) throw new Error('Sucursal sin coordenadas');
+        const storeLng = coordinates.lng;
+        const storeLat = coordinates.lat;
 
         // Usamos Geocoding v6 (la recomendada para calles y alturas estables)
         const url = new URL('https://api.mapbox.com/search/geocode/v6/forward');
@@ -76,8 +73,7 @@ export const useAddressSearch = (query: string) => {
         // 🎯 FILTROS: Direcciones exactas y lugares (para mayor cobertura)
         url.searchParams.append('types', 'address,place');
         
-        // 🗺️ LÍMITE GEOGRÁFICO: Encuadra estrictamente el Gran Resistencia (Fontana, Barranqueras, Vilelas)
-        url.searchParams.append('bbox', '-59.0526,-27.4915,-58.8953,-27.4022');
+        url.searchParams.append('bbox', `${storeLng - 0.1},${storeLat - 0.1},${storeLng + 0.1},${storeLat + 0.1}`);
         url.searchParams.append('proximity', `${storeLng},${storeLat}`);
         url.searchParams.append('limit', '5');
         url.searchParams.append('autocomplete', 'true');
@@ -129,7 +125,7 @@ export const useAddressSearch = (query: string) => {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [query]);
+  }, [query, coordinates?.lat, coordinates?.lng]);
 
   return { results, loading };
 };
