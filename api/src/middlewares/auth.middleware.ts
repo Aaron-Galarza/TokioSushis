@@ -38,6 +38,7 @@ export const authenticate = asyncHandler(async (req: Request, res: Response, nex
   }
 
   req.auth = { userId: user._id.toString(), role: user.role, branchId };
+  if (branchId) req.branchId = branchId;
   next();
 });
 

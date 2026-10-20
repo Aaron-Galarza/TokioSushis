@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface iAdicional extends Document {
+  branchId: mongoose.Types.ObjectId;
   title: string;
   price: number;
   categories?: mongoose.Types.ObjectId[];
@@ -8,6 +9,7 @@ export interface iAdicional extends Document {
 }
 
 const AdicionalSchema = new Schema<iAdicional>({
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
   title: {
     type: String,
     required: [true, 'El nombre del adicional es obligatorio'],
@@ -24,13 +26,14 @@ const AdicionalSchema = new Schema<iAdicional>({
       ref: 'Categoria'
     }],
     default: [],
-    index: true,
   },
   active: {
     type: Boolean,
     default: true,
-    index: true,
   },
 }, { timestamps: true });
+
+AdicionalSchema.index({ branchId: 1, active: 1 });
+AdicionalSchema.index({ branchId: 1, categories: 1 });
 
 export const AdicionalModel = mongoose.model<iAdicional>('Adicional', AdicionalSchema);

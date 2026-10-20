@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { sendError, sendSucces } from '../../utils/response'
 import * as CouponsService from './coupons.services'
 import { asyncHandler } from '../../utils/asyncHandler'
+import { requireBranchId } from '../../middlewares/branch.middleware'
 
 const dayMap: Record<string, string> = {
   domingo: 'sunday',
@@ -23,20 +24,20 @@ const getCurrentDay = () => {
   return dayMap[normalized] ?? normalized
 }
 
-export const getAllCoupons = asyncHandler(async (_req: Request, res: Response) => {
-  const coupons = await CouponsService.viewAll()
+export const getAllCoupons = asyncHandler(async (req: Request, res: Response) => {
+  const coupons = await CouponsService.viewAll(requireBranchId(req))
   return sendSucces(res, coupons, 200)
 })
 
 export const createNewCoupon = asyncHandler(async (req: Request, res: Response) => {
-  const newCoupon = await CouponsService.create(req.body)
+  const newCoupon = await CouponsService.create(requireBranchId(req), req.body)
   return sendSucces(res, newCoupon, 201)
 })
 
 export const validateCoupon = asyncHandler(async (req: Request, res: Response) => {
   const { code } = req.params
   const paymentMethod = req.body?.paymentMethod
-  const result = await CouponsService.search(code as string)
+  const result = await CouponsService.search(requireBranchId(req), code as string)
   if (!result) return sendError(res, 'Cupon no valido, inexistente o expirado', 400)
 
   if (result.validPaymentMethods?.length && !result.validPaymentMethods.includes(paymentMethod)) {
@@ -52,14 +53,14 @@ export const validateCoupon = asyncHandler(async (req: Request, res: Response) =
 
 export const updateCoupon = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params
-  const result = await CouponsService.modify(id as string, req.body)
+  const result = await CouponsService.modify(requireBranchId(req), id as string, req.body)
   if (!result) return sendError(res, 'Cupon no encontrado', 404)
   return sendSucces(res, result, 200)
 })
 
 export const deleteCoupon = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params
-  const result = await CouponsService.deleteById(id as string)
+  const result = await CouponsService.deleteById(requireBranchId(req), id as string)
   if (!result) return sendError(res, 'Cupon no encontrado', 404)
   return sendSucces(res, result, 200)
 })

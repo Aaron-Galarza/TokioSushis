@@ -3,10 +3,11 @@ import * as ctrl from './delivery.controller';
 import { validate } from '../../middlewares/validate.middleware';
 import { calculateDeliverySchema, updateConfigSchema, toggleRainSchema, rangeSchema } from './delivery.schema';
 import { isAdmin } from '../../middlewares/auth.middleware';
+import { resolvePublicBranch } from '../../middlewares/branch.middleware';
 
 const router = Router();
 
-router.post('/calculate', validate(calculateDeliverySchema), ctrl.calculate);
+router.post('/calculate', resolvePublicBranch, validate(calculateDeliverySchema), ctrl.calculate);
 
 router.get('/config',           isAdmin, ctrl.getConfig);
 router.put('/config',           isAdmin, validate(updateConfigSchema), ctrl.updateConfig);

@@ -9,33 +9,34 @@ const normalizeCouponData = (data: Partial<iCoupon> & { Code?: string; Percent?:
 
   delete normalized.Code;
   delete normalized.Percent;
+  delete normalized.branchId;
 
   return normalized;
 };
 
-export const viewAll = async (): Promise<iCoupon[]> => {
-  return await CouponModel.find();
+export const viewAll = async (branchId: string): Promise<iCoupon[]> => {
+  return await CouponModel.find({ branchId });
 };
 
-export const create = async (data: Partial<iCoupon> & { Code?: string; Percent?: number }): Promise<iCoupon> => {
-  const newCoupon = new CouponModel(normalizeCouponData(data));
+export const create = async (branchId: string, data: Partial<iCoupon> & { Code?: string; Percent?: number }): Promise<iCoupon> => {
+  const newCoupon = new CouponModel({ ...normalizeCouponData(data), branchId });
   return await newCoupon.save();
 };
 
-export const modify = async (id: string, data: Partial<iCoupon> & { Code?: string; Percent?: number }): Promise<iCoupon | null> => {
-  return await CouponModel.findByIdAndUpdate(
-    id,
+export const modify = async (branchId: string, id: string, data: Partial<iCoupon> & { Code?: string; Percent?: number }): Promise<iCoupon | null> => {
+  return await CouponModel.findOneAndUpdate(
+    { _id: id, branchId },
     { $set: normalizeCouponData(data) },
     { new: true, runValidators: true },
   );
 };
 
-export const search = async (code: string): Promise<iCoupon | null> => {
-  return await CouponModel.findOne({ code: code.toUpperCase(), active: { $ne: false } });
+export const search = async (branchId: string, code: string): Promise<iCoupon | null> => {
+  return await CouponModel.findOne({ branchId, code: code.toUpperCase(), active: { $ne: false } });
 };
 
-export const deleteById = async (id: string): Promise<iCoupon | null> => {
-  return await CouponModel.findByIdAndDelete(id);
+export const deleteById = async (branchId: string, id: string): Promise<iCoupon | null> => {
+  return await CouponModel.findOneAndDelete({ _id: id, branchId });
 };
 
 /**

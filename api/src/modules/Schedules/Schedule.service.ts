@@ -1,11 +1,17 @@
 import { ConfigModel, IDaySchedule, IConfig } from './Schedule.module';
+import { BranchModel } from '../branches/branch.model';
+import { AppError } from '../../utils/AppError';
 
 // Reemplazo robusto para limpiar tildes (Unicode block de diacríticos)
 const normalizeDayName = (value?: string) =>
   value?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-export const checkStoreStatus = async () => {
-  const config = await ConfigModel.getOrCreateConfig();
+export const checkStoreStatus = async (branchId: string) => {
+  const [config, branch] = await Promise.all([
+    ConfigModel.getOrCreateConfig(branchId),
+    BranchModel.findById(branchId).select('timezone').lean(),
+  ]);
+  if (!branch) throw new AppError(404, 'Sucursal no encontrada');
   const isEmergencyClosed = config.isEmergencyClosed || config.isAllClose;
 
   const baseResponse = {
@@ -26,7 +32,7 @@ export const checkStoreStatus = async () => {
   const now = new Date();
   
   // Convertimos de forma exacta la fecha actual al huso de Argentina
-  const argString = now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' });
+  const argString = now.toLocaleString('en-US', { timeZone: branch.timezone });
   const argDate = new Date(argString);
 
   // Extraemos las variables numéricas reales de forma nativa
@@ -37,8 +43,8 @@ export const checkStoreStatus = async () => {
   const currentTime = `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
 
   // Obtenemos el nombre del día en español utilizando la fecha ya adaptada a Argentina
-  const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long' });
-  const dayName = dayFormatter.format(argDate);
+  const dayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long', timeZone: branch.timezone });
+  const dayName = dayFormatter.format(now);
 
   const todaySchedule = config.dailySchedule.find(
     (schedule) => normalizeDayName(schedule.day) === normalizeDayName(dayName),
@@ -64,14 +70,14 @@ export const checkStoreStatus = async () => {
   };
 };
 
-export const updateBanner = async (bannerUrl: string): Promise<IConfig> => {
-  const config = await ConfigModel.getOrCreateConfig();
+export const updateBanner = async (branchId: string, bannerUrl: string): Promise<IConfig> => {
+  const config = await ConfigModel.getOrCreateConfig(branchId);
   config.banner = bannerUrl;
   return await config.save();
 };
 
-export const closeStore = async (): Promise<IConfig | null> => {
-  const config = await ConfigModel.getOrCreateConfig();
+export const closeStore = async (branchId: string): Promise<IConfig | null> => {
+  const config = await ConfigModel.getOrCreateConfig(branchId);
   if (!config) return null;
 
   const nextStatus = !(config.isEmergencyClosed || config.isAllClose);
@@ -80,8 +86,8 @@ export const closeStore = async (): Promise<IConfig | null> => {
   return await config.save();
 };
 
-export const updateSchedule = async (updates: IDaySchedule[]): Promise<IConfig> => {
-  const config = await ConfigModel.getOrCreateConfig();
+export const updateSchedule = async (branchId: string, updates: IDaySchedule[]): Promise<IConfig> => {
+  const config = await ConfigModel.getOrCreateConfig(branchId);
 
   const updatesMap = new Map(updates.map(d => [normalizeDayName(d.day), d]));
 

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as AnalyticsService from './analytics.service';
 import { VALID_RANGES, Range } from '../../utils/dateRange';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { requireBranchId } from '../../middlewares/branch.middleware';
 
 export const getAnalyticsReport = asyncHandler(async (req: Request, res: Response) => {
   const range = (req.query.range as string) || 'hoy';
@@ -13,7 +14,7 @@ export const getAnalyticsReport = asyncHandler(async (req: Request, res: Respons
     });
   }
 
-  const data = await AnalyticsService.getAnalytics(range as Range);
+  const data = await AnalyticsService.getAnalytics(requireBranchId(req), range as Range);
 
   return res.status(200).json({ success: true, data });
 });

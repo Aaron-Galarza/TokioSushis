@@ -8,6 +8,7 @@ export interface IDaySchedule {
 }
 
 export interface IConfig extends Document {
+  branchId: mongoose.Types.ObjectId;
   isOpen: boolean;
   isEmergencyClosed: boolean;
   emergencyMessage: string;
@@ -24,6 +25,7 @@ const dayScheduleSchema = new Schema<IDaySchedule>({
 }, { _id: false });
 
 const configSchema = new Schema<IConfig>({
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
   isOpen: { type: Boolean, default: true },
   isEmergencyClosed: { type: Boolean, default: false },
   emergencyMessage: { type: String, default: '' },
@@ -32,10 +34,13 @@ const configSchema = new Schema<IConfig>({
   banner: { type: String, default: '' },
 }, { timestamps: true });
 
-configSchema.statics.getOrCreateConfig = async function () {
-  let config = await this.findOne();
-  if (!config) {
-    config = await this.create({
+configSchema.index({ branchId: 1 }, { unique: true });
+
+configSchema.statics.getOrCreateConfig = async function (branchId: string) {
+  return this.findOneAndUpdate(
+    { branchId },
+    { $setOnInsert: {
+      branchId,
       isOpen: true,
       isEmergencyClosed: false,
       emergencyMessage: '',
@@ -49,13 +54,13 @@ configSchema.statics.getOrCreateConfig = async function () {
         { day: 'Viernes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
         { day: 'Sabado', openTime: '20:00', closeTime: '23:59', isStoreOpen: true },
       ],
-    });
-  }
-  return config;
+    } },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
 };
 
 interface IConfigModel extends Model<IConfig> {
-  getOrCreateConfig(): Promise<IConfig>;
+  getOrCreateConfig(branchId: string): Promise<IConfig>;
 }
 
 export const ConfigModel = mongoose.model<IConfig, IConfigModel>('Config', configSchema);

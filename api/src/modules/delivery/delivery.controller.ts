@@ -4,11 +4,12 @@ import { DeliveryConfigModel } from './delivery.model';
 import { sendError, sendSucces } from '../../utils/response';
 import { AppError, friendlyAppErrorMessage } from '../../utils/AppError';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { requireBranchId } from '../../middlewares/branch.middleware';
 
 export const calculate = async (req: Request, res: Response) => {
   try {
     const { lat, lng } = req.body;
-    const delivery = await DeliveryService.calculateDelivery(Number(lat), Number(lng));
+    const delivery = await DeliveryService.calculateDelivery(requireBranchId(req), Number(lat), Number(lng));
     return sendSucces(res, delivery);
   } catch (error) {
     if (error instanceof AppError) {
@@ -20,13 +21,13 @@ export const calculate = async (req: Request, res: Response) => {
 };
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
-  const config = await DeliveryConfigModel.getOrCreateConfig();
+  const config = await DeliveryConfigModel.getOrCreateConfig(requireBranchId(req));
   return sendSucces(res, config);
 });
 
 export const updateConfig = asyncHandler(async (req: Request, res: Response) => {
   const { kmRanges, extraRain, isRaining } = req.body;
-  const config = await DeliveryConfigModel.getOrCreateConfig();
+  const config = await DeliveryConfigModel.getOrCreateConfig(requireBranchId(req));
   if (kmRanges  !== undefined)           config.kmRanges  = kmRanges;
   if (typeof extraRain === 'number')     config.extraRain = extraRain;
   if (typeof isRaining === 'boolean')    config.isRaining = isRaining;
@@ -36,7 +37,7 @@ export const updateConfig = asyncHandler(async (req: Request, res: Response) => 
 
 export const toggleRain = asyncHandler(async (req: Request, res: Response) => {
   const { isRaining, extraRain } = req.body;
-  const config = await DeliveryConfigModel.getOrCreateConfig();
+  const config = await DeliveryConfigModel.getOrCreateConfig(requireBranchId(req));
   config.isRaining = isRaining;
   if (typeof extraRain === 'number') config.extraRain = extraRain;
   const saved = await config.save();
@@ -44,14 +45,14 @@ export const toggleRain = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const addRange = asyncHandler(async (req: Request, res: Response) => {
-  const config = await DeliveryConfigModel.getOrCreateConfig();
+  const config = await DeliveryConfigModel.getOrCreateConfig(requireBranchId(req));
   config.kmRanges.push(req.body);
   const saved = await config.save();
   return sendSucces(res, { data: saved.kmRanges, message: 'Rango agregado' });
 });
 
 export const deleteRange = asyncHandler(async (req: Request, res: Response) => {
-  const config = await DeliveryConfigModel.getOrCreateConfig();
+  const config = await DeliveryConfigModel.getOrCreateConfig(requireBranchId(req));
   const range = config.kmRanges.id(String(req.params.id));
   if (!range) return sendError(res, 'Rango no encontrado', 404);
   range.deleteOne();

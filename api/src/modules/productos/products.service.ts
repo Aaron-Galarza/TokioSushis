@@ -10,13 +10,13 @@ const isObjectId = (value: unknown): value is mongoose.Types.ObjectId | string =
     ? mongoose.Types.ObjectId.isValid(value)
     : value instanceof mongoose.Types.ObjectId;
 
-const attachCategories = async (products: any[]) => {
+const attachCategories = async (branchId: string, products: any[]) => {
   const categoryIds = products
     .map((product) => product.category)
     .filter(isObjectId)
     .map((category) => category.toString());
 
-  const categories = await CategoriaModel.find({ _id: { $in: categoryIds } })
+  const categories = await CategoriaModel.find({ _id: { $in: categoryIds }, branchId })
     .select('name active order')
     .lean();
 
@@ -36,30 +36,31 @@ const attachCategories = async (products: any[]) => {
 const sortByCategory = (products: any[]) =>
   products.sort((a: any, b: any) => (a.category?.order ?? 0) - (b.category?.order ?? 0));
 
-export const viewAll = async (): Promise<iProducto[]> => {
-  const products = await ProductModel.find()
+export const viewAll = async (branchId: string): Promise<iProducto[]> => {
+  const products = await ProductModel.find({ branchId })
     .select('title description price image category active controlStock stock configurator createdAt updatedAt')
     .lean();
 
-  return await attachCategories(products) as iProducto[];
+  return await attachCategories(branchId, products) as iProducto[];
 };
 
-export const viewActive = async (): Promise<iProducto[]> => {
-  const products = await ProductModel.find({ active: true })
+export const viewActive = async (branchId: string): Promise<iProducto[]> => {
+  const products = await ProductModel.find({ branchId, active: true })
     .select('title description price image category active controlStock stock configurator')
     .lean();
 
-  const withCategories = await attachCategories(products);
+  const withCategories = await attachCategories(branchId, products);
   return sortByCategory(withCategories) as iProducto[];
 };
 
-export const viewById = async (id: string): Promise<iProducto | null> => {
-  return await ProductModel.findById(id);
+export const viewById = async (branchId: string, id: string): Promise<iProducto | null> => {
+  return await ProductModel.findOne({ _id: id, branchId });
 };
 
-export const create = async (data: Partial<iProducto>): Promise<iProducto> => {
+export const create = async (branchId: string, data: Partial<iProducto>): Promise<iProducto> => {
   const newProduct = new ProductModel({
     ...data,
+    branchId,
     active: data.active ?? true,
   });
   return await newProduct.save();
