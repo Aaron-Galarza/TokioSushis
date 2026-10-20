@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { once } = require('node:events');
+const { createHash } = require('node:crypto');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -73,10 +74,13 @@ const filterFor = (collectionName) => collectionName === 'users'
 async function backupCollection(db, collectionName, backupDir) {
   const file = path.join(backupDir, `${collectionName}.jsonl`);
   const stream = fs.createWriteStream(file, { encoding: 'utf8', flags: 'wx' });
+  const hash = createHash('sha256');
   let count = 0;
   try {
     for await (const document of db.collection(collectionName).find({})) {
-      if (!stream.write(`${mongoose.mongo.BSON.EJSON.stringify(document)}\n`)) {
+      const line = `${mongoose.mongo.BSON.EJSON.stringify(document)}\n`;
+      hash.update(line);
+      if (!stream.write(line)) {
         await once(stream, 'drain');
       }
       count += 1;
@@ -84,7 +88,7 @@ async function backupCollection(db, collectionName, backupDir) {
     const finished = once(stream, 'finish');
     stream.end();
     await finished;
-    return count;
+    return { count, sha256: hash.digest('hex') };
   } catch (error) {
     stream.destroy();
     throw error;
@@ -144,11 +148,14 @@ async function main() {
   const backupDir = path.resolve(__dirname, '../../backups', `branch-backfill-${new Date().toISOString().replace(/[:.]/g, '-')}`);
   await fsp.mkdir(backupDir, { recursive: true });
   const backupCounts = {};
+  const backupIndexes = {};
   for (const collectionName of [...collections, ...(present.has('branches') ? ['branches'] : [])]) {
     backupCounts[collectionName] = await backupCollection(db, collectionName, backupDir);
+    backupIndexes[collectionName] = await db.collection(collectionName).indexes();
   }
   await fsp.writeFile(path.join(backupDir, 'manifest.json'), JSON.stringify({
-    createdAt: new Date().toISOString(), slug, backupCounts, pending,
+    createdAt: new Date().toISOString(), slug, databaseName: db.databaseName,
+    backupCounts, backupIndexes, pending,
   }, null, 2));
   console.log(`Respaldo EJSON local completo: ${backupDir}`);
 
