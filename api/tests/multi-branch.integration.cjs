@@ -185,6 +185,23 @@ async function main() {
     customer: { name: 'Cliente', phone: '123456789', address: 'Calle 1' }, delivery: { address: 'Calle 1' } };
   assert.equal((await request(url, '/orders', { method: 'POST', slug: b.slug,
     key: 'delivery-no-coord', body: delivery })).status, 400);
+  const originalFetch = global.fetch;
+  const originalMapboxToken = process.env.MAPBOX_TOKEN;
+  process.env.MAPBOX_TOKEN = 'local-test-token';
+  global.fetch = (input, init) => String(input).startsWith('https://api.mapbox.com/')
+    ? Promise.reject(new Error('injected Mapbox failure')) : originalFetch(input, init);
+  try {
+    const failedDelivery = await request(url, '/orders', { method: 'POST', slug: b.slug,
+      key: 'mapbox-failure-001', body: { ...delivery,
+        delivery: { address: 'Calle 1', coordinates: { lat: -27.45, lng: -59 } } } });
+    assert.equal(failedDelivery.status, 503);
+    assert.equal(await OrderModel.countDocuments({ branchId: b._id, idempotencyKey: 'mapbox-failure-001' }), 0);
+    assert.equal((await ProductModel.findById(productB._id)).stock, 2);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalMapboxToken === undefined) delete process.env.MAPBOX_TOKEN;
+    else process.env.MAPBOX_TOKEN = originalMapboxToken;
+  }
   const delivered = await request(url, '/orders', {
     method: 'POST', slug: b.slug, key: 'branch-b-order-001', body: payload(productB._id),
   });
