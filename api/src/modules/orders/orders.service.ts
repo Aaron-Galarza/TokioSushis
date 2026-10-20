@@ -14,6 +14,7 @@ import { ProductModel } from '../productos/products.model'
 import { BranchModel } from '../branches/branch.model'
 import { AdicionalModel } from '../adicionales/adicionales.model'
 import { CouponModel } from '../coupons/coupons.model'
+import { CategoriaModel } from '../categorias/categorias.model'
 
 // Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
 const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
@@ -48,6 +49,9 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
       if (!product) throw new AppError(404, `Producto ${item.productId} no encontrado`)
  
       if (!product.active) throw new AppError(400, `El producto "${product.title}" no está disponible`)
+      if (!await CategoriaModel.exists({ _id: product.category, branchId, active: true })) {
+        throw new AppError(400, `La categoría de "${product.title}" no está disponible`)
+      }
       productVersions[index] = (product.get('updatedAt') as Date | undefined)?.getTime() ?? 0
       if (product.controlStock) {
         if (product.stock <= 0) {
@@ -66,6 +70,10 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
             const adicional = await AdicionalService.viewById(branchId, a.addonId)
             if (!adicional) throw new AppError(404, `Adicional ${a.addonId} no encontrado`)
             if (!adicional.active) throw new AppError(400, `El adicional "${adicional.title}" no está disponible`)
+            if (adicional.categories?.length && !adicional.categories.some(
+              (categoryId) => categoryId.toString() === product.category.toString())) {
+              throw new AppError(400, `El adicional "${adicional.title}" no corresponde a este producto`)
+            }
             const addonName = adicional.title ?? 'Adicional'
             return {
               addonId:  a.addonId,
@@ -201,9 +209,13 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
         if (!product || ((product.get('updatedAt') as Date | undefined)?.getTime() ?? 0) !== productVersions[index]) {
           throw new AppError(409, 'El menú cambió. Revisá el pedido antes de enviarlo')
         }
+        if (!await CategoriaModel.exists({ _id: product.category, branchId, active: true }).session(session)) {
+          throw new AppError(409, 'La categoría ya no está disponible')
+        }
         for (const addon of item.addons ?? []) {
           const current = await AdicionalModel.findOne({ _id: addon.addonId, branchId, active: true }).session(session)
-          if (!current || current.price !== addon.price) {
+          if (!current || current.price !== addon.price || (current.categories?.length
+            && !current.categories.some((categoryId) => categoryId.toString() === product.category.toString()))) {
             throw new AppError(409, 'Un adicional cambió. Revisá el pedido antes de enviarlo')
           }
         }

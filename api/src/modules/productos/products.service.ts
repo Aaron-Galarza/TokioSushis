@@ -47,7 +47,8 @@ export const viewActive = async (branchId: string): Promise<iProducto[]> => {
     .lean();
 
   const withCategories = await attachCategories(branchId, products);
-  return sortByCategory(withCategories) as iProducto[];
+  return sortByCategory(withCategories.filter((product) =>
+    typeof product.category === 'object' && product.category?.active === true)) as iProducto[];
 };
 
 export const viewById = async (branchId: string, id: string): Promise<iProducto | null> => {
