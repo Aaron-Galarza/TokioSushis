@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const WebSocket = require('ws');
 const app = require('../dist/app').default;
 const { initSocket, getIO } = require('../dist/socket/socket');
 const { BranchModel } = require('../dist/modules/branches/branch.model');
@@ -32,6 +33,31 @@ const request = async (url, route, { method = 'GET', token, slug, body, key } = 
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   return { status: response.status, body: await response.json() };
+};
+
+const connectSocket = async (url, authToken) => {
+  const socket = new WebSocket(url.replace('http:', 'ws:') + '/socket.io/?EIO=4&transport=websocket');
+  const messages = [];
+  const waiters = [];
+  socket.on('message', (data) => {
+    const message = data.toString();
+    if (waiters.length) waiters.shift()(message);
+    else messages.push(message);
+  });
+  const nextMessage = () => messages.length ? Promise.resolve(messages.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Socket handshake timeout')), 3000);
+    waiters.push((message) => { clearTimeout(timer); resolve(message); });
+  });
+  try {
+    const engineOpen = await nextMessage();
+    assert.equal(engineOpen[0], '0');
+    socket.send(`40${JSON.stringify({ token: authToken })}`);
+    const result = await nextMessage();
+    return { socket, result };
+  } catch (error) {
+    socket.close();
+    throw error;
+  }
 };
 
 async function main() {
@@ -99,6 +125,24 @@ async function main() {
   assert.equal(deliveryA.body.data.branchId, a._id.toString());
   assert.equal(deliveryA.body.data.isRaining, false);
   assert.equal((await request(url, '/delivery/config', { token: token(manager) })).body.data.isRaining, true);
+  const socketA = await connectSocket(url, token(cashier));
+  const socketB = await connectSocket(url, token(manager));
+  const socketOwner = await connectSocket(url, token(owner));
+  try {
+    assert.equal(socketA.result.slice(0, 2), '40');
+    assert.equal(socketB.result.slice(0, 2), '40');
+    assert.equal(socketOwner.result.slice(0, 2), '44');
+    const idA = JSON.parse(socketA.result.slice(2)).sid;
+    const idB = JSON.parse(socketB.result.slice(2)).sid;
+    assert.equal(getIO().sockets.sockets.get(idA).rooms.has(`branch:${a._id}`), true);
+    assert.equal(getIO().sockets.sockets.get(idA).rooms.has(`branch:${b._id}`), false);
+    assert.equal(getIO().sockets.sockets.get(idB).rooms.has(`branch:${b._id}`), true);
+    assert.equal(getIO().sockets.sockets.get(idB).rooms.has(`branch:${a._id}`), false);
+  } finally {
+    socketA.socket.close();
+    socketB.socket.close();
+    socketOwner.socket.close();
+  }
   assert.equal((await request(url, '/categories/admin', {
     method: 'POST', token: token(manager), body: { name: 'Maki' },
   })).status, 201);
