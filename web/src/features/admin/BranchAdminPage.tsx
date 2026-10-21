@@ -10,7 +10,6 @@ import { MenuTab } from '@/features/admin/components/MenuTab';
 import { CouponsTab } from '@/features/admin/components/CouponsTab';
 import { GalleryTab } from '@/features/admin/components/GalleryTab';
 import { ConfigTab } from '@/features/admin/components/ConfigTab';
-import { CashierMenuTab } from '@/features/admin/components/CashierMenuTab';
 import { useAuthStore } from '@/stores/auth.store';
 
 type Tab = 'overview' | 'orders' | 'menu' | 'coupons' | 'gallery' | 'config';
@@ -68,8 +67,8 @@ export default function AdminPage() {
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-6xl mx-auto p-5 md:p-6">
           {tab === 'overview' && isManager && <OverviewTab />}
-          {tab === 'orders'   && <OrdersTab hook={ordersHook} menu={menuHook} canDelete={isManager} />}
-          {tab === 'menu'     && (isManager ? <MenuTab /> : <CashierMenuTab />)}
+          {tab === 'orders'   && <OrdersTab hook={ordersHook} menu={menuHook} />}
+          {tab === 'menu'     && <MenuTab />}
           {tab === 'coupons'  && isManager && <CouponsTab hook={couponsHook} />}
           {tab === 'gallery'  && isManager && <GalleryTab />}
           {tab === 'config'   && isManager && <ConfigTab />}
