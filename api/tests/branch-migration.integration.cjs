@@ -17,6 +17,9 @@ const runMigration = (apply) => {
   return spawnSync(process.execPath, args, { cwd: path.resolve(__dirname, '..'), encoding: 'utf8',
     env: { ...process.env, MONGODB_URI: uri } });
 };
+const runAudit = () => spawnSync(process.execPath,
+  [path.resolve(__dirname, '../scripts/audit-branches.cjs')],
+  { cwd: path.resolve(__dirname, '..'), encoding: 'utf8', env: { ...process.env, MONGODB_TEST_URI: uri } });
 
 async function main() {
   await mongoose.connect(uri);
@@ -52,6 +55,27 @@ async function main() {
     assert.equal(content.toString().trim().split('\n').length, info.count);
     assert.ok(Array.isArray(manifest.backupIndexes[collection]));
   }
+  const restoredDb = mongoose.connection.client.db('tokio_multibranch_test_restore');
+  assert.equal((await restoredDb.listCollections({}, { nameOnly: true }).toArray()).length, 0);
+  for (const [collectionName, info] of Object.entries(manifest.backupCounts)) {
+    const restored = await restoredDb.createCollection(collectionName);
+    const lines = fs.readFileSync(path.join(backupDir, `${collectionName}.jsonl`), 'utf8')
+      .split('\n').filter(Boolean);
+    const originalDocs = lines.map((line) => mongoose.mongo.BSON.EJSON.parse(line));
+    if (originalDocs.length) await restored.insertMany(originalDocs);
+    for (const index of manifest.backupIndexes[collectionName]) {
+      if (index.name === '_id_') continue;
+      const { key, v, ns, ...options } = index;
+      await restored.createIndex(key, options);
+    }
+    const restoredDocs = await restored.find({}).sort({ _id: 1 }).toArray();
+    originalDocs.sort((left, right) => left._id.toString().localeCompare(right._id.toString()));
+    assert.deepEqual(restoredDocs, originalDocs, `${collectionName}: restauración EJSON`);
+    assert.equal(restoredDocs.length, info.count);
+    const indexNames = (await restored.indexes()).map((index) => index.name).sort();
+    assert.deepEqual(indexNames, manifest.backupIndexes[collectionName].map((index) => index.name).sort());
+  }
+  await restoredDb.dropDatabase();
   const branch = await db.collection('branches').findOne({ slug: 'original' });
   assert.ok(branch);
   assert.equal(branch.galleryFolder, 'TokyoSushis');
@@ -71,6 +95,19 @@ async function main() {
   assert.equal(rerun.status, 0, rerun.stderr || rerun.stdout);
   assert.equal(await db.collection('branches').countDocuments(), 1);
   assert.equal(await db.collection('users').countDocuments({ role: 'encargado', branchId: branch._id }), 1);
+  const cleanAudit = runAudit();
+  assert.equal(cleanAudit.status, 0, cleanAudit.stderr || cleanAudit.stdout);
+  assert.ok(Object.values(JSON.parse(cleanAudit.stdout).errors).every((count) => count === 0));
+
+  const foreignBranchId = new mongoose.Types.ObjectId();
+  const foreignCategoryId = new mongoose.Types.ObjectId();
+  await db.collection('branches').insertOne({ _id: foreignBranchId, slug: 'foreign', active: true });
+  await db.collection('categorias').insertOne({ _id: foreignCategoryId, branchId: foreignBranchId, name: 'Foreign' });
+  await db.collection('productos').updateOne({ _id: productId }, { $set: { category: foreignCategoryId } });
+  const brokenAudit = runAudit();
+  assert.equal(brokenAudit.status, 1);
+  assert.equal(JSON.parse(brokenAudit.stdout).errors['productos.invalidCategory'], 1);
+  await db.collection('productos').updateOne({ _id: productId }, { $set: { category: categoryId } });
   console.log('branch migration integration: PASS');
 }
 
