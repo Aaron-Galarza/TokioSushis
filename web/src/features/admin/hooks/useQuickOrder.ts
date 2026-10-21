@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { deliveryService } from '@/services/delivery.service';
 import { createAdminOrder } from '@/services/admin.service';
+import { useAuthStore } from '@/stores/auth.store';
 import type { PaymentKey } from '@/constants/admin';
 
 export interface LineItem {
@@ -22,6 +23,7 @@ const selectionKey = (selections?: { stepId: string; optionId: string }[]) =>
   (selections ?? []).map((s) => `${s.stepId}=${s.optionId}`).sort().join('|');
 
 export function useQuickOrder(products: any[], onSuccess: () => void) {
+  const branchSlug = useAuthStore((state) => state.branch?.slug);
   const [open, setOpen] = useState(false);
   const [customer, setCustomer] = useState(BLANK_CUSTOMER);
   const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
@@ -46,7 +48,7 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
     const calculate = async () => {
       setDeliveryLoading(true);
       setDeliveryError(null);
-      const res = await deliveryService.calculateDeliveryCost(coords.lat, coords.lng);
+      const res = await deliveryService.calculateDeliveryCost(branchSlug || '', coords.lat, coords.lng);
       if (res.success && res.data) {
         setDeliveryCost(res.data.deliveryCost);
       } else {
@@ -56,7 +58,7 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
       setDeliveryLoading(false);
     };
     calculate();
-  }, [coords, deliveryType]);
+  }, [branchSlug, coords, deliveryType]);
 
   const addProduct = (productId: string) => {
     const prod = products.find((p: any) => p._id === productId);
