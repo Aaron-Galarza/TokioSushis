@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+import api from '@/services/api';
 
 export interface DeliveryCostData {
   distanceKm: number;
@@ -16,22 +16,12 @@ export interface DeliveryServiceResponse {
 // mismas coordenadas. Con esto sale una sola llamada HTTP al backend.
 const inFlight = new Map<string, Promise<DeliveryServiceResponse>>();
 
-const doCalculate = async (lat: number, lng: number): Promise<DeliveryServiceResponse> => {
+const doCalculate = async (branchSlug: string, lat: number, lng: number): Promise<DeliveryServiceResponse> => {
   try {
-    const response = await fetch(`${API_URL}/delivery/calculate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ lat, lng }),
+    const response = await api.post('/delivery/calculate', { lat, lng }, {
+      headers: { 'X-Branch-Slug': branchSlug },
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || 'Error del servidor al calcular el envío');
-    }
-
-    const json = await response.json();
+    const json = response.data;
 
     if (!json.success) {
       throw new Error(json.error || 'No se pudo calcular el costo de envío');
@@ -45,22 +35,24 @@ const doCalculate = async (lat: number, lng: number): Promise<DeliveryServiceRes
       },
     };
 
-  } catch (error: any) {
-    console.error('[Delivery Service Error]:', error);
+  } catch (error: unknown) {
+    const apiError = error as { response?: { data?: { error?: string; message?: string } }; message?: string };
     return {
       success: false,
-      error: error.message || 'Ocurrió un error inesperado de conexión',
+      error: apiError.response?.data?.error || apiError.response?.data?.message ||
+        apiError.message || 'Ocurrió un error inesperado de conexión',
     };
   }
 };
 
 export const deliveryService = {
-  calculateDeliveryCost: async (lat: number, lng: number): Promise<DeliveryServiceResponse> => {
-    const k = `${lat},${lng}`;
+  calculateDeliveryCost: async (branchSlug: string, lat: number, lng: number): Promise<DeliveryServiceResponse> => {
+    if (!branchSlug) return { success: false, error: 'Falta seleccionar una sucursal' };
+    const k = `${branchSlug}:${lat},${lng}`;
     const existing = inFlight.get(k);
     if (existing) return existing;
 
-    const promise = doCalculate(lat, lng);
+    const promise = doCalculate(branchSlug, lat, lng);
     inFlight.set(k, promise);
     try {
       return await promise;

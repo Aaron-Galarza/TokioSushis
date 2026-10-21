@@ -36,7 +36,7 @@ export function useCheckout() {
   const { subtotal, discount, surcharge, total } = useCartStore(
     useShallow((state) => state.getTotals())
   );
-  const { loading: isDeliveryLoading } = useDelivery();
+  const { loading: isDeliveryLoading, quoteReady: isDeliveryQuoteReady } = useDelivery();
 
   const [name, setName]                     = useState('');
   const [phone, setPhone]                   = useState('');
@@ -49,7 +49,8 @@ export function useCheckout() {
 
   const isConfirmDisabled =
     items.length === 0 || !name.trim() || !phone.trim() || !paymentMethod ||
-    (deliveryType === 'delivery' && !deliveryAddress) || isDeliveryLoading || submitting;
+    (deliveryType === 'delivery' && (!deliveryAddress || !isDeliveryQuoteReady)) ||
+    isDeliveryLoading || submitting;
 
   const validateCoupon = async () => {
     if (!couponCode.trim()) return;
