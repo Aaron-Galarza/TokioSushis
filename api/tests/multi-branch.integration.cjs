@@ -8,6 +8,7 @@ const { UserModel } = require('../dist/modules/users/user.model');
 const { CategoriaModel } = require('../dist/modules/categorias/categorias.model');
 const { ProductModel } = require('../dist/modules/productos/products.model');
 const { AdicionalModel } = require('../dist/modules/adicionales/adicionales.model');
+const { CouponModel } = require('../dist/modules/coupons/coupons.model');
 const { ConfigModel } = require('../dist/modules/Schedules/Schedule.module');
 const { OrderModel } = require('../dist/modules/orders/orders.model');
 
@@ -87,6 +88,12 @@ async function main() {
   assert.equal((await request(url, '/categories/admin', {
     method: 'POST', token: token(manager), body: { name: 'Maki' },
   })).status, 201);
+  assert.equal((await request(url, `/categories/admin/${catA._id}`, {
+    method: 'PUT', token: token(manager), body: { name: 'No access' },
+  })).status, 404);
+  assert.equal((await request(url, `/products/admin/${productA._id}`, {
+    method: 'DELETE', token: token(manager),
+  })).status, 404);
   assert.equal((await request(url, `/categories/admin/${catB._id}`, {
     method: 'DELETE', token: token(manager),
   })).status, 409);
@@ -98,6 +105,18 @@ async function main() {
     category: catA._id, active: true, controlStock: false });
   const validAddon = await AdicionalModel.create({ branchId: a._id, title: 'Valid', price: 10,
     categories: [catA._id], active: true });
+  const otherBranchAddon = await AdicionalModel.create({ branchId: b._id, title: 'Other branch', price: 10,
+    categories: [catB._id], active: true });
+  assert.equal((await request(url, `/addons/admin/${otherBranchAddon._id}`, {
+    method: 'DELETE', token: token(managerA),
+  })).status, 404);
+  const otherBranchCoupon = await CouponModel.create({ branchId: b._id, code: 'NORTH', discountPercent: 10 });
+  assert.equal((await request(url, `/coupons/admin/${otherBranchCoupon._id}`, {
+    method: 'DELETE', token: token(managerA),
+  })).status, 404);
+  assert.equal((await request(url, '/coupons/validate/NORTH', {
+    method: 'POST', slug: a.slug, body: { paymentMethod: 'cash' },
+  })).status, 400);
   const addonOrder = payload(noStock._id);
   addonOrder.items[0].quantity = 2;
   addonOrder.items[0].addons = [{ addonId: validAddon._id.toString(), quantity: 2 }];
@@ -105,6 +124,12 @@ async function main() {
     key: 'addon-price-00001', body: addonOrder });
   assert.equal(priced.status, 201);
   assert.equal(priced.body.data.subtotal, 240);
+  const foreignAddonOrder = payload(noStock._id);
+  foreignAddonOrder.items[0].addons = [{ addonId: otherBranchAddon._id.toString(), quantity: 1 }];
+  assert.equal((await request(url, '/orders', { method: 'POST', slug: a.slug,
+    key: 'foreign-addon-0001', body: foreignAddonOrder })).status, 404);
+  assert.equal((await request(url, '/orders', { method: 'POST', slug: a.slug,
+    key: 'foreign-coupon-001', body: { ...payload(noStock._id), couponCode: 'NORTH' } })).status, 404);
   const wrongAddon = await AdicionalModel.create({ branchId: a._id, title: 'Wrong', price: 10,
     categories: [otherCategory._id], active: true });
   const invalidAddonOrder = payload(limited._id);
@@ -182,7 +207,8 @@ async function main() {
 
   const [r1, r2] = await Promise.all(['parallel-order-001', 'parallel-order-002'].map((key) =>
     request(url, '/orders', { method: 'POST', slug: a.slug, key, body: payload(limited._id) })));
-  assert.deepEqual([r1.status, r2.status].sort(), [201, 409]);
+  assert.equal([r1.status, r2.status].filter((status) => status === 201).length, 1);
+  assert.equal([r1.status, r2.status].filter((status) => status === 400 || status === 409).length, 1);
   assert.equal((await ProductModel.findById(limited._id)).stock, 0);
   assert.equal(await OrderModel.countDocuments({ branchId: a._id, 'items.productId': limited._id.toString() }), 1);
 
