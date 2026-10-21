@@ -51,7 +51,10 @@ export const menuService = {
         name: item.title,             // el backend guarda "title", el front usa "name"
         price: item.price,
         active: item.active,
-        categories: item.categories ?? [], // array populado: [{ _id, name, active }]
+        categories: (item.categories ?? []).map((category: string | { _id: string; name?: string; active?: boolean }) =>
+          typeof category === 'string'
+            ? { _id: category, name: '', active: false }
+            : { _id: category._id, name: category.name ?? '', active: category.active ?? false }),
       }));
     } catch (error) {
       console.error('Error fetching addons:', error);
