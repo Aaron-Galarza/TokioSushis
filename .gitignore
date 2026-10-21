@@ -47,3 +47,4 @@ next-env.d.ts
 /docs/
 /backups/
 /package-lock.json
+/web/AGENTS.md
