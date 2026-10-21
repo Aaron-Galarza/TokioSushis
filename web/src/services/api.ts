@@ -72,8 +72,8 @@ api.interceptors.response.use(
     // Obtenemos la URL de la request original para saber a dónde estábamos llamando
     const originalRequestUrl = error.config?.url || '';
 
-    // 🛡️ Caza tanto el 401 como el 403 para evitar loops y errores en cascada en el admin
-    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+    // Un 403 indica falta de permisos y no debe cerrar una sesión válida.
+    const isAuthError = error.response?.status === 401;
 
     if (
       isBrowser() && 

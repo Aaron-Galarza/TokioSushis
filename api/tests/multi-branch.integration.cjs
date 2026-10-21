@@ -77,6 +77,11 @@ async function main() {
     method: 'PUT', token: token(cashier),
   })).status, 404);
   assert.equal((await request(url, '/owner/overview', { token: token(cashier) })).status, 403);
+  const cashierBranch = await request(url, '/branches/admin/current', { token: token(cashier) });
+  assert.equal(cashierBranch.status, 200);
+  assert.equal(cashierBranch.body.data.slug, 'branch-a');
+  assert.equal((await request(url, '/branches/admin/current', { method: 'PUT', token: token(cashier),
+    body: { name: 'Forbidden' } })).status, 403);
   assert.equal((await request(url, '/owner/overview', { token: token(owner) })).status, 200);
   assert.equal((await request(url, '/orders/admin', { token: token(owner) })).status, 403);
   assert.equal((await request(url, '/categories/admin', {
