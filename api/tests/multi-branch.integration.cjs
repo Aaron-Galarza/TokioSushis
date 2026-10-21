@@ -85,6 +85,20 @@ async function main() {
     body: { name: 'Forbidden' } })).status, 403);
   assert.equal((await request(url, '/owner/overview', { token: token(owner) })).status, 200);
   assert.equal((await request(url, '/orders/admin', { token: token(owner) })).status, 403);
+  assert.equal((await request(url, '/delivery/config', { token: token(cashier) })).status, 403);
+  assert.equal((await request(url, '/gallery', { token: token(cashier) })).status, 403);
+  assert.equal((await request(url, '/gallery', { token: token(owner) })).status, 403);
+  const deliveryB = await request(url, '/delivery/config', { token: token(manager), slug: a.slug });
+  assert.equal(deliveryB.status, 200);
+  assert.equal(deliveryB.body.data.branchId, b._id.toString());
+  assert.equal((await request(url, '/delivery/config/rain', {
+    method: 'PATCH', token: token(manager), slug: a.slug, body: { isRaining: true, extraRain: 500 },
+  })).status, 200);
+  const deliveryA = await request(url, '/delivery/config', { token: token(managerA), slug: b.slug });
+  assert.equal(deliveryA.status, 200);
+  assert.equal(deliveryA.body.data.branchId, a._id.toString());
+  assert.equal(deliveryA.body.data.isRaining, false);
+  assert.equal((await request(url, '/delivery/config', { token: token(manager) })).body.data.isRaining, true);
   assert.equal((await request(url, '/categories/admin', {
     method: 'POST', token: token(manager), body: { name: 'Maki' },
   })).status, 201);
