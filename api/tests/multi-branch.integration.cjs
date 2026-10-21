@@ -105,6 +105,15 @@ async function main() {
     category: catA._id, active: true, controlStock: false });
   const validAddon = await AdicionalModel.create({ branchId: a._id, title: 'Valid', price: 10,
     categories: [catA._id], active: true });
+  const orphanCategoryId = new mongoose.Types.ObjectId();
+  const legacyOrphanAddon = await AdicionalModel.create({ branchId: a._id, title: 'Legacy orphan', price: 10,
+    categories: [orphanCategoryId], active: true });
+  const publicAddons = await request(url, '/addons', { slug: a.slug });
+  const orphanPublic = publicAddons.body.data.find((addon) => addon._id === legacyOrphanAddon._id.toString());
+  assert.equal(orphanPublic.categories.length, 1);
+  assert.equal(orphanPublic.categories[0], orphanCategoryId.toString());
+  assert.equal((await request(url, `/addons?category=${catA._id}`, { slug: a.slug }))
+    .body.data.some((addon) => addon._id === legacyOrphanAddon._id.toString()), false);
   const otherBranchAddon = await AdicionalModel.create({ branchId: b._id, title: 'Other branch', price: 10,
     categories: [catB._id], active: true });
   assert.equal((await request(url, `/addons/admin/${otherBranchAddon._id}`, {

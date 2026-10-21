@@ -5,6 +5,7 @@ export interface iAdicional extends Document {
   title: string;
   price: number;
   categories?: mongoose.Types.ObjectId[];
+  legacyOrphanCategoryIds?: mongoose.Types.ObjectId[];
   active: boolean;
 }
 
@@ -27,6 +28,7 @@ const AdicionalSchema = new Schema<iAdicional>({
     }],
     default: [],
   },
+  legacyOrphanCategoryIds: [{ type: mongoose.Schema.Types.ObjectId }],
   active: {
     type: Boolean,
     default: true,

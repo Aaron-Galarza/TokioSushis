@@ -53,7 +53,10 @@ export function useMenu() {
         const applicable = allAddons.filter((addon: Addon) =>
           addon.categories.length === 0 ||
           addon.categories.some((c) => c._id === product.category)
-        );
+        ).map((addon: Addon) => ({ ...addon, categories: addon.categories.map((category) => {
+          const known = cats.find((candidate) => candidate.id === category._id);
+          return known ? { _id: known.id, name: known.name, active: known.active } : category;
+        }) }));
         return { ...product, addons: applicable };
       });
       if (activeSlug.current !== slug) return;

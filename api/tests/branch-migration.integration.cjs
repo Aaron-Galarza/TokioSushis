@@ -26,9 +26,13 @@ async function main() {
   const db = mongoose.connection.db;
   const categoryId = new mongoose.Types.ObjectId();
   const productId = new mongoose.Types.ObjectId();
+  const orphanCategoryId = new mongoose.Types.ObjectId();
   await db.collection('categorias').insertOne({ _id: categoryId, name: 'Sushi', active: true });
   await db.collection('productos').insertOne({ _id: productId, category: categoryId, title: 'Roll', price: 100, active: true });
-  await db.collection('adicionals').insertOne({ title: 'Extra', price: 10, categories: [categoryId], active: true });
+  const partialAddon = await db.collection('adicionals').insertOne({ title: 'Extra', price: 10,
+    categories: [categoryId, orphanCategoryId], active: true });
+  const orphanAddon = await db.collection('adicionals').insertOne({ title: 'Orphan', price: 10,
+    categories: [orphanCategoryId], active: true });
   await db.collection('coupons').insertOne({ code: 'TEN', discountPercent: 10, active: true });
   await db.collection('orders').insertOne({ customer: { name: 'Test', phone: '123' }, items: [{ productId: productId.toString(), quantity: 1 }], total: 100 });
   await db.collection('configs').insertOne({ isOpen: true });
@@ -41,6 +45,8 @@ async function main() {
 
   const dry = runMigration(false);
   assert.equal(dry.status, 0, dry.stderr);
+  assert.deepEqual(JSON.parse(dry.stdout).orphanAddons,
+    { documents: 2, references: 2, withoutValidCategory: 1 });
   assert.equal(await db.collection('branches').countDocuments(), 0);
 
   const applied = runMigration(true);
@@ -82,8 +88,17 @@ async function main() {
   assert.equal(branch.transferAlias, 'Tokyo.nx');
   for (const collectionName of ['categorias', 'productos', 'adicionals', 'coupons', 'orders',
     'configs', 'deliveryconfigs', 'analyticsdailies', 'users']) {
-    assert.equal(await db.collection(collectionName).countDocuments({ branchId: branch._id }), 1, collectionName);
+    assert.equal(await db.collection(collectionName).countDocuments({ branchId: branch._id }),
+      collectionName === 'adicionals' ? 2 : 1, collectionName);
   }
+  const repairedPartial = await db.collection('adicionals').findOne({ _id: partialAddon.insertedId });
+  assert.deepEqual(repairedPartial.categories, [categoryId]);
+  assert.deepEqual(repairedPartial.legacyOrphanCategoryIds, [orphanCategoryId]);
+  assert.equal(repairedPartial.active, true);
+  const repairedOrphan = await db.collection('adicionals').findOne({ _id: orphanAddon.insertedId });
+  assert.deepEqual(repairedOrphan.categories, []);
+  assert.deepEqual(repairedOrphan.legacyOrphanCategoryIds, [orphanCategoryId]);
+  assert.equal(repairedOrphan.active, false);
   assert.equal((await db.collection('users').findOne({ email: 'legacy@test.local' })).role, 'encargado');
   for (const [collectionName, globalKey] of [['categorias', 'name'], ['coupons', 'code'], ['analyticsdailies', 'date']]) {
     const indexes = await db.collection(collectionName).indexes();

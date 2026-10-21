@@ -134,7 +134,22 @@ async function main() {
         : { $exists: true, $ne: null },
     });
   }
-  console.log(JSON.stringify({ mode: apply ? 'apply' : 'dry-run', slug, pending, foreignAssignments }, null, 2));
+  const knownCategoryIds = new Set(present.has('categorias')
+    ? (await db.collection('categorias').distinct('_id')).map((id) => id.toString())
+    : []);
+  const orphanAddons = { documents: 0, references: 0, withoutValidCategory: 0 };
+  if (present.has('adicionals')) {
+    for await (const addon of db.collection('adicionals').find({}, { projection: { categories: 1 } })) {
+      const categories = addon.categories ?? [];
+      const missing = categories.filter((id) => !knownCategoryIds.has(id.toString()));
+      if (missing.length) {
+        orphanAddons.documents += 1;
+        orphanAddons.references += missing.length;
+        if (missing.length === categories.length) orphanAddons.withoutValidCategory += 1;
+      }
+    }
+  }
+  console.log(JSON.stringify({ mode: apply ? 'apply' : 'dry-run', slug, pending, foreignAssignments, orphanAddons }, null, 2));
   if (Object.values(foreignAssignments).some((count) => count > 0)) {
     throw new Error('Hay documentos asignados a otra sucursal. Revisar manualmente antes de continuar.');
   }
@@ -155,7 +170,7 @@ async function main() {
   }
   await fsp.writeFile(path.join(backupDir, 'manifest.json'), JSON.stringify({
     createdAt: new Date().toISOString(), slug, databaseName: db.databaseName,
-    backupCounts, backupIndexes, pending,
+    backupCounts, backupIndexes, pending, orphanAddons,
   }, null, 2));
   console.log(`Respaldo EJSON local completo: ${backupDir}`);
 
@@ -166,7 +181,10 @@ async function main() {
 
   const session = await mongoose.startSession();
   try {
+    let transactionAttempts = 0;
     await session.withTransaction(async () => {
+      transactionAttempts += 1;
+      console.log(`Transacción de backfill: intento ${transactionAttempts}`);
       const branches = db.collection('branches');
       let branch = await branches.findOne({ slug }, { session });
       if (!branch) {
@@ -205,6 +223,26 @@ async function main() {
         }
         const remaining = await collection.countDocuments(filterFor(collectionName), { session });
         if (remaining !== 0) throw new Error(`${collectionName}: quedaron ${remaining} documentos sin sucursal`);
+        console.log(`Backfill ${collectionName}: completo`);
+      }
+      if (collections.includes('adicionals')) {
+        for await (const addon of db.collection('adicionals').find({ branchId: branch._id }, {
+          projection: { categories: 1, active: 1, legacyOrphanCategoryIds: 1 }, session,
+        })) {
+          const categories = addon.categories ?? [];
+          const valid = categories.filter((id) => knownCategoryIds.has(id.toString()));
+          const missing = categories.filter((id) => !knownCategoryIds.has(id.toString()));
+          if (!missing.length) continue;
+          const legacy = [...(addon.legacyOrphanCategoryIds ?? []), ...missing];
+          const uniqueLegacy = [...new Map(legacy.map((id) => [id.toString(), id])).values()];
+          await db.collection('adicionals').updateOne({ _id: addon._id, branchId: branch._id }, {
+            $set: {
+              categories: valid,
+              legacyOrphanCategoryIds: uniqueLegacy,
+              ...(valid.length === 0 ? { active: false } : {}),
+            },
+          }, { session });
+        }
       }
     }, { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } });
   } finally {
@@ -227,6 +265,7 @@ async function main() {
     }
     const remaining = await collection.countDocuments(filterFor(collectionName));
     if (remaining !== 0) throw new Error(`${collectionName}: quedaron ${remaining} documentos sin sucursal`);
+    console.log(`Índices ${collectionName}: completos`);
   }
 
   console.log(JSON.stringify({ applied: true, slug, backupDir, pending }, null, 2));

@@ -14,7 +14,6 @@ export const viewAll = async (branchId: string): Promise<iAdicional[]> => {
 export const viewActive = async (branchId: string): Promise<iAdicional[]> => {
   return await AdicionalModel.find({ branchId, active: true })
     .select(ACTIVE_SELECT)
-    .populate({ path: 'categories', select: CATEGORY_POPULATE, match: { branchId } })
     .lean() as iAdicional[];
 };
 
@@ -32,7 +31,6 @@ export const viewByCategory = async (branchId: string, categoryId: string): Prom
     ],
   })
     .select(ACTIVE_SELECT)
-    .populate({ path: 'categories', select: CATEGORY_POPULATE, match: { branchId } })
     .lean() as iAdicional[];
 };
 
