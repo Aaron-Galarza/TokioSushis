@@ -1,16 +1,12 @@
 import type { Product, Category, Addon } from '@/types';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api';
+import api from './api';
 
 export const menuService = {
 
   // 1. OBTENER PRODUCTOS
   getProducts: async (): Promise<Product[]> => {
     try {
-      const response = await fetch(`${API_URL}/products`);
-      if (!response.ok) throw new Error('Error al obtener productos');
-
-      const json = await response.json();
+      const { data: json } = await api.get('/products');
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
       return json.data.map((item: any, index: number) => ({
@@ -22,17 +18,14 @@ export const menuService = {
       }));
     } catch (error) {
       console.error('Error fetching products:', error);
-      return [];
+      throw error;
     }
   },
 
   // 2. OBTENER CATEGORÍAS
   getCategories: async (): Promise<Category[]> => {
     try {
-      const response = await fetch(`${API_URL}/categories`);
-      if (!response.ok) throw new Error('Error al obtener categorías');
-
-      const json = await response.json();
+      const { data: json } = await api.get('/categories');
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
       return json.data.map((item: any) => ({
@@ -41,7 +34,7 @@ export const menuService = {
       }));
     } catch (error) {
       console.error('Error fetching categories:', error);
-      return [];
+      throw error;
     }
   },
 
@@ -50,14 +43,7 @@ export const menuService = {
   // Si categories está vacío en el adicional, el backend lo devuelve igual (aplica a todos)
   getAddons: async (categoryId?: string): Promise<Addon[]> => {
     try {
-      const url = categoryId
-        ? `${API_URL}/addons?category=${categoryId}`
-        : `${API_URL}/addons`;
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Error al obtener adicionales');
-
-      const json = await response.json();
+      const { data: json } = await api.get('/addons', { params: categoryId ? { category: categoryId } : undefined });
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
       return json.data.map((item: any) => ({
@@ -69,34 +55,27 @@ export const menuService = {
       }));
     } catch (error) {
       console.error('Error fetching addons:', error);
-      return [];
+      throw error;
     }
   },
 
   // 4. OBTENER ESTADO DEL LOCAL
   getStoreStatus: async (): Promise<{ isOpen: boolean; message: string; banner?: string }> => {
     try {
-      const response = await fetch(`${API_URL}/config/status`);
-
-      if (!response.ok) {
-        console.warn('⚠️ Ruta /api/config/status falló. Usando estado abierto por defecto.');
-        return { isOpen: true, message: '', banner: '' };
-      }
-
-      const json = await response.json();
+      const { data: json } = await api.get('/config/status');
 
       if (json.success && json.data) {
         return {
-          isOpen: json.data.isOpen ?? true,
+          isOpen: json.data.isOpen === true,
           message: json.data.message ?? '',
           banner: json.data.banner ?? '',
         };
       }
 
-      return { isOpen: true, message: '', banner: '' };
+      return { isOpen: false, message: 'No se pudo confirmar el horario de la sucursal.', banner: '' };
     } catch (error) {
-      console.warn('⚠️ No se pudo conectar al backend de configuración. Local abierto por defecto.');
-      return { isOpen: true, message: '', banner: '' };
+      console.warn('No se pudo consultar el estado de la sucursal.', error);
+      return { isOpen: false, message: 'No se pudo confirmar el horario de la sucursal.', banner: '' };
     }
   },
 };
