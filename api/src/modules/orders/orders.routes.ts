@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as OrderController from './orders.controllers';
-import { staffAccess, managerAccess } from '../../middlewares/auth.middleware';
+import { staffAccess } from '../../middlewares/auth.middleware';
 import { resolvePublicBranch } from '../../middlewares/branch.middleware';
 import { ordersLimiter } from '../../middlewares/rateLimiter.middleware';
 import { validate } from '../../middlewares/validate.middleware';
@@ -12,6 +12,6 @@ router.post('/', ordersLimiter, resolvePublicBranch, validate(createOrderSchema)
 router.put('/admin/:id', staffAccess, OrderController.updateStatusOrder)
 router.get('/admin', staffAccess, OrderController.getAllOrders);
 router.get('/admin/range', staffAccess, OrderController.getOrdersRange);
-router.delete('/admin/:id', managerAccess, OrderController.deleteOrder);
+router.delete('/admin/:id', staffAccess, OrderController.deleteOrder);
 
 export default router;

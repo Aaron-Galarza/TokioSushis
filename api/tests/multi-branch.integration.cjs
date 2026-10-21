@@ -97,9 +97,16 @@ async function main() {
   assert.deepEqual(menuB.body.data.map((p) => p.title), ['B']);
   assert.equal((await request(url, '/products')).status, 400);
 
-  assert.equal((await request(url, '/categories/admin', {
-    method: 'POST', token: token(cashier), body: { name: 'Forbidden' },
-  })).status, 403);
+  const cashierCategory = await request(url, '/categories/admin', {
+    method: 'POST', token: token(cashier), body: { name: 'Categoría de caja' },
+  });
+  assert.equal(cashierCategory.status, 201);
+  assert.equal((await request(url, `/categories/admin/${cashierCategory.body.data._id}`, {
+    method: 'DELETE', token: token(cashier),
+  })).status, 200);
+  assert.equal((await request(url, `/categories/admin/${catB._id}`, {
+    method: 'PUT', token: token(cashier), body: { name: 'No access' },
+  })).status, 404);
   assert.equal((await request(url, `/products/admin/toggleActive/${productB._id}`, {
     method: 'PUT', token: token(cashier),
   })).status, 404);
@@ -163,6 +170,12 @@ async function main() {
     category: catA._id, active: true, controlStock: false });
   const validAddon = await AdicionalModel.create({ branchId: a._id, title: 'Valid', price: 10,
     categories: [catA._id], active: true });
+  assert.equal((await request(url, `/addons/admin/${validAddon._id}`, {
+    method: 'PUT', token: token(cashier), body: { price: 10 },
+  })).status, 200);
+  assert.equal((await request(url, `/products/admin/${noStock._id}`, {
+    method: 'PUT', token: token(cashier), body: { price: 100 },
+  })).status, 200);
   const orphanCategoryId = new mongoose.Types.ObjectId();
   const legacyOrphanAddon = await AdicionalModel.create({ branchId: a._id, title: 'Legacy orphan', price: 10,
     categories: [orphanCategoryId], active: true });
@@ -310,7 +323,19 @@ async function main() {
     })).status, 200);
   }
   const report = await request(url, '/owner/overview', { token: token(owner) });
+  assert.equal(report.status, 200);
   assert.equal(report.body.data.totals.revenue, 200);
+  assert.equal(report.body.data.totals.averageTicket, 200);
+  assert.equal(report.body.data.daily.length, 30);
+  assert.equal(report.body.data.topProducts.some((row) => row.title === 'B' && row.quantity === 1), true);
+  assert.equal(report.body.data.payments.find((row) => row.method === 'cash').revenue, 200);
+  assert.equal(report.body.data.hourly.reduce((sum, row) => sum + row.orders, 0), 1);
+  assert.equal(report.body.data.recentOrders.length <= 8, true);
+  assert.equal((await request(url, '/owner/overview?range=wrong', { token: token(owner) })).status, 400);
+  const branchReport = await request(url, `/owner/overview?range=7d&branchId=${b._id}`, { token: token(owner) });
+  assert.equal(branchReport.status, 200);
+  assert.equal(branchReport.body.data.daily.length, 7);
+  assert.equal(branchReport.body.data.totals.revenue, 200);
   console.log('multi-branch integration: PASS');
 }
 
