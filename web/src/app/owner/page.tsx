@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, Clock3, CreditCard, LogOut, PackageCheck, RefreshCw, ShoppingBag, TrendingUp, Wallet } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowUpRight, Clock3, CreditCard, LogOut, PackageCheck, RefreshCw, Settings2, ShoppingBag, TrendingUp, Wallet } from 'lucide-react';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -58,6 +59,7 @@ export default function OwnerPage() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const [authorized, setAuthorized] = useState(false);
+  const [authConnectionError, setAuthConnectionError] = useState(false);
   const [data, setData] = useState<Overview | null>(null);
   const [branchId, setBranchId] = useState('');
   const [range, setRange] = useState<Range>('30d');
@@ -68,9 +70,12 @@ export default function OwnerPage() {
   useEffect(() => {
     api.get('/users/me').then((res) => {
       if (res.data.data?.role === 'owner') setAuthorized(true);
-      else router.replace('/login');
-    }).catch(() => router.replace('/login'));
-  }, [router]);
+      else { logout(); router.replace('/login'); }
+    }).catch((cause) => {
+      if (cause.response?.status === 401 || cause.response?.status === 403) { logout(); router.replace('/login'); }
+      else setAuthConnectionError(true);
+    });
+  }, [router, logout]);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
   useEffect(() => {
@@ -99,7 +104,9 @@ export default function OwnerPage() {
   const maxProduct = Math.max(1, ...topProducts.map((product) => product.quantity));
   const totalPayments = (data?.payments ?? []).reduce((sum, row) => sum + row.revenue, 0);
 
-  if (!authorized) return <main className="flex min-h-screen items-center justify-center bg-[#090909] text-sm text-white/50">Verificando acceso…</main>;
+  if (!authorized) return <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#090909] px-5 text-center text-sm text-white/50">
+    {authConnectionError ? <><p>No se pudo conectar con el servidor. Verificá que la API esté encendida.</p><button onClick={() => window.location.reload()} className="text-primary underline">Reintentar</button></> : 'Verificando acceso…'}
+  </main>;
 
   return <main className="min-h-screen bg-[#090909] text-white">
     <div className="mx-auto max-w-7xl space-y-7 px-4 py-6 sm:px-6 lg:px-8 lg:py-9">
@@ -110,6 +117,9 @@ export default function OwnerPage() {
           <p className="mt-2 text-sm text-white/50">Ventas, demanda y productos de todas tus sucursales.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/owner/management" className="flex h-11 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            <Settings2 className="h-4 w-4" aria-hidden="true" /> <span className="hidden sm:inline">Administración</span><span className="sm:hidden">Gestionar</span>
+          </Link>
           <button onClick={refresh} aria-label="Actualizar métricas" title="Actualizar métricas"
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 text-white/65 transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
