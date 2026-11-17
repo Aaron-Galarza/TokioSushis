@@ -68,7 +68,7 @@ function StaffRow({ user, branches, onSaved, onCredentials }: { user: Staff; bra
     <p className="mt-2 text-xs text-white/45">Correo resultante: {name}-{role}@tokyosushis.com</p>
     <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
       <label className="flex cursor-pointer items-center gap-2 text-white/70"><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="accent-primary" /> Acceso activo</label>
-      <button type="button" onClick={resetCredentials} disabled={busy || hasChanges} className="font-semibold text-primary underline underline-offset-4 disabled:opacity-50">Restablecer y copiar credenciales</button>
+      <button type="button" onClick={resetCredentials} disabled={busy || hasChanges} className="font-semibold text-primary underline underline-offset-4 disabled:opacity-50">Preparar mensaje de acceso</button>
     </div>
     {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
   </div>;
@@ -183,7 +183,7 @@ export default function OwnerManagementPage() {
       </header>
       {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {accessMessage && <div role="status" className="rounded-2xl border border-primary/35 bg-primary/10 p-5">
-        <p className="font-semibold text-primary">Credenciales listas</p><p className="mt-1 text-sm text-white/65">Copiá este mensaje y envialo por WhatsApp. La contraseña se muestra solo ahora; también podés generar nuevas credenciales más adelante.</p>
+        <p className="font-semibold text-primary">Credenciales listas</p><p className="mt-1 text-sm text-white/65">Copiá este mensaje y envialo por WhatsApp. Si cerrás esta pantalla, podés volver a preparar el mensaje desde la cuenta.</p>
         <textarea readOnly value={accessMessage} aria-label="Mensaje para WhatsApp" rows={5} className="mt-4 min-h-32 w-full resize-y rounded-xl border border-white/15 bg-[#1b1b1b] px-3 py-3 text-sm text-white outline-none focus:border-primary focus-visible:outline-2 focus-visible:outline-primary" />
         <button type="button" onClick={copyMessage} className={`${button} mt-3`}><Copy size={16} aria-hidden="true" /> Copiar mensaje para WhatsApp</button>
         {copyStatus && <p className="mt-2 text-sm text-white/70">{copyStatus}</p>}
