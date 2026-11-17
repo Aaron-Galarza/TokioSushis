@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
-import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { sendError, sendSucces } from '../../utils/response';
@@ -31,36 +30,37 @@ const branchSchema = z.object({
   if (data.paymentMethods.includes('transferencia') && (!data.transferAlias || !data.transferHolder)) ctx.addIssue({ code: 'custom', path: ['transferAlias'], message: 'Completá los datos de transferencia' });
 });
 const staffSchema = z.object({
-  email: z.email().trim().toLowerCase().max(254),
+  name: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).min(2).max(40),
   role: z.enum(['admin', 'encargado']),
   branchId: objectId,
 }).strict();
 const staffUpdateSchema = z.object({
+  name: staffSchema.shape.name.optional(),
   role: z.enum(['admin', 'encargado']).optional(),
   branchId: objectId.optional(),
   active: z.boolean().optional(),
 }).strict().refine((data) => Object.keys(data).length > 0);
 
-const issueInvite = () => {
-  const token = randomBytes(32).toString('hex');
-  return { token, inviteTokenHash: createHash('sha256').update(token).digest('hex'),
-    inviteExpiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) };
+const staffEmail = (name: string, role: 'admin' | 'encargado') => `${name}-${role}@tokyosushis.com`;
+const staffName = (email: string, role: string) => {
+  const local = email.split('@')[0].toLowerCase().replace(new RegExp(`-${role}$`), '');
+  return local.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 };
+const staffPassword = (name: string, role: 'admin' | 'encargado', id: mongoose.Types.ObjectId) => `${name}${role}${id.toString()}`;
+const noStore = (res: Response) => res.set('Cache-Control', 'no-store');
 const isDuplicate = (error: unknown) => typeof error === 'object' && error !== null && 'code' in error && error.code === 11000;
 
 export const management = asyncHandler(async (_req: Request, res: Response) => {
   const [branches, users] = await Promise.all([
     BranchModel.find().select('name slug address coordinates timezone phone whatsappPhone paymentMethods transferAlias transferHolder active').sort({ name: 1 }).lean(),
-    UserModel.find({ role: { $in: ['admin', 'encargado'] } }).select('email role branchId active +inviteExpiresAt').sort({ email: 1 }).lean(),
+    UserModel.find({ role: { $in: ['admin', 'encargado'] } }).select('email role branchId active').sort({ email: 1 }).lean(),
   ]);
   return sendSucces(res, { branches: branches.map((branch) => ({ id: branch._id.toString(), name: branch.name,
     slug: branch.slug, address: branch.address, coordinates: branch.coordinates, timezone: branch.timezone,
     phone: branch.phone ?? '', whatsappPhone: branch.whatsappPhone ?? '', paymentMethods: branch.paymentMethods ?? ['cash'],
     transferAlias: branch.transferAlias ?? '', transferHolder: branch.transferHolder ?? '', active: branch.active })),
-    users: users.map((user) => ({ id: user._id.toString(), email: user.email, role: user.role,
-      branchId: user.branchId?.toString() ?? '', active: user.active,
-      invitationPending: !user.active && Boolean(user.inviteExpiresAt),
-      invitationExpired: Boolean(user.inviteExpiresAt && user.inviteExpiresAt < new Date()) })) });
+    users: users.map((user) => ({ id: user._id.toString(), name: staffName(user.email, user.role),
+      email: user.email, role: user.role, branchId: user.branchId?.toString() ?? '', active: user.active })) });
 });
 
 export const updateBranch = asyncHandler(async (req: Request, res: Response) => {
@@ -131,13 +131,15 @@ export const createStaff = asyncHandler(async (req: Request, res: Response) => {
   if (!parsed.success) return sendError(res, 'Datos de usuario inválidos', 400);
   const branch = await BranchModel.findOne({ _id: parsed.data.branchId, active: true }).select('_id').lean();
   if (!branch) return sendError(res, 'Sucursal inexistente o inactiva', 404);
-  const invite = issueInvite();
+  const id = new mongoose.Types.ObjectId();
+  const email = staffEmail(parsed.data.name, parsed.data.role);
+  const password = staffPassword(parsed.data.name, parsed.data.role, id);
   try {
-    const user = await UserModel.create({ email: parsed.data.email, role: parsed.data.role,
-      branchId: branch._id, active: false, passwordHash: await bcrypt.hash(randomBytes(32).toString('hex'), 12),
-      inviteTokenHash: invite.inviteTokenHash, inviteExpiresAt: invite.inviteExpiresAt });
+    const user = await UserModel.create({ _id: id, email, role: parsed.data.role,
+      branchId: branch._id, active: true, passwordHash: await bcrypt.hash(password, 12) });
+    noStore(res);
     return sendSucces(res, { id: user.id, email: user.email, role: user.role, branchId: branch._id.toString(),
-      inviteToken: invite.token, inviteExpiresAt: invite.inviteExpiresAt }, 201);
+      password }, 201);
   } catch (error) {
     if (isDuplicate(error)) return sendError(res, 'Ya existe una cuenta con ese correo', 409);
     throw error;
@@ -148,30 +150,60 @@ export const updateStaff = asyncHandler(async (req: Request, res: Response) => {
   if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 'Usuario inválido', 400);
   const parsed = staffUpdateSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 'Cambios inválidos', 400);
-  const user = await UserModel.findOne({ _id: req.params.id, role: { $in: ['admin', 'encargado'] } }).select('+inviteTokenHash');
-  if (!user) return sendError(res, 'Usuario no encontrado', 404);
+  const user = await UserModel.findOne({ _id: req.params.id, role: { $in: ['admin', 'encargado'] } });
+  if (!user || user.role === 'owner') return sendError(res, 'Usuario no encontrado', 404);
   if (parsed.data.branchId && parsed.data.branchId !== user.branchId?.toString()) {
     const branch = await BranchModel.exists({ _id: parsed.data.branchId, active: true });
     if (!branch) return sendError(res, 'Sucursal inexistente o inactiva', 404);
   }
-  if (parsed.data.active === true && user.inviteTokenHash) return sendError(res, 'La invitación debe aceptarse antes de activar la cuenta', 409);
   if (parsed.data.active === true && !await BranchModel.exists({ _id: parsed.data.branchId ?? user.branchId, active: true })) {
     return sendError(res, 'No se puede activar una cuenta de una sucursal inactiva', 409);
   }
-  user.set(parsed.data);
-  await user.save();
-  return sendSucces(res, { id: user.id, email: user.email, role: user.role,
-    branchId: user.branchId?.toString(), active: user.active });
+  const role = parsed.data.role ?? user.role;
+  const name = parsed.data.name ?? staffName(user.email, user.role);
+  if (!staffSchema.shape.name.safeParse(name).success) return sendError(res, 'Nombre de acceso inválido', 400);
+  const email = staffEmail(name, role);
+  const credentialsChanged = email !== user.email || (parsed.data.active === true && !user.active);
+  const password = credentialsChanged ? staffPassword(name, role, user._id as mongoose.Types.ObjectId) : undefined;
+  const staffChanges: { role?: 'admin' | 'encargado'; branchId?: string; active?: boolean } = {
+    ...(parsed.data.role ? { role: parsed.data.role } : {}),
+    ...(parsed.data.branchId ? { branchId: parsed.data.branchId } : {}),
+    ...(typeof parsed.data.active === 'boolean' ? { active: parsed.data.active } : {}),
+  };
+  try {
+    const updated = await UserModel.findByIdAndUpdate(user._id,
+      { $set: { ...staffChanges, email, ...(password ? { passwordHash: await bcrypt.hash(password, 12) } : {}) },
+        ...(password ? { $unset: { inviteTokenHash: '', inviteExpiresAt: '' } } : {}) },
+      { returnDocument: 'after', runValidators: true, strict: false });
+    if (!updated) return sendError(res, 'Usuario no encontrado', 404);
+    if (password && updated.active) noStore(res);
+    return sendSucces(res, { id: updated.id, email: updated.email, role: updated.role,
+      branchId: updated.branchId?.toString(), active: updated.active, ...(password && updated.active ? { password } : {}) });
+  } catch (error) {
+    if (isDuplicate(error)) return sendError(res, 'Ya existe una cuenta con ese correo', 409);
+    throw error;
+  }
 });
 
-export const renewInvite = asyncHandler(async (req: Request, res: Response) => {
+export const resetStaffCredentials = asyncHandler(async (req: Request, res: Response) => {
   if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 'Usuario inválido', 400);
-  const invite = issueInvite();
-  const user = await UserModel.findOneAndUpdate(
-    { _id: req.params.id, role: { $in: ['admin', 'encargado'] }, active: false, inviteTokenHash: { $exists: true } },
-    { $set: { inviteTokenHash: invite.inviteTokenHash, inviteExpiresAt: invite.inviteExpiresAt } },
-    { returnDocument: 'after' },
-  ).select('email');
-  if (!user) return sendError(res, 'La cuenta no tiene una invitación pendiente', 409);
-  return sendSucces(res, { email: user.email, inviteToken: invite.token, inviteExpiresAt: invite.inviteExpiresAt });
+  const user = await UserModel.findOne({ _id: req.params.id, role: { $in: ['admin', 'encargado'] } });
+  if (!user || user.role === 'owner') return sendError(res, 'Usuario no encontrado', 404);
+  if (!await BranchModel.exists({ _id: user.branchId, active: true })) return sendError(res, 'Sucursal inexistente o inactiva', 409);
+  const name = staffName(user.email, user.role);
+  if (!staffSchema.shape.name.safeParse(name).success) return sendError(res, 'Editá primero el nombre de acceso de esta cuenta', 400);
+  const email = staffEmail(name, user.role);
+  const password = staffPassword(name, user.role, user._id as mongoose.Types.ObjectId);
+  try {
+    const updated = await UserModel.findByIdAndUpdate(user._id,
+      { $set: { email, passwordHash: await bcrypt.hash(password, 12), active: true }, $unset: { inviteTokenHash: '', inviteExpiresAt: '' } },
+      { returnDocument: 'after', runValidators: true, strict: false }).select('email role branchId active');
+    if (!updated) return sendError(res, 'Usuario no encontrado', 404);
+    noStore(res);
+    return sendSucces(res, { id: updated.id, email: updated.email, role: updated.role,
+      branchId: updated.branchId?.toString(), active: updated.active, password });
+  } catch (error) {
+    if (isDuplicate(error)) return sendError(res, 'Ya existe una cuenta con ese correo', 409);
+    throw error;
+  }
 });

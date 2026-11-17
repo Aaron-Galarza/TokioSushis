@@ -25,7 +25,10 @@ const call = async (base, path, { method = 'GET', token, body } = {}) => {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(body ? { 'Content-Type': 'application/json' } : {}),
   }, ...(body ? { body: JSON.stringify(body) } : {}) });
-  return { status: response.status, body: await response.json() };
+  const text = await response.text();
+  let parsedBody;
+  try { parsedBody = JSON.parse(text); } catch { parsedBody = text; }
+  return { status: response.status, body: parsedBody };
 };
 
 async function main() {
@@ -74,46 +77,77 @@ async function main() {
     name: 'Repetida', slug: 'destino', address: 'Calle 3', coordinates: { lat: -27.46, lng: -59.01 }, paymentMethods: ['cash'],
   } })).status, 409);
 
-  const invited = await call(base, '/owner/staff', { method: 'POST', token: token(owner), body: {
-    email: 'new@test.local', role: 'admin', branchId: targetId,
+  const createdStaff = await call(base, '/owner/staff', { method: 'POST', token: token(owner), body: {
+    name: 'facu', role: 'admin', branchId: targetId,
   } });
-  assert.equal(invited.status, 201);
-  assert.match(invited.body.data.inviteToken, /^[a-f0-9]{64}$/);
-  assert.equal((await UserModel.findById(invited.body.data.id)).active, false);
+  assert.equal(createdStaff.status, 201);
+  assert.equal(createdStaff.body.data.email, 'facu-admin@tokyosushis.com');
+  assert.equal(createdStaff.body.data.password, `facuadmin${createdStaff.body.data.id}`);
+  assert.equal((await UserModel.findById(createdStaff.body.data.id)).active, true);
   const listing = await call(base, '/owner/management', { token: token(owner) });
   assert.equal(listing.status, 200);
   assert.equal(JSON.stringify(listing.body).includes('passwordHash'), false);
-  assert.equal(JSON.stringify(listing.body).includes('inviteTokenHash'), false);
-  assert.equal((await call(base, `/owner/staff/${invited.body.data.id}`, { method: 'PATCH', token: token(owner), body: { active: true } })).status, 409);
+  assert.equal(JSON.stringify(listing.body).includes(createdStaff.body.data.password), false);
+  assert.equal(listing.body.data.users.find((user) => user.id === createdStaff.body.data.id).name, 'facu');
   assert.equal((await call(base, '/owner/staff', { method: 'POST', token: token(cashier), body: {
-    email: 'blocked@test.local', role: 'admin', branchId: targetId,
+    name: 'blocked', role: 'admin', branchId: targetId,
   } })).status, 403);
   assert.equal((await call(base, '/owner/staff', { method: 'POST', token: token(owner), body: {
-    email: 'other@test.local', role: 'owner', branchId: targetId,
+    name: 'other', role: 'owner', branchId: targetId,
   } })).status, 400);
-  const renewed = await call(base, `/owner/staff/${invited.body.data.id}/invite`, { method: 'POST', token: token(owner) });
-  assert.equal(renewed.status, 200);
-  assert.notEqual(renewed.body.data.inviteToken, invited.body.data.inviteToken);
-  assert.equal((await call(base, '/users/accept-invite', { method: 'POST', body: {
-    token: invited.body.data.inviteToken, password: 'testing-password-123',
+  assert.equal((await call(base, '/owner/staff', { method: 'POST', token: token(owner), body: {
+    name: 'facu', role: 'admin', branchId: targetId,
   } })).status, 409);
-  const accepted = await call(base, '/users/accept-invite', { method: 'POST', body: {
-    token: renewed.body.data.inviteToken, password: 'testing-password-123',
+  assert.equal((await call(base, '/owner/staff', { method: 'POST', token: token(owner), body: {
+    email: 'arbitrary@test.local', role: 'admin', branchId: targetId,
+  } })).status, 400);
+  assert.equal((await call(base, '/users/accept-invite', { method: 'POST' })).status, 404);
+  assert.equal((await call(base, `/owner/staff/${createdStaff.body.data.id}/invite`, { method: 'POST', token: token(owner) })).status, 404);
+  const login = await call(base, '/users/login', { method: 'POST', body: {
+    email: createdStaff.body.data.email, password: createdStaff.body.data.password,
   } });
-  assert.equal(accepted.status, 200);
-  assert.equal((await call(base, '/users/accept-invite', { method: 'POST', body: {
-    token: renewed.body.data.inviteToken, password: 'testing-password-123',
-  } })).status, 409);
-  const login = await call(base, '/users/login', { method: 'POST', body: { email: 'new@test.local', password: 'testing-password-123' } });
   assert.equal(login.status, 200);
   assert.equal(login.body.data.branch.id, targetId);
-  const updated = await call(base, `/owner/staff/${invited.body.data.id}`, { method: 'PATCH', token: token(owner), body: {
-    role: 'encargado', branchId: source.id, active: false,
+  const updated = await call(base, `/owner/staff/${createdStaff.body.data.id}`, { method: 'PATCH', token: token(owner), body: {
+    name: 'facundo', role: 'encargado', branchId: source.id, active: false,
   } });
   assert.equal(updated.status, 200);
-  assert.equal((await UserModel.findById(invited.body.data.id)).role, 'encargado');
-  assert.equal((await UserModel.findById(invited.body.data.id)).active, false);
-  console.log('Gestión Owner: permisos, alta transaccional, clonación e invitación verificados');
+  assert.equal(updated.body.data.email, 'facundo-encargado@tokyosushis.com');
+  assert.equal(updated.body.data.password, undefined);
+  assert.equal((await UserModel.findById(createdStaff.body.data.id)).active, false);
+  assert.equal((await call(base, '/users/login', { method: 'POST', body: {
+    email: updated.body.data.email, password: `facundoencargado${createdStaff.body.data.id}`,
+  } })).status, 401);
+  const reset = await call(base, `/owner/staff/${createdStaff.body.data.id}/credentials`, { method: 'POST', token: token(owner) });
+  assert.equal(reset.status, 200);
+  assert.equal(reset.body.data.password, `facundoencargado${createdStaff.body.data.id}`);
+  assert.equal((await call(base, '/users/login', { method: 'POST', body: {
+    email: reset.body.data.email, password: reset.body.data.password,
+  } })).status, 200);
+  assert.equal((await call(base, `/owner/staff/${createdStaff.body.data.id}/credentials`, { method: 'POST', token: token(cashier) })).status, 403);
+  const renamed = await call(base, `/owner/staff/${createdStaff.body.data.id}`, { method: 'PATCH', token: token(owner), body: {
+    name: 'nuevo', role: 'admin', branchId: targetId, active: true,
+  } });
+  assert.equal(renamed.status, 200);
+  assert.equal(renamed.body.data.password, `nuevoadmin${createdStaff.body.data.id}`);
+  assert.equal((await UserModel.collection.findOne({ _id: new mongoose.Types.ObjectId(createdStaff.body.data.id) })).name, undefined);
+  assert.equal((await call(base, '/users/login', { method: 'POST', body: {
+    email: reset.body.data.email, password: reset.body.data.password,
+  } })).status, 401);
+  assert.equal((await call(base, '/users/login', { method: 'POST', body: {
+    email: renamed.body.data.email, password: renamed.body.data.password,
+  } })).status, 200);
+  const legacy = await UserModel.collection.insertOne({ email: 'legacy-admin@tokyosushis.com', role: 'admin',
+    branchId: source._id, active: false, passwordHash: 'unused', inviteTokenHash: 'old-token',
+    inviteExpiresAt: new Date(Date.now() + 3600000), createdAt: new Date(), updatedAt: new Date() });
+  const migrated = await call(base, `/owner/staff/${legacy.insertedId}/credentials`, { method: 'POST', token: token(owner) });
+  assert.equal(migrated.status, 200);
+  assert.equal(migrated.body.data.password, `legacyadmin${legacy.insertedId}`);
+  const legacyAfter = await UserModel.collection.findOne({ _id: legacy.insertedId });
+  assert.equal(legacyAfter.active, true);
+  assert.equal(legacyAfter.inviteTokenHash, undefined);
+  assert.equal(legacyAfter.inviteExpiresAt, undefined);
+  console.log('Gestión Owner: permisos, alta transaccional, clonación y credenciales verificadas');
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; })
