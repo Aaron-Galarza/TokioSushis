@@ -9,6 +9,7 @@ import { UserModel } from '../users/user.model';
 import { ConfigModel, initialDailySchedule } from '../Schedules/Schedule.module';
 import { DeliveryConfigModel, initialKmRanges } from '../delivery/delivery.model';
 import { updateBranchSchema } from '../branches/branch.schema';
+import { disconnectUserSockets } from '../../socket/socket';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const branchSchema = z.object({
@@ -206,4 +207,12 @@ export const resetStaffCredentials = asyncHandler(async (req: Request, res: Resp
     if (isDuplicate(error)) return sendError(res, 'Ya existe una cuenta con ese correo', 409);
     throw error;
   }
+});
+
+export const deleteStaff = asyncHandler(async (req: Request, res: Response) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 'Usuario inválido', 400);
+  const user = await UserModel.findOneAndDelete({ _id: req.params.id, role: { $in: ['admin', 'encargado'] } });
+  if (!user) return sendError(res, 'Usuario no encontrado', 404);
+  disconnectUserSockets(user._id.toString());
+  return sendSucces(res, { id: user._id.toString() });
 });

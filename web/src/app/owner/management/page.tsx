@@ -32,6 +32,7 @@ function StaffRow({ user, branches, onSaved, onCredentials }: { user: Staff; bra
   const [active, setActive] = useState(user.active);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const hasChanges = name !== user.name || role !== user.role || branchId !== user.branchId || active !== user.active;
   const save = async () => {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name) || name.length < 2 || name.length > 40) {
@@ -54,6 +55,15 @@ function StaffRow({ user, branches, onSaved, onCredentials }: { user: Staff; bra
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   };
+  const remove = async () => {
+    setBusy(true); setError('');
+    try {
+      await api.delete(`/owner/staff/${user.id}`);
+      onCredentials(null);
+      onSaved();
+    } catch (cause) { setError(errorText(cause)); }
+    finally { setBusy(false); }
+  };
   return <div className="rounded-xl border border-white/10 bg-[#1b1b1b] p-4">
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div><p className="font-semibold text-white">{user.email}</p><p className="mt-1 text-xs text-white/45">{user.active ? 'Acceso activo' : 'Acceso desactivado'}</p></div>
@@ -69,7 +79,15 @@ function StaffRow({ user, branches, onSaved, onCredentials }: { user: Staff; bra
     <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
       <label className="flex cursor-pointer items-center gap-2 text-white/70"><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="accent-primary" /> Acceso activo</label>
       <button type="button" onClick={resetCredentials} disabled={busy || hasChanges} className="font-semibold text-primary underline underline-offset-4 disabled:opacity-50">Preparar mensaje de acceso</button>
+      <button type="button" onClick={() => setConfirmDelete(true)} disabled={busy} className="font-semibold text-red-300 underline underline-offset-4 disabled:opacity-50">Eliminar usuario</button>
     </div>
+    {confirmDelete && <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm">
+      <p className="text-red-100">¿Eliminar definitivamente a <strong>{user.email}</strong>? Perderá el acceso de inmediato.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" onClick={remove} disabled={busy} className="min-h-11 rounded-xl bg-red-400 px-4 font-bold text-black disabled:opacity-50">Sí, eliminar</button>
+        <button type="button" onClick={() => setConfirmDelete(false)} disabled={busy} className="min-h-11 rounded-xl border border-white/20 px-4 text-white/70 disabled:opacity-50">Cancelar</button>
+      </div>
+    </div>}
     {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
   </div>;
 }

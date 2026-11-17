@@ -35,6 +35,7 @@ export const initSocket = (httpServer: HttpServer): void => {
         return next(new Error('Sucursal deshabilitada'))
       }
       socket.data.branchId = branchId
+      socket.data.userId = user._id.toString()
       next()
     } catch {
       next(new Error('Token inválido o expirado'))
@@ -43,6 +44,7 @@ export const initSocket = (httpServer: HttpServer): void => {
 
   io.on('connection', (socket) => {
     socket.join(`branch:${socket.data.branchId}`)
+    socket.join(`user:${socket.data.userId}`)
     console.log(`[SOCKET] Operador conectado: ${socket.id}`)
 
     socket.on('disconnect', () => {
@@ -57,4 +59,8 @@ export const initSocket = (httpServer: HttpServer): void => {
 export const getIO = (): Server => {
   if (!io) throw new Error('Socket.io no fue inicializado')
   return io
+}
+
+export const disconnectUserSockets = (userId: string): void => {
+  io?.in(`user:${userId}`).disconnectSockets(true)
 }
