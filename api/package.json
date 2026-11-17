@@ -8,12 +8,14 @@
     "start": "node dist/server.js",
     "seed": "ts-node-dev --transpile-only scripts/seed.ts",
     "migrate:branches": "node scripts/backfill-branches.cjs",
+    "migrate:remove-product-options": "node scripts/remove-product-options.cjs",
     "branch:create": "node scripts/create-branch.cjs",
     "user:create": "node scripts/create-user.cjs",
     "test:multibranch": "node tests/multi-branch.integration.cjs",
     "test:migration": "node tests/branch-migration.integration.cjs",
     "test:branch-time": "node tests/branch-time.test.cjs",
-    "test:owner-management": "node tests/owner-management.integration.cjs"
+    "test:owner-management": "node tests/owner-management.integration.cjs",
+    "test:remove-product-options": "node tests/remove-product-options.integration.cjs"
   },
   "keywords": [],
   "author": "",

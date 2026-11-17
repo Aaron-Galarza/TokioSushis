@@ -7,7 +7,6 @@ import { calculateDelivery } from '../delivery/delivery.service'
 import { AppError } from '../../utils/AppError'
 import { Range } from '../../utils/dateRange'
 import { localDate, nextDay, rangeStart, startOfLocalDayUtc } from '../../utils/branchTime'
-import { priceConfigurableItem, ConfiguratorError } from '../../utils/configuratorPricing'
 import mongoose from 'mongoose'
 import { createHash } from 'node:crypto'
 import { ProductModel } from '../productos/products.model'
@@ -86,40 +85,12 @@ export const createOrder = async (branchId: string, orderData: any, idempotencyK
         )
       }
  
-      // Producto configurable: validar selecciones y recalcular precio en el server
-      let price = product.price
-      let configSummary: string | undefined
-      let selections: iCartItem['selections']
-
-      if (product.configurator && product.configurator.enabled) {
-        try {
-          const priced = priceConfigurableItem(product.price, product.configurator, item.selections)
-          price = priced.finalPrice
-          configSummary = priced.summary
-          selections = priced.selections.map((s) => ({
-            stepId: s.stepId,
-            stepLabel: s.stepLabel,
-            optionId: s.optionId,
-            label: s.label,
-            price: s.price,
-            kind: s.kind,
-          }))
-        } catch (e) {
-          if (e instanceof ConfiguratorError) {
-            throw new AppError(400, `${product.title}: ${e.message}`)
-          }
-          throw e
-        }
-      }
-
       return {
         productId: item.productId,
         title:     product.title,
-        price,
+        price:     product.price,
         quantity:  item.quantity,
         addons,
-        configSummary,
-        selections,
       };
     })
   )

@@ -20,9 +20,11 @@ if (!['mongodb:', 'mongodb+srv:'].includes(testUrl.protocol)
 }
 process.env.JWT_SECRET = 'owner-management-integration-test-secret';
 let server;
-const call = async (base, path, { method = 'GET', token, body } = {}) => {
+const call = async (base, path, { method = 'GET', token, body, slug, key } = {}) => {
   const response = await fetch(`${base}/api${path}`, { method, headers: {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(slug ? { 'X-Branch-Slug': slug } : {}),
+    ...(key ? { 'Idempotency-Key': key } : {}),
     ...(body ? { 'Content-Type': 'application/json' } : {}),
   }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const text = await response.text();
@@ -62,6 +64,24 @@ async function main() {
   assert.equal(targetAddon.categories[0].toString(), targetCategory.id);
   assert.ok(await ConfigModel.exists({ branchId: targetId }));
   assert.ok(await DeliveryConfigModel.exists({ branchId: targetId }));
+  const openSchedule = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
+    .map((day) => ({ day, openTime: '00:00', closeTime: '23:59', isStoreOpen: true }));
+  await ConfigModel.updateOne({ branchId: targetId }, { $set: { dailySchedule: openSchedule, isOpen: true } });
+  const simpleOrder = { customer: { name: 'Prueba', phone: '12345678' },
+    items: [{ productId: targetProduct.id, quantity: 1, addons: [{ addonId: targetAddon.id, quantity: 1 }] }],
+    deliveryType: 'pickup', paymentMethod: 'cash' };
+  const ordered = await call(base, '/orders', { method: 'POST', slug: 'destino', key: 'simple-order-test-01', body: simpleOrder });
+  assert.equal(ordered.status, 201, JSON.stringify(ordered.body));
+  assert.equal(ordered.body.data.total, 110);
+  assert.equal(ordered.body.data.items[0].addons[0].title, 'Extra');
+  assert.equal(ordered.body.data.items[0].selections, undefined);
+  assert.equal(ordered.body.data.items[0].configSummary, undefined);
+  assert.equal((await call(base, '/orders', { method: 'POST', slug: 'destino', key: 'simple-order-test-02',
+    body: { ...simpleOrder, items: [{ ...simpleOrder.items[0], selections: [{ stepId: 'a', optionId: 'b' }] }] } })).status, 400);
+  assert.equal((await call(base, '/products/admin', { method: 'POST', token: token(cashier), body: {
+    title: 'No configurable', description: 'Ejemplo', price: 100, category: category.id,
+    configurator: { enabled: true, steps: [] },
+  } })).status, 400);
   const edited = await call(base, `/owner/branches/${targetId}`, { method: 'PUT', token: token(owner), body: {
     name: 'Destino actualizado', address: 'Calle 22', coordinates: { lat: -27.47, lng: -59.02 },
     timezone: 'America/Argentina/Buenos_Aires', phone: '123456', whatsappPhone: '',
@@ -147,6 +167,14 @@ async function main() {
   assert.equal(legacyAfter.active, true);
   assert.equal(legacyAfter.inviteTokenHash, undefined);
   assert.equal(legacyAfter.inviteExpiresAt, undefined);
+  assert.equal((await call(base, `/owner/staff/${createdStaff.body.data.id}`, { method: 'DELETE' })).status, 401);
+  assert.equal((await call(base, `/owner/staff/${createdStaff.body.data.id}`, { method: 'DELETE', token: token(cashier) })).status, 403);
+  assert.equal((await call(base, `/owner/staff/${owner.id}`, { method: 'DELETE', token: token(owner) })).status, 404);
+  assert.equal((await call(base, `/owner/staff/${createdStaff.body.data.id}`, { method: 'DELETE', token: token(owner) })).status, 200);
+  assert.equal(await UserModel.exists({ _id: createdStaff.body.data.id }), null);
+  assert.equal((await call(base, '/users/login', { method: 'POST', body: {
+    email: renamed.body.data.email, password: renamed.body.data.password,
+  } })).status, 401);
   console.log('Gestión Owner: permisos, alta transaccional, clonación y credenciales verificadas');
 }
 

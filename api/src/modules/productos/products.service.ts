@@ -35,7 +35,7 @@ const sortByCategory = (products: any[]) =>
 
 export const viewAll = async (branchId: string): Promise<iProducto[]> => {
   const products = await ProductModel.find({ branchId, deleted: { $ne: true } })
-    .select('title description price image category active controlStock stock configurator createdAt updatedAt')
+    .select('title description price image category active controlStock stock createdAt updatedAt')
     .lean();
 
   return await attachCategories(branchId, products) as iProducto[];
@@ -43,7 +43,7 @@ export const viewAll = async (branchId: string): Promise<iProducto[]> => {
 
 export const viewActive = async (branchId: string): Promise<iProducto[]> => {
   const products = await ProductModel.find({ branchId, active: true, deleted: { $ne: true } })
-    .select('title description price image category active controlStock stock configurator')
+    .select('title description price image category active controlStock stock')
     .lean();
 
   const withCategories = await attachCategories(branchId, products);

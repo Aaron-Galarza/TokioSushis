@@ -107,7 +107,7 @@ export const createBranch = asyncHandler(async (req: Request, res: Response) => 
           throw new Error('El catálogo de origen tiene categorías faltantes');
         }
         const clone = (doc: any, id: mongoose.Types.ObjectId, fields: Record<string, unknown> = {}) => {
-          const { _id, branchId, createdAt, updatedAt, __v, legacyOrphanCategoryIds, ...rest } = doc;
+          const { _id, branchId, createdAt, updatedAt, __v, legacyOrphanCategoryIds, configurator, ...rest } = doc;
           return { ...rest, ...fields, _id: id, branchId: branch._id, createdAt: new Date(), updatedAt: new Date() };
         };
         if (categories.length) await db.collection('categorias').insertMany(categories.map((category) => clone(category, categoryIds.get(category._id.toString())!)), { session });
