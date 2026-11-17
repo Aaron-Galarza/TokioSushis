@@ -6,6 +6,8 @@ export interface iUser extends Document {
   role: 'admin' | 'encargado' | 'owner'
   branchId?: mongoose.Types.ObjectId
   active: boolean
+  inviteTokenHash?: string
+  inviteExpiresAt?: Date
 }
 
 const UserSchema = new Schema<iUser>({
@@ -31,7 +33,11 @@ const UserSchema = new Schema<iUser>({
     required: function (this: iUser) { return this.role !== 'owner' },
     index: true
   },
-  active: { type: Boolean, required: true, default: true }
+  active: { type: Boolean, required: true, default: true },
+  inviteTokenHash: { type: String, select: false },
+  inviteExpiresAt: { type: Date, select: false },
 }, { timestamps: true })
+
+UserSchema.index({ inviteTokenHash: 1 }, { unique: true, sparse: true })
 
 export const UserModel = mongoose.model<iUser>('User', UserSchema)

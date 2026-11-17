@@ -7,6 +7,16 @@ export interface IDaySchedule {
   isStoreOpen: boolean;
 }
 
+export const initialDailySchedule: IDaySchedule[] = [
+  { day: 'Domingo', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
+  { day: 'Lunes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
+  { day: 'Martes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
+  { day: 'Miercoles', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
+  { day: 'Jueves', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
+  { day: 'Viernes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
+  { day: 'Sabado', openTime: '20:00', closeTime: '23:59', isStoreOpen: true },
+];
+
 export interface IConfig extends Document {
   branchId: mongoose.Types.ObjectId;
   isOpen: boolean;
@@ -45,15 +55,7 @@ configSchema.statics.getOrCreateConfig = async function (branchId: string) {
       isEmergencyClosed: false,
       emergencyMessage: '',
       banner:'',
-      dailySchedule: [
-        { day: 'Domingo', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
-        { day: 'Lunes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
-        { day: 'Martes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
-        { day: 'Miercoles', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
-        { day: 'Jueves', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
-        { day: 'Viernes', openTime: '20:00', closeTime: '23:00', isStoreOpen: true },
-        { day: 'Sabado', openTime: '20:00', closeTime: '23:59', isStoreOpen: true },
-      ],
+      dailySchedule: initialDailySchedule,
     } },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );

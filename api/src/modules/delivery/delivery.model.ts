@@ -6,6 +6,13 @@ export interface IKmRange {
   price: number;
 }
 
+export const initialKmRanges = [
+  { maxKm: 0.5, price: 2100 },
+  { maxKm: 1.0, price: 2300 },
+  { maxKm: 1.5, price: 2600 },
+  { maxKm: 2.0, price: 2900 },
+];
+
 export interface IDeliveryConfig extends Document {
   branchId: Types.ObjectId;
   kmRanges: Types.DocumentArray<IKmRange & Document>;
@@ -39,12 +46,7 @@ deliveryConfigSchema.statics.getOrCreateConfig = async function (branchId: strin
         branchId,
         extraRain: 1000,
         isRaining: false,
-        kmRanges: [
-          { maxKm: 0.5, price: 2100 },
-          { maxKm: 1.0, price: 2300 },
-          { maxKm: 1.5, price: 2600 },
-          { maxKm: 2.0, price: 2900 },
-        ],
+        kmRanges: initialKmRanges,
       },
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
