@@ -6,7 +6,6 @@ import { AdminInput, AdminTextarea, AdminSelect } from './ui/AdminInput';
 import { IconPickerModal } from './ui/IconPickerModal';
 import { AdminActionButtons } from './ui/AdminActionButtons';
 import { AdminProductRow } from './ui/AdminProductRow';
-import { ConfiguratorEditor } from './ui/ConfiguratorEditor';
 import { useAdminMenu } from '../hooks/useAdminMenu';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 
@@ -189,11 +188,6 @@ export function MenuTab() {
             {pForm.controlStock && (
               <AdminInput type="number" placeholder="Stock disponible" value={pForm.stock} onChange={e => setPForm(p => ({ ...p, stock: e.target.value }))} min={0} />
             )}
-
-            <ConfiguratorEditor
-              value={pForm.configurator}
-              onChange={c => setPForm(p => ({ ...p, configurator: c }))}
-            />
 
             <div className="flex gap-2">
               <button onClick={saveProduct} className="flex-1 bg-primary text-black font-bold py-2.5 rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all">

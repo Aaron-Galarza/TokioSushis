@@ -13,14 +13,9 @@ export interface LineItem {
   price: number;
   quantity: number;
   addons: { addonId: string; title: string; price: number; quantity: number }[];
-  selections?: { stepId: string; optionId: string }[];
-  configSummary?: string;
 }
 
 const BLANK_CUSTOMER = { name: '', phone: '' };
-
-const selectionKey = (selections?: { stepId: string; optionId: string }[]) =>
-  (selections ?? []).map((s) => `${s.stepId}=${s.optionId}`).sort().join('|');
 
 export function useQuickOrder(products: any[], onSuccess: () => void) {
   const branchSlug = useAuthStore((state) => state.branch?.slug);
@@ -68,35 +63,6 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
       setItems(items.map(i => i.uid === productId ? { ...i, quantity: i.quantity + 1 } : i));
     } else {
       setItems([...items, { uid: productId, productId: prod._id, title: prod.title, price: prod.price, quantity: 1, addons: [] }]);
-    }
-  };
-
-  const addConfiguredProduct = (
-    product: any,
-    price: number,
-    selections: { stepId: string; optionId: string; label?: string }[],
-    summary: string,
-  ) => {
-    const key = selectionKey(selections);
-    const uid = key ? `${product._id}:${key}` : product._id;
-    const cleanSelections = selections.map((s) => ({ stepId: s.stepId, optionId: s.optionId }));
-    const exists = items.find(i => i.uid === uid);
-    if (exists) {
-      setItems(items.map(i => i.uid === uid ? { ...i, quantity: i.quantity + 1 } : i));
-    } else {
-      setItems([
-        ...items,
-        {
-          uid,
-          productId: product._id,
-          title: product.title,
-          price,
-          quantity: 1,
-          addons: [],
-          selections: cleanSelections,
-          configSummary: summary,
-        },
-      ]);
     }
   };
 
@@ -178,7 +144,6 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
           productId: i.productId,
           quantity: i.quantity,
           addons: i.addons.map(a => ({ addonId: a.addonId, quantity: a.quantity })),
-          ...(i.selections && i.selections.length > 0 ? { selections: i.selections } : {}),
         })),
         deliveryType,
         paymentMethod,
@@ -229,7 +194,6 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
     error,
     total,
     addProduct,
-    addConfiguredProduct,
     updateQty,
     updateAddonQty,
     removeItem,

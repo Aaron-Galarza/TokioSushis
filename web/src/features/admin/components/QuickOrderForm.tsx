@@ -1,12 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { Plus, Minus, X, ShoppingBag, Loader2, ChevronDown, Landmark } from 'lucide-react';
 import { AddressAutocomplete } from '@/features/checkout/components/AddressAutocomplete';
-import { ProductConfiguratorModal } from '@/features/menu-configurator/components/ProductConfiguratorModal';
 import { useQuickOrder } from '../hooks/useQuickOrder';
 import type { AddressResult } from '@/features/checkout/hooks/useAddressSearch';
-import type { Product } from '@/types';
 import { PAYMENT_LABELS } from '@/constants/admin';
 import { useBranchStore } from '@/stores/branch.store';
 
@@ -39,24 +36,11 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
     error,
     total,
     addProduct,
-    addConfiguredProduct,
     updateQty,
     updateAddonQty,
     removeItem,
     handleSubmit,
   } = useQuickOrder(products, onSuccess);
-
-  const [configProduct, setConfigProduct] = useState<Product | null>(null);
-
-  const handleSelectProduct = (productId: string) => {
-    const prod = products.find((p: any) => p._id === productId);
-    if (!prod) return;
-    if (prod.configurator?.enabled) {
-      setConfigProduct(prod as Product);
-    } else {
-      addProduct(productId);
-    }
-  };
 
   return (
     <div className="mb-4">
@@ -176,7 +160,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
             <select
               onChange={(e) => {
                 if (e.target.value) {
-                  handleSelectProduct(e.target.value);
+                  addProduct(e.target.value);
                   e.target.value = '';
                 }
               }}
@@ -188,7 +172,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                 .filter((p: any) => p.active)
                 .map((p: any) => (
                   <option key={p._id} value={p._id}>
-                    {p.title} — ${p.price?.toLocaleString('es-AR')}{p.configurator?.enabled ? '  (configurable)' : ''}
+                    {p.title} — ${p.price?.toLocaleString('es-AR')}
                   </option>
                 ))}
             </select>
@@ -216,9 +200,6 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                         <span className="text-sm text-white font-medium truncate block">
                           {item.title}
                         </span>
-                        {item.configSummary && (
-                          <span className="text-[11px] text-white/40 leading-snug block truncate">{item.configSummary}</span>
-                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-xs text-primary hidden xs:inline">
@@ -326,17 +307,6 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
         </div>
       )}
 
-      {configProduct && (
-        <ProductConfiguratorModal
-          isOpen={!!configProduct}
-          onClose={() => setConfigProduct(null)}
-          product={configProduct}
-          isStoreOpen
-          onConfigure={(result) => {
-            addConfiguredProduct(configProduct, result.price, result.selections, result.summary);
-          }}
-        />
-      )}
     </div>
   );
 }

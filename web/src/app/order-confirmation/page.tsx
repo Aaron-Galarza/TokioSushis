@@ -22,7 +22,6 @@ interface OrderSnapshot {
     quantity: number;
     price: number;
     addons: { name: string; quantity: number; price: number }[];
-    configSummary?: string;
     itemTotal: number;
   }[];
   subtotal: number;
@@ -208,9 +207,6 @@ export default function OrderConfirmationPage() {
                   <p className="text-sm text-white">
                     <span className="text-primary font-bold">{item.quantity}×</span> {item.title}
                   </p>
-                  {item.configSummary && (
-                    <p className="text-[11px] text-white/40 mt-0.5 pl-4">{item.configSummary}</p>
-                  )}
                   {item.addons.length > 0 && (
                     <p className="text-[11px] text-white/35 mt-0.5 pl-4">
                       + {item.addons.map(a => `${a.quantity}x ${a.name}`).join(', ')}

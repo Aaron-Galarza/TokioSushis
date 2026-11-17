@@ -6,7 +6,6 @@ import { useCartStore } from '@/stores/cart.store';
 import { formatPrice } from '@/lib/format';
 import { cloudinaryImage } from '@/lib/image';
 import type { Product } from '@/types';
-import { ProductConfiguratorModal } from '@/features/menu-configurator/components/ProductConfiguratorModal';
 
 interface ProductCardProps {
   product: Product;
@@ -17,12 +16,10 @@ interface ProductCardProps {
 export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
   const addItem = useCartStore((state) => state.addItem);
   const [imageError, setImageError] = useState(false);
-  const [showConfigurator, setShowConfigurator] = useState(false);
 
   const isOutOfStock = product.controlStock === true && (product.stock ?? 0) <= 0;
   const isButtonDisabled = !isStoreOpen || !product.available || isOutOfStock;
 
-  const needsConfiguration = product.configurator?.enabled === true;
 
   const isValidImage =
     typeof product.image === 'string' &&
@@ -30,15 +27,10 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
 
   const handleAddClick = () => {
     if (isButtonDisabled) return;
-    if (needsConfiguration) {
-      setShowConfigurator(true);
-    } else {
-      addItem(product, 1, []);
-    }
+    addItem(product, 1, []);
   };
 
   return (
-    <>
       <article className="flex items-center gap-4 rounded-2xl border border-white/8 bg-[#141414] px-4 py-3.5 transition-all hover:border-white/15 hover:bg-[#1A1A1A]">
 
         {/* Text content */}
@@ -76,21 +68,12 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
                 ? 'bg-zinc-700 text-white/30 cursor-not-allowed'
                 : 'bg-white text-primary hover:scale-110'
             }`}
-            aria-label={isOutOfStock ? 'Sin stock' : needsConfiguration ? 'Configurar y agregar' : 'Agregar al carrito'}
+            aria-label={isOutOfStock ? 'Sin stock' : 'Agregar al carrito'}
           >
             {isOutOfStock ? <PackageX className="w-3.5 h-3.5" /> : <Plus className="w-4 h-4" />}
           </button>
         </div>
       </article>
 
-      {needsConfiguration && (
-        <ProductConfiguratorModal
-          isOpen={showConfigurator}
-          onClose={() => setShowConfigurator(false)}
-          product={product}
-          isStoreOpen={isStoreOpen}
-        />
-      )}
-    </>
   );
 };

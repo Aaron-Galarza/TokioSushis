@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { Product, CartItem, CartAddon, CartSelection, Coupon, Addon } from '@/types';
+import { Product, CartItem, CartAddon, Coupon, Addon } from '@/types';
 
 // 🛠️ HELPERS
 const calcItemTotal = (prod: Product, qty: number, addons: CartAddon[]) => 
@@ -13,13 +13,6 @@ const areSameAddons = (a: CartAddon[], b: CartAddon[]) => {
   const sort = (x: CartAddon, y: CartAddon) => x.addon.id.localeCompare(y.addon.id);
   const sortA = [...a].sort(sort), sortB = [...b].sort(sort);
   return sortA.every((x, i) => x.addon.id === sortB[i].addon.id && x.quantity === sortB[i].quantity);
-};
-
-const areSameSelections = (a: CartSelection[] = [], b: CartSelection[] = []) => {
-  if (a.length !== b.length) return false;
-  const key = (s: CartSelection) => `${s.stepId}:${s.optionId}`;
-  const sortA = a.map(key).sort(), sortB = b.map(key).sort();
-  return sortA.every((k, i) => k === sortB[i]);
 };
 
 interface CartState {
@@ -33,7 +26,7 @@ interface CartState {
   distanceKm: number;
   deliveryCost: number;
 
-  addItem: (product: Product, quantity: number, addons: CartAddon[], selections?: CartSelection[], configSummary?: string) => void;
+  addItem: (product: Product, quantity: number, addons: CartAddon[]) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   updateItemAddon: (itemIndex: number, addon: Addon, delta: number) => void;
@@ -65,15 +58,15 @@ export const useCartStore = create<CartState>()(
       distanceKm: 0,
       deliveryCost: 0,
 
-      addItem: (product, quantity, addons, selections, configSummary) => set((state) => {
-        const idx = state.items.findIndex(i => i.product.id === product.id && areSameAddons(i.addons, addons) && areSameSelections(i.selections, selections));
+      addItem: (product, quantity, addons) => set((state) => {
+        const idx = state.items.findIndex(i => i.product.id === product.id && areSameAddons(i.addons, addons));
         if (idx >= 0) {
           const newItems = [...state.items];
           newItems[idx].quantity += quantity;
           newItems[idx].itemTotal = calcItemTotal(product, newItems[idx].quantity, addons);
           return { items: newItems };
         }
-        return { items: [...state.items, { product, quantity, addons, itemTotal: calcItemTotal(product, quantity, addons), selections, configSummary }] };
+        return { items: [...state.items, { product, quantity, addons, itemTotal: calcItemTotal(product, quantity, addons) }] };
       }),
 
       removeItem: (index) => set((state) => ({ items: state.items.filter((_, i) => i !== index) })),
@@ -118,7 +111,7 @@ export const useCartStore = create<CartState>()(
 
         const merged: CartItem[] = [];
         newItems.forEach(curr => {
-          const exist = merged.find(m => m.product.id === curr.product.id && areSameAddons(m.addons, curr.addons) && areSameSelections(m.selections, curr.selections));
+          const exist = merged.find(m => m.product.id === curr.product.id && areSameAddons(m.addons, curr.addons));
           if (exist) {
             exist.quantity += curr.quantity;
             exist.itemTotal += curr.itemTotal;
@@ -165,6 +158,6 @@ export const useCartStore = create<CartState>()(
         return { itemCount, subtotal, discount, surcharge, total };
       },
     }),
-    { name: 'tokyo-branch-cart-storage', storage: createJSONStorage(() => sessionStorage) }
+    { name: 'tokyo-branch-cart-storage-v2', storage: createJSONStorage(() => sessionStorage) }
   )
 );
