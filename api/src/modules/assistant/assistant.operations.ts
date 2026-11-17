@@ -22,6 +22,8 @@ type Operation = {
 
 export const operations = {
   'products.list': { description: 'Listar productos y precios', method: 'GET', path: '/products/admin', schema: empty, input: '{}' },
+  'products.most_expensive': { description: 'Encontrar el producto de mayor precio', method: 'GET', path: '/products/admin', schema: z.object({ activeOnly: z.boolean().optional() }).strict(), input: '{"activeOnly":true} si pide solo activos; si no, {}' },
+  'products.cheapest': { description: 'Encontrar el producto de menor precio', method: 'GET', path: '/products/admin', schema: z.object({ activeOnly: z.boolean().optional() }).strict(), input: '{"activeOnly":true} si pide solo activos; si no, {}' },
   'categories.list': { description: 'Listar categorías', method: 'GET', path: '/categories/admin', schema: empty, input: '{}' },
   'coupons.list': { description: 'Listar cupones', method: 'GET', path: '/coupons/admin', schema: empty, input: '{}' },
   'orders.list': { description: 'Resumir pedidos por estado de un período', method: 'GET', path: '/orders/admin/range', schema: z.object({ range }).strict(), input: '{"range":"hoy|ayer|semana|mes"}' },
@@ -32,6 +34,7 @@ export const operations = {
   'coupons.create': { description: 'Crear cupón', method: 'POST', path: '/coupons/admin', schema: createCouponSchema, input: '{"code":"TEXTO","discountPercent":15}', write: true },
   'coupons.update': { description: 'Editar o desactivar cupón', method: 'PUT', path: '/coupons/admin/:id', schema: z.object({ target, body: updateCouponSchema }).strict(), input: '{"target":"código exacto","body":{"active":false}}', write: true, collection: 'coupons' },
   'products.create': { description: 'Crear producto', method: 'POST', path: '/products/admin', schema: createProductSchema.extend({ category: target }), input: '{"title":"...","description":"...","price":1000,"category":"nombre exacto o ID de categoría"}', write: true },
+  'products.sample': { description: 'Preparar un producto de prueba con datos inventados y una categoría activa', method: 'POST', path: '/products/admin', schema: empty, input: '{}', write: true },
   'products.update': { description: 'Editar o desactivar producto', method: 'PUT', path: '/products/admin/:id', schema: z.object({ target, body: updateProductSchema.extend({ category: target.optional() }) }).strict(), input: '{"target":"nombre exacto","body":{"active":false}}', write: true, collection: 'products' },
   'categories.create': { description: 'Crear categoría', method: 'POST', path: '/categories/admin', schema: createCategoriaSchema, input: '{"name":"...","active":true}', write: true },
   'categories.update': { description: 'Editar o desactivar categoría', method: 'PUT', path: '/categories/admin/:id', schema: z.object({ target, body: updateCategoriaSchema }).strict(), input: '{"target":"nombre exacto","body":{"active":false}}', write: true, collection: 'categories' },

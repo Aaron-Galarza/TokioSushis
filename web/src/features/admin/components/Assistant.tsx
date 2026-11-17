@@ -12,7 +12,7 @@ export default function Assistant() {
   const [busy, setBusy] = useState(false);
   const [draftId, setDraftId] = useState<string | undefined>();
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', text: 'Puedo consultar datos de Tokyo y preparar cambios en productos, categorías, cupones, pedidos y envíos. Te mostraré cada cambio para que lo confirmes antes de aplicarlo.' },
+    { role: 'assistant', text: '¡Hola! ¿Qué querés consultar o cambiar en Tokyo? Los cambios se aplican solo después de tu confirmación.' },
   ]);
 
   async function call(path: string, body: object) {
@@ -35,7 +35,8 @@ export default function Assistant() {
     if (!message || busy) return;
     setMessages(current => [...current, { role: 'user', text: message }]);
     setText('');
-    void call('message', { message, draftId });
+    const history = messages.slice(-6).map(({ role, text }) => ({ role, text: text.slice(0, 800) }));
+    void call('message', { message, draftId, history });
   }
 
   function decide(pendingId: string, action: 'confirm' | 'cancel') {
