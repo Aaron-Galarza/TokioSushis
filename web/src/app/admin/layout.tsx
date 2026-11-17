@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, LogOut } from 'lucide-react';
+import Assistant from '@/features/admin/components/Assistant';
 import { useAuthStore } from '@/stores/auth.store';
 
 const AUTH_STORAGE_KEY = 'american-way-auth-storage';
@@ -72,6 +73,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="hidden sm:inline">Salir</span>
         </button>
       </header>
+      <Assistant />
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}
       </div>
