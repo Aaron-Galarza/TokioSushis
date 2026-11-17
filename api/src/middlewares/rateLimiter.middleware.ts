@@ -23,3 +23,11 @@ export const geocodingLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 })
+
+export const assistantLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  message: { success: false, error: 'Demasiadas solicitudes al asistente. Intentá de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false
+})

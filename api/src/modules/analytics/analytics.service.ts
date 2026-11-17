@@ -13,6 +13,7 @@ interface AnalyticsStats {
   transferencia: number;
   entregados: number;
   topProduct: { title: string; quantity: number } | null;
+  topProducts: Array<{ title: string; quantity: number }>;
 }
 
 // ─── Consulta principal ──────────────────────────────────
@@ -27,7 +28,7 @@ export const getAnalytics = async (range: Range): Promise<AnalyticsStats> => {
   }).lean();
 
   if (dailies.length === 0) {
-    return { total: 0, efectivo: 0, debito: 0, credito: 0, transferencia: 0, entregados: 0, topProduct: null };
+    return { total: 0, efectivo: 0, debito: 0, credito: 0, transferencia: 0, entregados: 0, topProduct: null, topProducts: [] };
   }
 
   const productMap: Record<string, { qty: number; title: string }> = {};
@@ -57,7 +58,12 @@ export const getAnalytics = async (range: Range): Promise<AnalyticsStats> => {
     }
   }
 
-  return { total, efectivo, debito, credito, transferencia, entregados, topProduct: getTopProduct(productMap) };
+  const topProducts = Object.values(productMap)
+    .filter(({ qty }) => qty > 0)
+    .sort((a, b) => b.qty - a.qty || a.title.localeCompare(b.title))
+    .slice(0, 5)
+    .map(({ title, qty }) => ({ title, quantity: qty }));
+  return { total, efectivo, debito, credito, transferencia, entregados, topProduct: topProducts[0] ?? null, topProducts };
 };
 
 // ─── Escribir en daily cuando una orden se entrega ───────
@@ -147,19 +153,3 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
 
   console.log(`[ANALYTICS] REVERT → ${date} | $${order.total}`);
 };
-
-// ─── Helper ──────────────────────────────────────────────
-
-function getTopProduct(
-  productMap: Record<string, { qty: number; title: string }>
-): { title: string; quantity: number } | null {
-  let topId: string | null = null;
-  let maxQty = 0;
-
-  for (const [id, data] of Object.entries(productMap)) {
-    if (data.qty > maxQty) { maxQty = data.qty; topId = id; }
-  }
-
-  if (!topId) return null;
-  return { title: productMap[topId].title, quantity: maxQty };
-}

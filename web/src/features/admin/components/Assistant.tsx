@@ -12,7 +12,7 @@ export default function Assistant() {
   const [busy, setBusy] = useState(false);
   const [draftId, setDraftId] = useState<string | undefined>();
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', text: 'Puedo consultar productos, categorías, cupones, pedidos, ventas y productos más vendidos. También puedo preparar un cupón para que lo confirmes.' },
+    { role: 'assistant', text: 'Puedo consultar datos de Tokyo y preparar cambios en productos, categorías, cupones, pedidos y envíos. Te mostraré cada cambio para que lo confirmes antes de aplicarlo.' },
   ]);
 
   async function call(path: string, body: object) {
@@ -52,7 +52,7 @@ export default function Assistant() {
         <section role="dialog" aria-modal="true" aria-labelledby="assistant-title" className="fixed inset-0 z-50 flex items-end justify-end bg-black/70 sm:items-center sm:p-4">
           <div className="flex h-[min(80vh,36rem)] w-full max-w-md flex-col rounded-t-xl border border-white/20 bg-[#171717] text-white shadow-xl sm:rounded-xl">
             <header className="flex items-center justify-between border-b border-white/10 p-4">
-              <div><h2 id="assistant-title" className="font-bold">Asistente AF ✨</h2><p className="text-xs text-white/60">Consultas seguras y operaciones con confirmación</p></div>
+              <div><h2 id="assistant-title" className="font-bold">Asistente AF ✨</h2><p className="text-xs text-white/60">Operaciones de Tokyo con confirmación</p></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar asistente" className="rounded p-2 text-xl">×</button>
             </header>
             <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
