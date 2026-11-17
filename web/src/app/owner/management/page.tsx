@@ -11,7 +11,8 @@ import { useAuthStore } from '@/stores/auth.store';
 type Branch = { id: string; name: string; slug: string; address: string; active: boolean;
   coordinates: { lat: number; lng: number }; timezone: string; phone: string; whatsappPhone: string;
   paymentMethods: Payment[]; transferAlias: string; transferHolder: string };
-type Staff = { id: string; email: string; role: 'admin' | 'encargado'; branchId: string; active: boolean; invitationPending: boolean; invitationExpired: boolean };
+type Staff = { id: string; name: string; email: string; role: 'admin' | 'encargado'; branchId: string; active: boolean };
+type Credentials = { email: string; password: string; branchId: string };
 type Management = { branches: Branch[]; users: Staff[] };
 type Payment = 'cash' | 'debito' | 'credito' | 'transferencia';
 const payments: { key: Payment; label: string }[] = [
@@ -24,37 +25,50 @@ const button = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-x
 const errorText = (error: unknown) => axios.isAxiosError(error)
   ? error.response?.data?.error || 'No se pudo completar la operación.' : 'No se pudo completar la operación.';
 
-function StaffRow({ user, branches, onSaved, onInvite }: { user: Staff; branches: Branch[]; onSaved: () => void; onInvite: (token: string) => void }) {
+function StaffRow({ user, branches, onSaved, onCredentials }: { user: Staff; branches: Branch[]; onSaved: () => void; onCredentials: (credentials: Credentials | null) => void }) {
+  const [name, setName] = useState(user.name);
   const [role, setRole] = useState(user.role);
   const [branchId, setBranchId] = useState(user.branchId);
   const [active, setActive] = useState(user.active);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const hasChanges = name !== user.name || role !== user.role || branchId !== user.branchId || active !== user.active;
   const save = async () => {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name) || name.length < 2 || name.length > 40) {
+      setError('Usá entre 2 y 40 letras, números o guiones para el nombre de acceso.'); return;
+    }
+    onCredentials(null);
     setBusy(true); setError('');
-    try { await api.patch(`/owner/staff/${user.id}`, { role, branchId, active }); onSaved(); }
+    try {
+      const res = await api.patch(`/owner/staff/${user.id}`, { name, role, branchId, active });
+      if (res.data.data.password) onCredentials(res.data.data);
+      onSaved();
+    }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   };
-  const renew = async () => {
+  const resetCredentials = async () => {
+    onCredentials(null);
     setBusy(true); setError('');
-    try { const res = await api.post(`/owner/staff/${user.id}/invite`); onInvite(res.data.data.inviteToken); onSaved(); }
+    try { const res = await api.post(`/owner/staff/${user.id}/credentials`); onCredentials(res.data.data); onSaved(); }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   };
   return <div className="rounded-xl border border-white/10 bg-[#1b1b1b] p-4">
     <div className="flex flex-wrap items-start justify-between gap-2">
-      <div><p className="font-semibold text-white">{user.email}</p><p className="mt-1 text-xs text-white/45">{user.invitationPending ? user.invitationExpired ? 'Invitación vencida' : 'Invitación pendiente' : user.active ? 'Acceso activo' : 'Acceso desactivado'}</p></div>
+      <div><p className="font-semibold text-white">{user.email}</p><p className="mt-1 text-xs text-white/45">{user.active ? 'Acceso activo' : 'Acceso desactivado'}</p></div>
       <span className={`rounded-full px-2.5 py-1 text-xs ${user.active ? 'bg-emerald-400/10 text-emerald-300' : 'bg-white/10 text-white/50'}`}>{user.active ? 'Activo' : 'Inactivo'}</span>
     </div>
-    <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
+      <label className={label}>Nombre de acceso<input required minLength={2} maxLength={40} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={name} onChange={(event) => setName(event.target.value.toLowerCase())} className={`mt-1.5 ${field}`} /></label>
       <label className={label}>Rol<select className={`mt-1.5 ${field}`} value={role} onChange={(event) => setRole(event.target.value as Staff['role'])}><option value="admin">Admin</option><option value="encargado">Encargado</option></select></label>
       <label className={label}>Sucursal<select className={`mt-1.5 ${field}`} value={branchId} onChange={(event) => setBranchId(event.target.value)}>{branches.map((branch) => <option key={branch.id} value={branch.id} disabled={!branch.active}>{branch.name}</option>)}</select></label>
-      <button type="button" onClick={save} disabled={busy || (role === user.role && branchId === user.branchId && active === user.active)} className={button}>Guardar</button>
+      <button type="button" onClick={save} disabled={busy || !name || !hasChanges} className={button}>Guardar</button>
     </div>
+    <p className="mt-2 text-xs text-white/45">Correo resultante: {name}-{role}@tokyosushis.com</p>
     <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-      {!user.invitationPending && <label className="flex cursor-pointer items-center gap-2 text-white/70"><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="accent-primary" /> Acceso activo</label>}
-      {user.invitationPending && <button type="button" onClick={renew} disabled={busy} className="font-semibold text-primary underline underline-offset-4 disabled:opacity-50">Generar nuevo enlace de invitación</button>}
+      <label className="flex cursor-pointer items-center gap-2 text-white/70"><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} className="accent-primary" /> Acceso activo</label>
+      <button type="button" onClick={resetCredentials} disabled={busy || hasChanges} className="font-semibold text-primary underline underline-offset-4 disabled:opacity-50">Restablecer y copiar credenciales</button>
     </div>
     {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
   </div>;
@@ -100,10 +114,11 @@ export default function OwnerManagementPage() {
   const [data, setData] = useState<Management | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [inviteLink, setInviteLink] = useState('');
+  const [accessMessage, setAccessMessage] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
   const [branch, setBranch] = useState({ name: '', slug: '', address: '', lat: '', lng: '', timezone: 'America/Argentina/Buenos_Aires', phone: '', whatsappPhone: '', copyCatalogFrom: '', transferAlias: '', transferHolder: '' });
   const [selectedPayments, setSelectedPayments] = useState<Payment[]>(['cash', 'debito', 'credito']);
-  const [staff, setStaff] = useState({ email: '', role: 'admin' as Staff['role'], branchId: '' });
+  const [staff, setStaff] = useState({ name: '', role: 'admin' as Staff['role'], branchId: '' });
 
   const load = useCallback(async () => {
     const res = await api.get('/owner/management');
@@ -134,16 +149,26 @@ export default function OwnerManagementPage() {
     finally { setBusy(false); }
   };
   const createStaff = async (event: React.FormEvent) => {
+    setAccessMessage(''); setCopyStatus('');
     event.preventDefault(); setBusy(true); setError('');
     try {
       const res = await api.post('/owner/staff', staff);
-      setInviteLink(`${window.location.origin}/invite#token=${res.data.data.inviteToken}`);
-      setStaff({ email: '', role: 'admin', branchId: '' });
+      showCredentials(res.data.data);
+      setStaff({ name: '', role: 'admin', branchId: '' });
       await load();
     } catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   };
-  const showInvite = (token: string) => setInviteLink(`${window.location.origin}/invite#token=${token}`);
+  const showCredentials = (credentials: Credentials | null) => {
+    if (!credentials) { setAccessMessage(''); setCopyStatus(''); return; }
+    const branchName = data?.branches.find((item) => item.id === credentials.branchId)?.name;
+    setAccessMessage(`Hola, ya tenés acceso al panel de Tokyo Sushis${branchName ? ` (${branchName})` : ''}.\n\nIngresá en: ${window.location.origin}/login\nUsuario: ${credentials.email}\nContraseña: ${credentials.password}`);
+    setCopyStatus('');
+  };
+  const copyMessage = async () => {
+    try { await navigator.clipboard.writeText(accessMessage); setCopyStatus('Mensaje copiado. Pegalo en WhatsApp.'); }
+    catch { setCopyStatus('No se pudo copiar. Seleccioná el mensaje y copialo manualmente.'); }
+  };
 
   if (!authorized) return <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#090909] px-5 text-center text-white/50">
     {authConnectionError ? <><p>No se pudo conectar con el servidor. Verificá que la API esté encendida.</p><button onClick={() => window.location.reload()} className="text-primary underline">Reintentar</button></> : 'Verificando acceso…'}
@@ -157,9 +182,11 @@ export default function OwnerManagementPage() {
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/55">Creá locales y administrá el acceso del equipo. Cada cuenta operativa pertenece a una sola sucursal.</p>
       </header>
       {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
-      {inviteLink && <div role="status" className="rounded-2xl border border-primary/35 bg-primary/10 p-5">
-        <p className="font-semibold text-primary">Invitación lista</p><p className="mt-1 text-sm text-white/65">Compartí este enlace con la persona indicada. Vence en 72 horas y se puede usar una sola vez.</p>
-        <div className="mt-4 flex flex-wrap gap-2"><input readOnly value={inviteLink} aria-label="Enlace de invitación" className={`min-w-0 flex-1 ${field}`} /><button type="button" onClick={() => navigator.clipboard.writeText(inviteLink)} className={button}><Copy size={16} aria-hidden="true" /> Copiar</button></div>
+      {accessMessage && <div role="status" className="rounded-2xl border border-primary/35 bg-primary/10 p-5">
+        <p className="font-semibold text-primary">Credenciales listas</p><p className="mt-1 text-sm text-white/65">Copiá este mensaje y envialo por WhatsApp. La contraseña se muestra solo ahora; también podés generar nuevas credenciales más adelante.</p>
+        <textarea readOnly value={accessMessage} aria-label="Mensaje para WhatsApp" rows={5} className="mt-4 min-h-32 w-full resize-y rounded-xl border border-white/15 bg-[#1b1b1b] px-3 py-3 text-sm text-white outline-none focus:border-primary focus-visible:outline-2 focus-visible:outline-primary" />
+        <button type="button" onClick={copyMessage} className={`${button} mt-3`}><Copy size={16} aria-hidden="true" /> Copiar mensaje para WhatsApp</button>
+        {copyStatus && <p className="mt-2 text-sm text-white/70">{copyStatus}</p>}
       </div>}
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border border-white/10 bg-[#151515] p-5 sm:p-6" aria-labelledby="branches-title">
@@ -185,13 +212,13 @@ export default function OwnerManagementPage() {
         <section className="rounded-2xl border border-white/10 bg-[#151515] p-5 sm:p-6" aria-labelledby="staff-title">
           <div className="flex items-center gap-3"><span className="rounded-xl bg-primary/10 p-2.5 text-primary"><Users size={20} aria-hidden="true" /></span><div><h2 id="staff-title" className="font-heading text-xl font-semibold">Equipo</h2><p className="text-xs text-white/45">Admin y Encargado por sucursal</p></div></div>
           <form onSubmit={createStaff} className="mt-6 space-y-4 rounded-xl border border-primary/15 bg-primary/[0.04] p-4">
-            <h3 className="font-heading text-lg">Invitar a una persona</h3>
-            <label className={label}>Correo electrónico<input required type="email" maxLength={254} value={staff.email} onChange={(event) => setStaff({ ...staff, email: event.target.value })} className={`mt-1.5 ${field}`} /></label>
+            <h3 className="font-heading text-lg">Crear usuario</h3>
+            <label className={label}>Nombre de acceso<input required minLength={2} maxLength={40} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={staff.name} onChange={(event) => setStaff({ ...staff, name: event.target.value.toLowerCase() })} className={`mt-1.5 ${field}`} placeholder="facu" /></label>
             <div className="grid gap-4 sm:grid-cols-2"><label className={label}>Rol<select value={staff.role} onChange={(event) => setStaff({ ...staff, role: event.target.value as Staff['role'] })} className={`mt-1.5 ${field}`}><option value="admin">Admin</option><option value="encargado">Encargado</option></select></label><label className={label}>Sucursal<select required value={staff.branchId} onChange={(event) => setStaff({ ...staff, branchId: event.target.value })} className={`mt-1.5 ${field}`}><option value="">Elegí una sucursal</option>{data?.branches.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>
-            <p className="text-xs text-white/45">La cuenta quedará inactiva hasta que la persona abra el enlace y elija su contraseña.</p>
-            <button type="submit" disabled={busy || !staff.branchId} className={button}><UserPlus size={16} aria-hidden="true" /> Crear invitación</button>
+            <p className="text-xs text-white/45">Correo resultante: {staff.name || 'nombre'}-{staff.role}@tokyosushis.com. Se generará una contraseña automáticamente.</p>
+            <button type="submit" disabled={busy || !staff.branchId} className={button}><UserPlus size={16} aria-hidden="true" /> Crear usuario</button>
           </form>
-          <div className="mt-6 space-y-3">{data?.users.length ? data.users.map((user) => <StaffRow key={user.id} user={user} branches={data.branches} onSaved={() => load().catch((cause) => setError(errorText(cause)))} onInvite={showInvite} />) : <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-white/45">Todavía no hay usuarios operativos.</p>}</div>
+          <div className="mt-6 space-y-3">{data?.users.length ? data.users.map((user) => <StaffRow key={user.id} user={user} branches={data.branches} onSaved={() => load().catch((cause) => setError(errorText(cause)))} onCredentials={showCredentials} />) : <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-white/45">Todavía no hay usuarios operativos.</p>}</div>
         </section>
       </div>
     </div>
