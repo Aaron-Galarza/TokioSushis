@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import assistantRoutes from '../modules/assistant/assistant.routes';
 import productRoutes from '../modules/productos/products.routers';
 import orderRoutes from '../modules/orders/orders.routes';
 import couponsRoutes from '../modules/coupons/coupons.routes'
@@ -14,6 +15,7 @@ import geocodingRoutes from '../modules/geocoding/geocoding.routes'
 
 const router = Router();
 
+router.use('/assistant', assistantRoutes);
 router.use('/products', productRoutes);
 router.use('/categories', categoriaRoutes);
 router.use('/addons', adicionalRoutes);
