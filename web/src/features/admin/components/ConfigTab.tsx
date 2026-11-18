@@ -13,7 +13,7 @@ export function ConfigTab() {
     emergency, toggleEmergency,
     schedule, setSchedule, schedSaved, saveSchedule,
     banner, setBanner, bannerSaved, setBannerSaved, saveBanner,
-    isRaining, extraRain, setExtraRain, toggleRain,
+    isRaining, extraRain, setExtraRain, toggleRain, rainSaving, rainError,
     ranges, nRange, setNRange, rErr, addRange, deleteRange,
     reload,
   } = useAdminConfig();
@@ -57,6 +57,8 @@ export function ConfigTab() {
           extraRain={extraRain}
           setExtraRain={setExtraRain}
           toggleRain={toggleRain}
+          saving={rainSaving}
+          error={rainError}
         />
       </div>
     </div>

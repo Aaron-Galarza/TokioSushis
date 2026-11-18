@@ -33,6 +33,8 @@ export function useAdminConfig() {
   const [bannerSaved, setBannerSaved] = useState(false);
   const [isRaining, setIsRaining]     = useState(false);
   const [extraRain, setExtraRain]     = useState(0);
+  const [rainSaving, setRainSaving]   = useState(false);
+  const [rainError, setRainError]     = useState('');
   const [ranges, setRanges]           = useState<KmRange[]>([]);
   const [nRange, setNRange]           = useState({ maxKm: '', price: '' });
   const [rErr, setRErr]               = useState('');
@@ -42,10 +44,10 @@ export function useAdminConfig() {
       const [c, d] = await Promise.all([fetchConfigStatus(), fetchDeliveryConfig()]);
       setEmergency(c.isEmergencyClosed ?? false);
       setBanner(c.banner ?? '');
-      const dbSchedule: any[] = c.dailySchedule ?? c.schedule ?? [];
+      const dbSchedule: Partial<DaySch>[] = c.dailySchedule ?? c.schedule ?? [];
       if (dbSchedule.length > 0) {
         setSchedule(DAYS.map((day, i) => {
-          const match = dbSchedule.find((s: any) => DAY_INDEX[normDay(s?.day)] === i);
+          const match = dbSchedule.find((s) => DAY_INDEX[normDay(s?.day)] === i);
           return { day, openTime: match?.openTime ?? '12:00', closeTime: match?.closeTime ?? '23:00', isStoreOpen: match?.isStoreOpen ?? true };
         }));
       }
@@ -73,12 +75,21 @@ export function useAdminConfig() {
   };
 
   const toggleRain = async () => {
+    if (rainSaving) return;
+    setRainSaving(true);
+    setRainError('');
     try {
       const next = !isRaining;
       const cleanExtraRain = isNaN(extraRain) || extraRain < 0 ? 0 : Number(extraRain);
       await patchRain(next, cleanExtraRain);
       setIsRaining(next);
-    } catch (err) { console.error('toggleRain:', err); }
+      setExtraRain(cleanExtraRain);
+    } catch (err) {
+      console.error('toggleRain:', err);
+      setRainError('No se pudo actualizar el recargo. Intentá nuevamente.');
+    } finally {
+      setRainSaving(false);
+    }
   };
 
   const addRange = async () => {
@@ -94,7 +105,7 @@ export function useAdminConfig() {
     emergency, toggleEmergency,
     schedule, setSchedule, schedSaved, saveSchedule,
     banner, setBanner, bannerSaved, setBannerSaved, saveBanner,
-    isRaining, extraRain, setExtraRain, toggleRain,
+    isRaining, extraRain, setExtraRain, toggleRain, rainSaving, rainError,
     ranges, nRange, setNRange, rErr, addRange, deleteRange,
     reload,
   };
