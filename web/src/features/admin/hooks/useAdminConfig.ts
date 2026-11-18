@@ -31,6 +31,8 @@ export function useAdminConfig() {
   const [schedSaved, setSchedSaved]   = useState(false);
   const [banner, setBanner]           = useState('');
   const [bannerSaved, setBannerSaved] = useState(false);
+  const [bannerSaving, setBannerSaving] = useState(false);
+  const [bannerError, setBannerError] = useState('');
   const [isRaining, setIsRaining]     = useState(false);
   const [extraRain, setExtraRain]     = useState(0);
   const [rainSaving, setRainSaving]   = useState(false);
@@ -70,8 +72,20 @@ export function useAdminConfig() {
   };
 
   const saveBanner = async () => {
-    try { await apiSaveBanner(banner); setBannerSaved(true); setTimeout(() => setBannerSaved(false), 2500); await reload(); }
-    catch (err) { console.error('saveBanner:', err); }
+    if (bannerSaving || !banner.trim()) return;
+    setBannerSaving(true);
+    setBannerError('');
+    try {
+      await apiSaveBanner(banner.trim());
+      setBannerSaved(true);
+      setTimeout(() => setBannerSaved(false), 2500);
+      await reload();
+    } catch (err) {
+      console.error('saveBanner:', err);
+      setBannerError('No se pudo actualizar el banner. Intentá nuevamente.');
+    } finally {
+      setBannerSaving(false);
+    }
   };
 
   const toggleRain = async () => {
@@ -104,7 +118,7 @@ export function useAdminConfig() {
   return {
     emergency, toggleEmergency,
     schedule, setSchedule, schedSaved, saveSchedule,
-    banner, setBanner, bannerSaved, setBannerSaved, saveBanner,
+    banner, setBanner, bannerSaved, setBannerSaved, bannerSaving, bannerError, saveBanner,
     isRaining, extraRain, setExtraRain, toggleRain, rainSaving, rainError,
     ranges, nRange, setNRange, rErr, addRange, deleteRange,
     reload,

@@ -6,8 +6,10 @@ import { AdminInput, AdminTextarea, AdminSelect } from './ui/AdminInput';
 import { IconPickerModal } from './ui/IconPickerModal';
 import { AdminActionButtons } from './ui/AdminActionButtons';
 import { AdminProductRow } from './ui/AdminProductRow';
+import { ImageUploadButton } from './ui/ImageUploadButton';
 import { useAdminMenu } from '../hooks/useAdminMenu';
 import { getCategoryIcon } from '@/lib/categoryIcons';
+import { cloudinaryImage } from '@/lib/image';
 
 export function MenuTab() {
   const {
@@ -19,6 +21,7 @@ export function MenuTab() {
 
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [selectedCatFilter, setSelectedCatFilter] = useState<string>('');
+  const [productImageUploading, setProductImageUploading] = useState(false);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -178,7 +181,20 @@ export function MenuTab() {
             </div>
             
             <AdminTextarea placeholder="Descripción" value={pForm.description} onChange={e => setPForm(p => ({ ...p, description: e.target.value }))} rows={2} />
-            <AdminInput placeholder="URL de imagen (opcional)" value={pForm.image} onChange={e => setPForm(p => ({ ...p, image: e.target.value }))} />
+            <ImageUploadButton
+              uploading={productImageUploading}
+              setUploading={setProductImageUploading}
+              onUploaded={(url) => setPForm(p => ({ ...p, image: url }))}
+            />
+            <AdminInput
+              placeholder="O pegá la URL de la imagen"
+              value={pForm.image}
+              onChange={e => setPForm(p => ({ ...p, image: e.target.value }))}
+              disabled={productImageUploading}
+            />
+            {/^https?:\/\//.test(pForm.image) && (
+              <img src={cloudinaryImage(pForm.image, 300)} alt="Vista previa del producto" className="h-24 w-24 rounded-lg border border-white/10 object-cover" />
+            )}
             <label className="flex items-center gap-2 text-sm text-white/50 cursor-pointer">
               <input type="checkbox" checked={pForm.active} onChange={e => setPForm(p => ({ ...p, active: e.target.checked }))} className="accent-primary" /> Activo
             </label>
@@ -189,10 +205,10 @@ export function MenuTab() {
               <AdminInput type="number" placeholder="Stock disponible" value={pForm.stock} onChange={e => setPForm(p => ({ ...p, stock: e.target.value }))} min={0} />
             )}
             <div className="flex gap-2">
-              <button onClick={saveProduct} className="flex-1 bg-primary text-black font-bold py-2.5 rounded-lg text-sm hover:bg-primary/90 active:scale-95 transition-all">
+              <button onClick={saveProduct} disabled={productImageUploading} className="flex-1 bg-primary text-black font-bold py-2.5 rounded-lg text-sm hover:bg-primary/90 active:scale-95 disabled:opacity-40 transition-all">
                 {pEditId ? 'Guardar cambios' : 'Crear producto'}
               </button>
-              {pEditId && <button onClick={cancelProduct} className="bg-white/5 text-white/50 px-4 py-2.5 rounded-lg text-sm hover:text-white">Cancelar</button>}
+              {pEditId && <button onClick={cancelProduct} disabled={productImageUploading} className="bg-white/5 text-white/50 px-4 py-2.5 rounded-lg text-sm hover:text-white disabled:opacity-40">Cancelar</button>}
             </div>
           </div>
         </AdminCard>

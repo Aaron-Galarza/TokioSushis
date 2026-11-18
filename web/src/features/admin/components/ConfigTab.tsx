@@ -12,7 +12,7 @@ export function ConfigTab() {
   const {
     emergency, toggleEmergency,
     schedule, setSchedule, schedSaved, saveSchedule,
-    banner, setBanner, bannerSaved, setBannerSaved, saveBanner,
+    banner, setBanner, bannerSaved, setBannerSaved, bannerSaving, bannerError, saveBanner,
     isRaining, extraRain, setExtraRain, toggleRain, rainSaving, rainError,
     ranges, nRange, setNRange, rErr, addRange, deleteRange,
     reload,
@@ -28,6 +28,8 @@ export function ConfigTab() {
         setBanner={setBanner}
         bannerSaved={bannerSaved}
         setBannerSaved={setBannerSaved}
+        bannerSaving={bannerSaving}
+        bannerError={bannerError}
         saveBanner={saveBanner}
       />
 
