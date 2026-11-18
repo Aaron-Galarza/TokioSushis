@@ -10,7 +10,6 @@ export default function Assistant() {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const [draftId, setDraftId] = useState<string | undefined>();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', text: '¡Hola! ¿Qué querés consultar o cambiar en Tokyo? Los cambios se aplican solo después de tu confirmación.' },
   ]);
@@ -19,7 +18,6 @@ export default function Assistant() {
     setBusy(true);
     try {
       const response = await api.post('/assistant/' + path, body);
-      if (path === 'message') setDraftId(response.data.data.draftId);
       setMessages(current => [...current, { role: 'assistant', text: response.data.data.message, pendingId: response.data.data.pendingId }]);
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
@@ -36,7 +34,7 @@ export default function Assistant() {
     setMessages(current => [...current, { role: 'user', text: message }]);
     setText('');
     const history = messages.slice(-6).map(({ role, text }) => ({ role, text: text.slice(0, 800) }));
-    void call('message', { message, draftId, history });
+    void call('message', { message, history });
   }
 
   function decide(pendingId: string, action: 'confirm' | 'cancel') {

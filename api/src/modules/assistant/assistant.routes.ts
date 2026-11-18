@@ -6,15 +6,15 @@ import { assistantLimiter } from '../../middlewares/rateLimiter.middleware';
 import { UserModel } from '../users/user.model';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { sendError, sendSucces } from '../../utils/response';
-import { answerReadQuestion, planOperation, Plan } from './llm.provider';
-import { operationNames, parseOperation } from './assistant.operations';
-import { AssistantOperationError, executeOperation, prepareOperation, PreparedOperation, previewOperation } from './assistant.executor';
-import { greeting, help, isGreeting, missingFieldsMessage } from './assistant.dialog';
+import { runAssistant } from './assistant.agent';
+import { AssistantOperationError, executeOperation, PreparedOperation } from './assistant.executor';
 
-const ttl = () => new Date(Date.now() + 10 * 60 * 1000);
-const draftSchema = new Schema({ userId: { type: String, required: true }, plan: Schema.Types.Mixed, expiresAt: { type: Date, required: true, index: { expires: 0 } } });
-const pendingSchema = new Schema({ userId: { type: String, required: true }, operation: Schema.Types.Mixed, status: { type: String, enum: ['pending', 'claimed', 'cancelled'], default: 'pending' }, expiresAt: { type: Date, required: true, index: { expires: 0 } } }, { timestamps: true });
-const Draft = mongoose.model('AssistantDraft', draftSchema);
+const pendingSchema = new Schema({
+  userId: { type: String, required: true },
+  operation: Schema.Types.Mixed,
+  status: { type: String, enum: ['pending', 'claimed', 'cancelled'], default: 'pending' },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } },
+}, { timestamps: true });
 const Pending = mongoose.model('AssistantPending', pendingSchema);
 const router = Router();
 
@@ -31,52 +31,18 @@ router.use(asyncHandler(async (req: Request, res: Response, next: NextFunction) 
 const userId = (req: Request) => (req.user as { id: string }).id;
 const messageSchema = z.object({
   message: z.string().trim().min(1).max(500),
-  draftId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   history: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(800) })).max(6).optional(),
 });
 const idSchema = z.object({ pendingId: z.string().regex(/^[a-f\d]{24}$/i) });
-const mergeInput = (oldInput: Record<string, unknown>, newInput: Record<string, unknown>) => ({
-  ...oldInput, ...newInput,
-  ...(oldInput.body || newInput.body ? { body: { ...(oldInput.body as object || {}), ...(newInput.body as object || {}) } } : {}),
-});
 
 router.post('/message', asyncHandler(async (req, res) => {
   const parsed = messageSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 'Mensaje inválido', 400);
-  const { message, draftId, history = [] } = parsed.data;
-  const draft = draftId ? await Draft.findOne({ _id: draftId, userId: userId(req), expiresAt: { $gt: new Date() } }) : null;
-  if (isGreeting(message)) return sendSucces(res, { message: greeting, ...(draft ? { draftId: draft.id } : {}) });
-  if (draft && /^(cancelar|olvidar|cancelá|olvidá)$/i.test(message)) {
-    await draft.deleteOne();
-    return sendSucces(res, { message: 'Borrador cancelado.' });
-  }
-  const previous = draft?.plan as Plan | undefined;
-  const planned = await planOperation(message, previous, history);
-  if (!planned) return sendSucces(res, { message: help, ...(draft ? { draftId: draft.id } : {}) });
-  const plan = previous && previous.operation === planned.operation ? { operation: planned.operation, input: mergeInput(previous.input, planned.input) } : planned;
-  if (!operationNames.includes(plan.operation)) return sendError(res, 'Operación no autorizada', 400);
-  const validated = parseOperation(plan.operation, plan.input);
-  if (!validated) {
-    const saved = draft || new Draft({ userId: userId(req) });
-    saved.plan = plan;
-    saved.expiresAt = ttl();
-    await saved.save();
-    return sendSucces(res, { message: missingFieldsMessage(plan.operation, plan.input), draftId: saved.id });
-  }
-  try {
-    const operation = await prepareOperation(req, plan.operation, plan.input);
-    if (draft) await draft.deleteOne();
-    if (!operation.write) {
-      const facts = await executeOperation(req, operation);
-      return sendSucces(res, { message: await answerReadQuestion(message, operation.name, facts) });
-    }
-    const pending = await Pending.create({ userId: userId(req), operation, expiresAt: ttl() });
-    return sendSucces(res, { message: previewOperation(operation), pendingId: pending.id });
-  } catch (error) {
-    if (error instanceof AssistantOperationError && draft) return sendSucces(res, { message: error.message, draftId: draft.id });
-    if (error instanceof AssistantOperationError) return sendError(res, error.message, error.status);
-    throw error;
-  }
+  const reply = await runAssistant(req, parsed.data.message, parsed.data.history ?? [], async (operation) => {
+    const pending = await Pending.create({ userId: userId(req), operation, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+    return pending.id;
+  });
+  return sendSucces(res, reply);
 }));
 
 router.post('/confirm', asyncHandler(async (req, res) => {

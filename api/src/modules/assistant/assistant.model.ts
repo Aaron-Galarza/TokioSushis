@@ -1,16 +1,22 @@
 import mongoose from 'mongoose';
 
+export type GeminiPart = { text?: string; functionCall?: { name: string; args?: Record<string, unknown> }; [key: string]: unknown };
+export type GeminiContent = { role: 'user' | 'model'; parts: GeminiPart[] };
 type Usage = { totalTokenCount?: number; promptTokenCount?: number; candidatesTokenCount?: number };
-type ModelResponse = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: Usage };
+type ModelResponse = { candidates?: Array<{ content?: GeminiContent }>; usageMetadata?: Usage };
 let budgetIndexReady: Promise<unknown> | undefined;
 
-export const generateText = async (system: string, user: string, phase: 'plan' | 'answer', json = false): Promise<string | null> => {
+export const generateTurn = async (system: string, contents: GeminiContent[], tools: unknown[]): Promise<GeminiContent | null> => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const model = process.env.GEMINI_MODEL || process.env.ASSISTANT_MODEL || 'gemini-3.1-flash-lite';
+  const requestBody = {
+    systemInstruction: { parts: [{ text: system }] }, contents, tools,
+    generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+  };
   const db = mongoose.connection.db;
   const date = new Date().toISOString().slice(0, 10);
-  const estimate = Math.min(5000, Math.max(600, Math.ceil((system.length + user.length) / 3) + 350));
+  const estimate = Math.min(8000, Math.max(1200, Math.ceil(JSON.stringify(requestBody).length / 3) + 1024));
   const budget = Number(process.env.ASSISTANT_DAILY_TOKEN_BUDGET ?? 100_000);
   let reserved = false;
   let usage: Usage | undefined;
@@ -30,31 +36,26 @@ export const generateText = async (system: string, user: string, phase: 'plan' |
       reserved = true;
     }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8_000);
+    const timeout = setTimeout(() => controller.abort(), 12_000);
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: 'user', parts: [{ text: user }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 350, ...(json ? { responseMimeType: 'application/json' } : {}) },
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify(requestBody),
       });
       if (!response.ok) throw new Error(`Gemini respondió ${response.status}`);
       const result = await response.json() as ModelResponse;
       usage = result.usageMetadata;
       completed = true;
-      return result.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text?.trim() || null;
+      return result.candidates?.[0]?.content ?? null;
     } finally { clearTimeout(timeout); }
   } catch (error) {
-    console.warn(`[assistant] ${phase} no disponible`, error instanceof Error ? error.message : 'unknown error');
+    console.warn('[assistant] Gemini no disponible', error instanceof Error ? error.message : 'unknown error');
     return null;
   } finally {
     if (reserved && db) {
       try {
         const totalTokens = completed ? usage?.totalTokenCount ?? estimate : 0;
         await db.collection('assistant_usage_budget_v2').updateOne({ date }, { $inc: { reservedTokens: -estimate, usedTokens: totalTokens } });
-        await db.collection('assistant_usage_events').insertOne({ date, model, phase, totalTokens, inputTokens: usage?.promptTokenCount ?? 0, outputTokens: usage?.candidatesTokenCount ?? 0, latencyMs: Date.now() - started, createdAt: new Date() });
+        await db.collection('assistant_usage_events').insertOne({ date, model, phase: 'agent', totalTokens, inputTokens: usage?.promptTokenCount ?? 0, outputTokens: usage?.candidatesTokenCount ?? 0, latencyMs: Date.now() - started, createdAt: new Date() });
       } catch (error) { console.error('[assistant] no se pudo registrar el uso de IA', error); }
     }
   }
