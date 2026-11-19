@@ -9,9 +9,6 @@ import api from '@/services/api';
 import type { Coupon } from '@/types';
 import { PAYMENT_LABELS, type PaymentKey } from '@/constants/admin';
 
-type PaymentMethod = PaymentKey;
-export { type PaymentMethod };
-
 export function useCheckout() {
   const router = useRouter();
   

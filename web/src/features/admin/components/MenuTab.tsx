@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { createElement, useEffect, useState, useMemo } from 'react';
 import { AdminCard } from './ui/AdminCard';
 import { AdminInput, AdminTextarea, AdminSelect } from './ui/AdminInput';
 import { IconPickerModal } from './ui/IconPickerModal';
@@ -58,7 +58,7 @@ export function MenuTab() {
                 : 'bg-white/5 border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
               }`}
           >
-            {SelectedIcon ? <SelectedIcon className="w-4 h-4" /> : <span className="text-xs">🖼</span>}
+            {SelectedIcon ? createElement(SelectedIcon, { className: 'w-4 h-4' }) : <span className="text-xs">🖼</span>}
           </button>
           
           <button

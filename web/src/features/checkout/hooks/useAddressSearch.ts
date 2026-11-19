@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PUBLIC_API_URL } from '@/lib/public-api-url';
 
 export interface AddressResult {
   placeName: string;
@@ -14,8 +15,7 @@ export interface AddressResult {
 // para ahorrar la cuota gratuita de Google.
 const fetchGoogleGeocode = async (query: string, signal: AbortSignal): Promise<AddressResult[]> => {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-    const url = new URL(`${apiUrl}/geocoding/google`);
+    const url = new URL(`${PUBLIC_API_URL}/geocoding/google`);
     url.searchParams.append('query', query);
 
     const response = await fetch(url.toString(), { signal });

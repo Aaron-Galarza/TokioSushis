@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
-export interface IKmRange {
+interface IKmRange {
   _id?: Types.ObjectId;
   maxKm: number;
   price: number;

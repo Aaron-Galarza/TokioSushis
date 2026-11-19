@@ -1,6 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+import { PUBLIC_API_URL } from '@/lib/public-api-url';
 
-export interface DeliveryCostData {
+interface DeliveryCostData {
   distanceKm: number;
   deliveryCost: number;
 }
@@ -18,7 +18,7 @@ const inFlight = new Map<string, Promise<DeliveryServiceResponse>>();
 
 const doCalculate = async (lat: number, lng: number): Promise<DeliveryServiceResponse> => {
   try {
-    const response = await fetch(`${API_URL}/delivery/calculate`, {
+    const response = await fetch(`${PUBLIC_API_URL}/delivery/calculate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

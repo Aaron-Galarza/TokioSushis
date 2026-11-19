@@ -1,19 +1,25 @@
 import type { Product, Category, Addon } from '@/types';
+import { PUBLIC_API_URL } from '@/lib/public-api-url';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api';
+type ApiProduct = Omit<Product, 'id' | 'category'> & {
+  _id: string;
+  category: string | { _id: string };
+};
+type ApiCategory = Omit<Category, 'id'> & { _id: string };
+type ApiAddon = { _id: string; title: string; price: number; active: boolean; categories?: Addon['categories'] };
 
 export const menuService = {
 
   // 1. OBTENER PRODUCTOS
   getProducts: async (): Promise<Product[]> => {
     try {
-      const response = await fetch(`${API_URL}/products`);
+      const response = await fetch(`${PUBLIC_API_URL}/products`);
       if (!response.ok) throw new Error('Error al obtener productos');
 
       const json = await response.json();
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
-      return json.data.map((item: any, index: number) => ({
+      return json.data.map((item: ApiProduct, index: number) => ({
         ...item,
         id: item._id,
         available: item.available ?? true,
@@ -29,13 +35,13 @@ export const menuService = {
   // 2. OBTENER CATEGORÍAS
   getCategories: async (): Promise<Category[]> => {
     try {
-      const response = await fetch(`${API_URL}/categories`);
+      const response = await fetch(`${PUBLIC_API_URL}/categories`);
       if (!response.ok) throw new Error('Error al obtener categorías');
 
       const json = await response.json();
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
-      return json.data.map((item: any) => ({
+      return json.data.map((item: ApiCategory) => ({
         ...item,
         id: item._id,
       }));
@@ -51,8 +57,8 @@ export const menuService = {
   getAddons: async (categoryId?: string): Promise<Addon[]> => {
     try {
       const url = categoryId
-        ? `${API_URL}/addons?category=${categoryId}`
-        : `${API_URL}/addons`;
+        ? `${PUBLIC_API_URL}/addons?category=${categoryId}`
+        : `${PUBLIC_API_URL}/addons`;
 
       const response = await fetch(url);
       if (!response.ok) throw new Error('Error al obtener adicionales');
@@ -60,7 +66,7 @@ export const menuService = {
       const json = await response.json();
       if (!json.success) throw new Error(json.error || 'Error en la API');
 
-      return json.data.map((item: any) => ({
+      return json.data.map((item: ApiAddon) => ({
         id: item._id,
         name: item.title,             // el backend guarda "title", el front usa "name"
         price: item.price,
@@ -76,7 +82,7 @@ export const menuService = {
   // 4. OBTENER ESTADO DEL LOCAL
   getStoreStatus: async (): Promise<{ isOpen: boolean; message: string; banner?: string }> => {
     try {
-      const response = await fetch(`${API_URL}/config/status`);
+      const response = await fetch(`${PUBLIC_API_URL}/config/status`);
 
       if (!response.ok) {
         console.warn('⚠️ Ruta /api/config/status falló. Usando estado abierto por defecto.');
@@ -94,7 +100,7 @@ export const menuService = {
       }
 
       return { isOpen: true, message: '', banner: '' };
-    } catch (error) {
+    } catch {
       console.warn('⚠️ No se pudo conectar al backend de configuración. Local abierto por defecto.');
       return { isOpen: true, message: '', banner: '' };
     }
