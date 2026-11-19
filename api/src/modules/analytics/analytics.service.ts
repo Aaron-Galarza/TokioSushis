@@ -2,6 +2,7 @@ import { DailyAnalyticsModel } from './daily.model';
 import { iOrder } from '../orders/orders.model';
 import { argDate } from '../../utils/Timezone';
 import { Range, getRangeStartDate } from '../../utils/dateRange';
+import type { ClientSession } from 'mongoose';
 
 // ─── Tipos Sincronizados ─────────────────────────────────
 
@@ -62,7 +63,7 @@ export const getAnalytics = async (range: Range): Promise<AnalyticsStats> => {
 
 // ─── Escribir en daily cuando una orden se entrega ───────
 
-export const updateAnalyticsOnDelivery = async (order: iOrder) => {
+export const updateAnalyticsOnDelivery = async (order: iOrder, session?: ClientSession) => {
   const date = argDate(new Date(order.createdAt));
 
   const incUpdates: Record<string, number> = {};
@@ -92,7 +93,7 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
       },
       $set: setUpdates,
     },
-    { upsert: true }
+    { upsert: true, session }
   );
 
   console.log(`[ANALYTICS] ADD → ${date} | $${order.total} por ${order.paymentMethod}`);
@@ -100,10 +101,10 @@ export const updateAnalyticsOnDelivery = async (order: iOrder) => {
 
 // ─── Revertir cuando una orden delivered se cancela ──────
 
-export const revertAnalyticsOnDelivery = async (order: iOrder) => {
+export const revertAnalyticsOnDelivery = async (order: iOrder, session?: ClientSession) => {
   const date = argDate(new Date(order.createdAt));
 
-  const daily = await DailyAnalyticsModel.findOne({ date });
+  const daily = await DailyAnalyticsModel.findOne({ date }).session(session ?? null);
   if (!daily) {
     console.warn(`[ANALYTICS] REVERT ignorado — no hay registro para ${date}`);
     return;
@@ -142,7 +143,8 @@ export const revertAnalyticsOnDelivery = async (order: iOrder) => {
         transferencia: -safeTransferencia,
         ...incUpdates,
       },
-    }
+    },
+    { session }
   );
 
   console.log(`[ANALYTICS] REVERT → ${date} | $${order.total}`);

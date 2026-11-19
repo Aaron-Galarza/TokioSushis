@@ -8,6 +8,8 @@ import { calculateDelivery } from '../delivery/delivery.service'
 import { AppError } from '../../utils/AppError'
 import { argToUTC } from '../../utils/Timezone'
 import { Range, getRangeStartDate } from '../../utils/dateRange'
+import mongoose, { type ClientSession } from 'mongoose'
+import { ProductModel } from '../productos/products.model'
 
 // Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
 const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
@@ -15,7 +17,18 @@ const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total
   return { total: baseTotal + surcharge, surcharge }
 }
 
+const restoreStock = async (items: iCartItem[], session: ClientSession): Promise<void> => {
+  for (const item of items) {
+    await ProductModel.updateOne(
+      { _id: item.productId, controlStock: true },
+      { $inc: { stock: item.quantity } },
+      { session }
+    )
+  }
+}
+
 export const createOrder = async (orderData: any): Promise<iOrder> => {
+  const stockRequirements = new Map<string, { title: string; quantity: number }>()
  
   const storeStatus = await checkStoreStatus()
   if (!storeStatus.isOpen) {
@@ -38,8 +51,11 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
           throw new AppError(400, `Stock insuficiente para "${product.title}". Disponibles: ${product.stock}, solicitados: ${item.quantity}`)
         }
         
-        product.stock -= item.quantity
-        await product.save()
+        const previous = stockRequirements.get(item.productId)
+        stockRequirements.set(item.productId, {
+          title: product.title,
+          quantity: (previous?.quantity ?? 0) + item.quantity,
+        })
       }
 
       let addons: iCartAddon[] = []
@@ -124,16 +140,7 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
   total = surchargeResult.total
   const surcharge = surchargeResult.surcharge
 
-  let sanitizedNotes = '';
-  if (orderData.notes && typeof orderData.notes === 'string') {
-    sanitizedNotes = orderData.notes
-      .trim()
-      .substring(0, 300)
-      .replace(/<[^>]*>/g, '')
-      .replace(/[^a-zA-Z0-9\s.,!¡?¿()\-áéíóúñÁÉÍÓÚÑ]/g, ''); 
-  }
- 
-  const newOrder = new OrderModel({
+  const orderPayload = {
     customer:      orderData.customer,
     items,
     deliveryType:  orderData.deliveryType,
@@ -145,10 +152,22 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
     surcharge, // NUEVO: Guardamos el recargo aplicado
     delivery,
     total:         Math.max(0, total),
-    notes:         sanitizedNotes
+    notes:         orderData.notes
+  }
+
+  const saved = await mongoose.connection.transaction(async session => {
+    for (const [productId, requirement] of stockRequirements) {
+      const reserved = await ProductModel.findOneAndUpdate(
+        { _id: productId, controlStock: true, stock: { $gte: requirement.quantity } },
+        { $inc: { stock: -requirement.quantity } },
+        { session, returnDocument: 'after' }
+      )
+      if (!reserved) {
+        throw new AppError(400, `Stock insuficiente para "${requirement.title}"`)
+      }
+    }
+    return await new OrderModel(orderPayload).save({ session })
   })
- 
-  const saved = await newOrder.save()
   console.log(`[PEDIDO] Nuevo pedido ${saved._id} - ${saved.customer.name} - $${saved.total}`)
   return saved
 }
@@ -173,90 +192,60 @@ export const update = async (
   newStatus: OrderStatus,
   newDeliveryCost?: number   
 ): Promise<iOrder | null> => {
-  const oldOrder = await OrderModel.findById(id);
-  if (!oldOrder) return null;
+  return mongoose.connection.transaction(async session => {
+    const oldOrder = await OrderModel.findById(id).session(session);
+    if (!oldOrder || oldOrder.deleted) return null;
 
-  const oldStatus = oldOrder.status;
-
-  const updateData: Record<string, any> = {};
-  if (newStatus !== undefined) updateData.status = newStatus;
-
-  // Si viene un nuevo costo de envío, recalcular el total respetando el recargo si hubo crédito
-  if (newDeliveryCost !== undefined) {
-    updateData.deliveryCost = newDeliveryCost;
-    
-    const discount = (oldOrder.subtotal * oldOrder.discountPercent) / 100;
-    let baseTotal = oldOrder.subtotal - discount + newDeliveryCost;
-    
-    // Si pagó con crédito, recalculamos también el recargo del 15% en base al nuevo total base
-    const recalculated = applyCreditSurcharge(baseTotal, oldOrder.paymentMethod);
-    updateData.surcharge = recalculated.surcharge;
-
-    updateData.total = Math.max(0, recalculated.total);
-  }
-
-  const updatedOrder = await OrderModel.findByIdAndUpdate(
-    id,
-    updateData,
-    { returnDocument: 'after' }
-  );
-
-  if (!updatedOrder) return null;
-
-  if (newStatus) {
-    console.log(`[PEDIDO] Pedido ${updatedOrder._id} actualizado de "${oldStatus}" a "${newStatus}"`);
-  }
-  if (newDeliveryCost !== undefined) {
-    console.log(`[PEDIDO] Costo de envío actualizado a $${newDeliveryCost} → Total: $${updatedOrder.total}`);
-  }
-
-  if (newStatus && oldStatus !== 'delivered' && newStatus === 'delivered') {
-    await updateAnalyticsOnDelivery(updatedOrder);
-  }
-  if (newStatus && oldStatus === 'delivered' && newStatus !== 'delivered') {
-    await revertAnalyticsOnDelivery(updatedOrder);
-  }
-
-  if (newStatus && oldStatus !== 'cancelled' && newStatus === 'cancelled') {
-    console.log(`[STOCK] Devolviendo stock por cancelacion del pedido ${updatedOrder._id}`);
-    for (const item of oldOrder.items) {
-      const product = await ProductService.viewById(item.productId);
-      if (product && product.controlStock) {
-        product.stock += item.quantity;
-        await product.save();
-        console.log(`   -> Repuesto "${product.title}": +${item.quantity} (Nuevo Stock: ${product.stock})`);
-      }
+    const oldStatus = oldOrder.status;
+    if (oldStatus === 'cancelled' && newStatus && newStatus !== 'cancelled') {
+      throw new AppError(409, 'Un pedido cancelado no puede reabrirse')
     }
-  }
+    const updateData: Record<string, number | OrderStatus> = {};
+    if (newStatus !== undefined) updateData.status = newStatus;
 
-  return updatedOrder;
+    if (newDeliveryCost !== undefined) {
+      updateData.deliveryCost = newDeliveryCost;
+      const discount = (oldOrder.subtotal * oldOrder.discountPercent) / 100;
+      const baseTotal = oldOrder.subtotal - discount + newDeliveryCost;
+      const recalculated = applyCreditSurcharge(baseTotal, oldOrder.paymentMethod);
+      updateData.surcharge = recalculated.surcharge;
+      updateData.total = Math.max(0, recalculated.total);
+    }
+
+    const updatedOrder = await OrderModel.findByIdAndUpdate(id, updateData, {
+      returnDocument: 'after', session,
+    });
+    if (!updatedOrder) return null;
+
+    const nextStatus = newStatus ?? oldStatus;
+    const totalChanged = newDeliveryCost !== undefined && updatedOrder.total !== oldOrder.total;
+    if (oldStatus === 'delivered' && (nextStatus !== 'delivered' || totalChanged)) {
+      await revertAnalyticsOnDelivery(oldOrder, session);
+    }
+    if (nextStatus === 'delivered' && (oldStatus !== 'delivered' || totalChanged)) {
+      await updateAnalyticsOnDelivery(updatedOrder, session);
+    }
+    if (newStatus && oldStatus !== 'cancelled' && newStatus === 'cancelled') {
+      await restoreStock(oldOrder.items, session);
+    }
+
+    return updatedOrder;
+  });
 };
 
 export const softDelete = async (id: string): Promise<iOrder | null> => {
-  const order = await OrderModel.findById(id);
-  if (!order) return null;
-  if (order.deleted) return order;
+  return mongoose.connection.transaction(async session => {
+    const order = await OrderModel.findById(id).session(session);
+    if (!order || order.deleted) return order;
 
-  // Si estaba entregado, revertir analiticas (el pedido ya sumó al entregarse)
-  if (order.status === 'delivered') {
-    await revertAnalyticsOnDelivery(order);
-  }
-
-  // Reponer stock salvo que ya esté cancelado (el cancelado ya repuso stock)
-  if (order.status !== 'cancelled') {
-    console.log(`[STOCK] Devolviendo stock por anulacion del pedido ${order._id}`);
-    for (const item of order.items) {
-      const product = await ProductService.viewById(item.productId);
-      if (product && product.controlStock) {
-        product.stock += item.quantity;
-        await product.save();
-        console.log(`   -> Repuesto "${product.title}": +${item.quantity} (Nuevo Stock: ${product.stock})`);
-      }
+    if (order.status === 'delivered') {
+      await revertAnalyticsOnDelivery(order, session);
     }
-  }
+    if (order.status !== 'cancelled') {
+      await restoreStock(order.items, session);
+    }
 
-  order.deleted = true;
-  const saved = await order.save();
-  console.log(`[PEDIDO] Pedido ${saved._id} anulado`);
-  return saved;
+    order.deleted = true;
+    return order.save({ session });
+  });
 };

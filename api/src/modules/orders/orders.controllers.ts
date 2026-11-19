@@ -12,13 +12,11 @@ export const createOrder = async (req: Request, res: Response) => {
     const order = await OrderService.createOrder(req.body)
     getIO().to('admins').emit('new-order', order)
     return sendSucces(res, order, 201)
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AppError) {
       return sendError(res, friendlyAppErrorMessage(error), error.statusCode)
     }
-    const esErrorDeNegocio = error?.message && !error.message.includes('Cannot')
-    if (esErrorDeNegocio) return sendError(res, error.message, 400)
-    console.error(`[ERROR] createOrder - ${error?.message}`)
+    console.error('[ERROR] createOrder', error)
     return sendError(res, 'Error al procesar el pedido', 500)
   }
 }
@@ -44,7 +42,7 @@ export const updateStatusOrder = asyncHandler(async (req: Request, res: Response
   }
 
   // Validar deliveryCost si viene
-  if (deliveryCost !== undefined && (typeof deliveryCost !== 'number' || deliveryCost < 0)) {
+  if (deliveryCost !== undefined && (typeof deliveryCost !== 'number' || !Number.isFinite(deliveryCost) || deliveryCost < 0)) {
     return sendError(res, 'Costo de envío inválido', 400)
   }
 

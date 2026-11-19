@@ -19,8 +19,8 @@ export interface iCartItem {
   addons?: iCartAddon[];
 }
 
-export type PaymentMethod = 'cash' | 'debito' | 'credito' | 'transferencia';
-export const validPaymentMethods: PaymentMethod[] = ['cash', 'debito', 'credito', 'transferencia'];
+type PaymentMethod = 'cash' | 'debito' | 'credito' | 'transferencia';
+const validPaymentMethods: PaymentMethod[] = ['cash', 'debito', 'credito', 'transferencia'];
 
 export interface iOrder extends Document {
   customer: {
