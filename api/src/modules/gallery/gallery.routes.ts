@@ -4,7 +4,7 @@ import * as GalleryController from './gallery.controller';
 
 const router = Router();
 
-router.get('/',     GalleryController.list);
+router.get('/',     isAdmin, GalleryController.list);
 router.post('/',    isAdmin, GalleryController.uploadMiddleware, GalleryController.upload);
 router.delete('/:id', isAdmin, GalleryController.remove);
 

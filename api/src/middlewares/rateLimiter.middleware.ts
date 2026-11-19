@@ -1,4 +1,25 @@
 import rateLimit from 'express-rate-limit'
+import { createHash } from 'crypto'
+
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  message: { success: false, error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+export const loginAccountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  skipSuccessfulRequests: true,
+  skip: req => typeof req.body?.email !== 'string' || !req.body.email.trim(),
+  keyGenerator: req => createHash('sha256').update(req.body.email.trim().toLowerCase()).digest('hex'),
+  message: { success: false, error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
 
 export const ordersLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

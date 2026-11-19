@@ -6,6 +6,7 @@ import { requestLogger } from './middlewares/logger.middleware';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app: Application = express();
+app.set('trust proxy', 1);
 
 const allowedOrigins = [
     process.env.CLIENT_URL,

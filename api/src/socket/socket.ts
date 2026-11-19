@@ -1,6 +1,6 @@
 import { Server } from 'socket.io'
 import { Server as HttpServer } from 'http'
-import jwt from 'jsonwebtoken'
+import { validateAdminToken } from '../modules/users/admin-session'
 
 let io: Server
 
@@ -10,7 +10,7 @@ export const initSocket = (httpServer: HttpServer): void => {
   })
 
   // Middleware de autenticación: solo admins con JWT válido pueden conectarse
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token as string | undefined
 
     if (!token) {
@@ -18,7 +18,7 @@ export const initSocket = (httpServer: HttpServer): void => {
     }
 
     try {
-      jwt.verify(token, process.env.JWT_SECRET!)
+      if (!await validateAdminToken(token)) throw new Error('Sesión inválida')
       next()
     } catch {
       next(new Error('Token inválido o expirado'))
