@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/format';
 import { cloudinaryImage } from '@/lib/image';
 import type { Product } from '@/types';
 import styles from './ProductCard.module.css';
+import { ProductConfigurator } from './ProductConfigurator';
 
 interface ProductCardProps {
   product: Product;
@@ -17,6 +18,7 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
   const addItem = useCartStore((state) => state.addItem);
   const [imageError, setImageError] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [configuring, setConfiguring] = useState(false);
 
   const isOutOfStock = product.controlStock === true && (product.stock ?? 0) <= 0;
   const isButtonDisabled = !isStoreOpen || !product.available || isOutOfStock;
@@ -62,7 +64,7 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
 
         <button
           type="button"
-          onClick={() => !isButtonDisabled && addItem(product, 1, [])}
+          onClick={() => { if (!isButtonDisabled) { if (product.tipoProducto === 'configurable') setConfiguring(true); else addItem(product, 1, []); } }}
           disabled={isButtonDisabled}
           className={`absolute -bottom-2 -right-2 z-20 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-transform active:scale-90 ${
             isButtonDisabled
@@ -74,6 +76,7 @@ export const ProductCard = ({ product, isStoreOpen }: ProductCardProps) => {
           {isOutOfStock ? <PackageX className="h-3.5 w-3.5" /> : <Plus className="h-4 w-4" />}
         </button>
       </div>
+      {configuring && <ProductConfigurator product={product} onClose={() => setConfiguring(false)} onConfirm={(ingredients, detail) => { addItem({ ...detail, addons: product.addons }, 1, [], ingredients); setConfiguring(false); }} />}
     </article>
   );
 };

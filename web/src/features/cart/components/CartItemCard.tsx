@@ -8,6 +8,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CartItemHeader } from './CartItemHeader';
 import { CartItemExtrasPanel } from './CartItemExtrasPanel';
 import type { CartItem, Addon } from '@/types';
+import { ProductConfigurator } from '@/features/menu/components/ProductConfigurator';
 
 interface CartItemCardProps {
   item: CartItem;
@@ -18,16 +19,18 @@ export const CartItemCard = ({ item, index }: CartItemCardProps) => {
   const updateQuantity  = useCartStore(s => s.updateQuantity);
   const removeItem      = useCartStore(s => s.removeItem);
   const updateItemAddon = useCartStore(s => s.updateItemAddon);
+  const updateItemIngredients = useCartStore(s => s.updateItemIngredients);
 
   const { product, quantity, addons, itemTotal } = item;
 
   const [isRemoving, setIsRemoving] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
+  const [editingIngredients, setEditingIngredients] = useState(false);
 
   // DNA signature: evita estado stale cuando los items se reordenan tras un split/merge
   const sortedAddons   = [...addons].sort((a, b) => a.addon.id.localeCompare(b.addon.id));
-  const dataSignature  = `${product.id}-${sortedAddons.map(a => `${a.addon.id}:${a.quantity}`).join('|')}`;
+  const dataSignature  = `${product.id}-${sortedAddons.map(a => `${a.addon.id}:${a.quantity}`).join('|')}-${(item.ingredientes ?? []).map(i => `${i.grupoId}:${i.ingredienteId}:${i.cantidad}`).sort().join('|')}`;
   const [prevSignature, setPrevSignature] = useState(dataSignature);
   if (dataSignature !== prevSignature) {
     setPrevSignature(dataSignature);
@@ -60,6 +63,13 @@ export const CartItemCard = ({ item, index }: CartItemCardProps) => {
         onRemove={handleRemove}
       />
 
+      {product.tipoProducto === 'configurable' && <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-white/60">
+        {(item.ingredientes ?? []).map(ingredient => <p key={`${ingredient.grupoId}-${ingredient.ingredienteId}`}>
+          {ingredient.grupoNombre}: {ingredient.cantidad}× {ingredient.ingredienteNombre} {ingredient.precio ? `(+${formatPrice(ingredient.precio * ingredient.cantidad)})` : ''}
+        </p>)}
+        <button onClick={() => setEditingIngredients(true)} className="mt-1 font-semibold text-primary">Editar ingredientes</button>
+      </div>}
+
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
         <Stepper value={quantity} onIncrease={handleIncrease} onDecrease={handleDecrease} minValue={0} size="sm" />
         <span className="text-xl font-black text-white tracking-tight">{formatPrice(itemTotal)}</span>
@@ -82,6 +92,7 @@ export const CartItemCard = ({ item, index }: CartItemCardProps) => {
           onAddonChange={(addon: Addon, delta: number) => updateItemAddon(index, addon, delta)}
         />
       )}
+      {editingIngredients && <ProductConfigurator product={product} initial={item.ingredientes} onClose={() => setEditingIngredients(false)} onConfirm={(ingredients, detail) => { updateItemIngredients(index, ingredients, { ...detail, addons: product.addons }); setEditingIngredients(false); }} />}
     </div>
   );
 };

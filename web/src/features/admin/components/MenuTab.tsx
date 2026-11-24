@@ -10,10 +10,11 @@ import { ImageUploadButton } from './ui/ImageUploadButton';
 import { useAdminMenu } from '../hooks/useAdminMenu';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 import { cloudinaryImage } from '@/lib/image';
+import { ConfigurableCatalog } from './ConfigurableCatalog';
 
 export function MenuTab() {
   const {
-    products, cats, addons, reload,
+    products, cats, addons, options, groups, reload,
     pForm, setPForm, pEditId, pErr, saveProduct, editProduct, toggleProduct, removeProduct, cancelProduct,
     cForm, setCForm, cEditId, saveCat, editCat, toggleCat, removeCat, cancelCat,
     aForm, setAForm, aEditId, saveAddon, editAddon, toggleAddon, removeAddon, cancelAddon,
@@ -94,6 +95,8 @@ export function MenuTab() {
           })}
         </div>
       </AdminCard>
+
+      <ConfigurableCatalog options={options} groups={groups} reload={reload} />
 
       {/* ── Adicionales ── */}
       <AdminCard>
@@ -181,6 +184,26 @@ export function MenuTab() {
             </div>
             
             <AdminTextarea placeholder="Descripción" value={pForm.description} onChange={e => setPForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+            <div className="space-y-2 rounded-lg border border-white/10 p-3">
+              <p className="text-xs font-semibold text-white/70">Tipo de producto</p>
+              <AdminSelect value={pForm.tipoProducto} onChange={e => setPForm(p => ({ ...p, tipoProducto: e.target.value as 'simple' | 'configurable', groupIds: e.target.value === 'simple' ? [] : p.groupIds }))}>
+                <option value="simple">Simple</option><option value="configurable">Personalizable por pasos</option>
+              </AdminSelect>
+              {pForm.tipoProducto === 'configurable' && <div className="space-y-2">
+                <p className="text-xs text-white/40">Elegí los pasos. El orden de esta lista es el orden que verá el cliente.</p>
+                {groups.filter(group => group.activo || pForm.groupIds.includes(group._id)).sort((a, b) => {
+                  const ai = pForm.groupIds.indexOf(a._id), bi = pForm.groupIds.indexOf(b._id);
+                  return ai < 0 ? (bi < 0 ? a.nombre.localeCompare(b.nombre) : 1) : bi < 0 ? -1 : ai - bi;
+                }).map(group => {
+                  const index = pForm.groupIds.indexOf(group._id);
+                  return <div key={group._id} className="flex items-center justify-between gap-2 rounded-lg bg-white/5 p-2 text-xs text-white/70">
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={index >= 0} disabled={!group.activo && index < 0} onChange={() => setPForm(p => ({ ...p, groupIds: index >= 0 ? p.groupIds.filter((id: string) => id !== group._id) : [...p.groupIds, group._id] }))} />{index >= 0 ? `${index + 1}. ` : ''}{group.nombre}{!group.activo ? ' (inactivo)' : ''}</label>
+                    {index >= 0 && <span className="flex gap-1"><button disabled={index === 0} onClick={() => setPForm(p => { const ids = [...p.groupIds]; [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]]; return { ...p, groupIds: ids }; })} className="rounded bg-white/10 px-2 disabled:opacity-30" aria-label={`Subir ${group.nombre}`}>↑</button>
+                      <button disabled={index === pForm.groupIds.length - 1} onClick={() => setPForm(p => { const ids = [...p.groupIds]; [ids[index], ids[index + 1]] = [ids[index + 1], ids[index]]; return { ...p, groupIds: ids }; })} className="rounded bg-white/10 px-2 disabled:opacity-30" aria-label={`Bajar ${group.nombre}`}>↓</button></span>}
+                  </div>;
+                })}
+              </div>}
+            </div>
             <ImageUploadButton
               uploading={productImageUploading}
               setUploading={setProductImageUploading}

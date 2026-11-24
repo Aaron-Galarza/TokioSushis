@@ -1,8 +1,10 @@
 import { TRANSFER_INFO } from '@/constants/admin';
 import { formatOrderNumber } from '@/lib/format';
 
+const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
+
 export const generateComandaHTML = (order: any): string => {
-  const num = formatOrderNumber(order);
+  const num = escapeHtml(formatOrderNumber(order));
   const dt = new Date(order.createdAt);
   
   const deliveryLabel = order.deliveryType === 'delivery' ? 'DELIVERY' : 'RETIRO LOCAL';
@@ -26,10 +28,11 @@ export const generateComandaHTML = (order: any): string => {
 
   const itemsHtml = order.items?.map((item: any) => `
     <div style="margin-bottom: 8px; font-size: 1.1em;">
-      <strong>${item.quantity}x ${item.title}</strong>
+      <strong>${item.quantity}x ${escapeHtml(item.title)}</strong>
+      ${item.ingredientes?.length ? `<ul style="list-style: none; padding-left: 12px; margin: 3px 0; color: #444; font-size: 0.9em;">${item.ingredientes.map((entry: any) => `<li>&#8627; ${entry.cantidad}x ${escapeHtml(entry.ingredienteNombre)} (${escapeHtml(entry.grupoNombre)})</li>`).join('')}</ul>` : ''}
       ${item.addons && item.addons.length > 0 ? `
         <ul style="list-style: none; padding-left: 12px; margin: 3px 0; color: #444; font-size: 0.9em;">
-          ${item.addons.map((a: any) => `<li>&#8627; ${a.quantity}x ${a.title || a.name}</li>`).join('')}
+          ${item.addons.map((a: any) => `<li>&#8627; ${a.quantity}x ${escapeHtml(a.title || a.name)}</li>`).join('')}
         </ul>
       ` : ''}
     </div>
@@ -82,10 +85,10 @@ export const generateComandaHTML = (order: any): string => {
         <div class="details">
           <p>Fecha: ${orderDate} | Hora: ${orderTime}</p>
           <p>Tipo: ${deliveryLabel}</p>
-          <p>Cliente: ${order.customer?.name || 'Cliente'}</p>
-          <p>Teléfono: ${order.customer?.phone || '-'}</p>
-          ${order.delivery?.address ? `<p>Dirección: ${order.delivery.address}</p>` : ''}
-          ${order.notes ? `<div class="notes-box"><strong>NOTAS:</strong> ${order.notes}</div>` : ''}
+          <p>Cliente: ${escapeHtml(order.customer?.name || 'Cliente')}</p>
+          <p>Teléfono: ${escapeHtml(order.customer?.phone || '-')}</p>
+          ${order.delivery?.address ? `<p>Dirección: ${escapeHtml(order.delivery.address)}</p>` : ''}
+          ${order.notes ? `<div class="notes-box"><strong>NOTAS:</strong> ${escapeHtml(order.notes)}</div>` : ''}
         </div>
         <div class="separator"></div>
         <div class="products">
@@ -102,7 +105,7 @@ export const generateComandaHTML = (order: any): string => {
           
           <p style="font-size: 1.2em; font-weight: bold; margin-top: 4px;">TOTAL: $${order.total?.toLocaleString('es-AR') || '0'}</p>
           <div class="separator" style="margin: 4px 0 2px 0;"></div>
-          <p style="font-size: 1em; font-weight: bold; margin-top: 4px; text-align: center; text-transform: uppercase;">Pago: ${paymentLabel}</p>
+          <p style="font-size: 1em; font-weight: bold; margin-top: 4px; text-align: center; text-transform: uppercase;">Pago: ${escapeHtml(paymentLabel)}</p>
           ${order.paymentMethod === 'transferencia' ? `<p style="font-size: 0.85em; text-align: center; margin-top: 2px;">(${TRANSFER_INFO.alias} — ${TRANSFER_INFO.holder})</p>` : ''}
         </div>
       </div>

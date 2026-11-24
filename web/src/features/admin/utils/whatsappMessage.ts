@@ -30,8 +30,11 @@ export function formatWhatsAppLink(phone: string, order: any): string {
       const extras = (item.addons || [])
         .map((a: any) => `    + ${a.quantity}x ${a.title || a.name}`)
         .join('\n');
+      const ingredientes = (item.ingredientes || [])
+        .map((entry: any) => `    ↳ ${entry.cantidad}x ${entry.ingredienteNombre} (${entry.grupoNombre})`)
+        .join('\n');
         
-      return `  - ${quantity}x ${title}${extras ? '\n' : ''}${extras}`;
+      return [`  - ${quantity}x ${title}`, ingredientes, extras].filter(Boolean).join('\n');
     })
     .join('\n');
 

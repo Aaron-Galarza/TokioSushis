@@ -3,6 +3,7 @@
 interface OrderItemAddon {
   title: string;
   quantity: number;
+  price?: number;
 }
 
 interface OrderItem {
@@ -10,6 +11,8 @@ interface OrderItem {
   quantity: number;
   price: number;
   addons?: OrderItemAddon[];
+  ingredientes?: { ingredienteNombre: string; grupoNombre?: string; cantidad: number; precio: number }[];
+  precioIngredientes?: number;
 }
 
 interface OrderItemListProps {
@@ -33,7 +36,7 @@ export function OrderItemList({ items }: OrderItemListProps) {
                 )}
               </span>
               <span className="text-white/40 shrink-0 ml-2">
-                ${(item.price * item.quantity)?.toLocaleString('es-AR')}
+                ${((item.price + (item.precioIngredientes ?? 0) + (item.addons ?? []).reduce((sum, addon) => sum + (addon.price ?? 0) * addon.quantity, 0)) * item.quantity).toLocaleString('es-AR')}
               </span>
             </div>
             {item.addons && item.addons.length > 0 && (
@@ -41,6 +44,7 @@ export function OrderItemList({ items }: OrderItemListProps) {
                 + {item.addons.map((a) => `${a.quantity}x ${a.title}`).join(', ')}
               </p>
             )}
+            {!!item.ingredientes?.length && <p className="mt-0.5 pl-4 text-[11px] text-white/40">{item.ingredientes.map(entry => `${entry.cantidad}× ${entry.ingredienteNombre}`).join(' · ')}</p>}
           </div>
         );
       })}

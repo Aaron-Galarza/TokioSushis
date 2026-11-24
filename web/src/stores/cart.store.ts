@@ -3,16 +3,36 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { Product, CartItem, CartAddon, Coupon, Addon } from '@/types';
+import type { SelectedIngredient } from '@/types';
 
 // 🛠️ HELPERS
-const calcItemTotal = (prod: Product, qty: number, addons: CartAddon[]) => 
-  qty * (prod.price + addons.reduce((sum, a) => sum + a.addon.price * a.quantity, 0));
+const calcItemTotal = (prod: Product, qty: number, addons: CartAddon[], ingredientes: SelectedIngredient[] = []) =>
+  qty * (prod.price + addons.reduce((sum, a) => sum + a.addon.price * a.quantity, 0)
+    + ingredientes.reduce((sum, item) => sum + (item.precio ?? 0) * item.cantidad, 0));
+
+const ingredientKey = (items: SelectedIngredient[] = []) => items.map(item => `${item.grupoId}:${item.ingredienteId}:${item.cantidad}`).sort().join('|');
 
 const areSameAddons = (a: CartAddon[], b: CartAddon[]) => {
   if (a.length !== b.length) return false;
   const sort = (x: CartAddon, y: CartAddon) => x.addon.id.localeCompare(y.addon.id);
   const sortA = [...a].sort(sort), sortB = [...b].sort(sort);
   return sortA.every((x, i) => x.addon.id === sortB[i].addon.id && x.quantity === sortB[i].quantity);
+};
+
+const mergeSameItems = (items: CartItem[]) => {
+  const merged: CartItem[] = [];
+  for (const item of items) {
+    const previous = merged.find(candidate => candidate.product.id === item.product.id &&
+      areSameAddons(candidate.addons, item.addons) && ingredientKey(candidate.ingredientes) === ingredientKey(item.ingredientes));
+    if (previous) {
+      previous.quantity += item.quantity;
+      previous.product = item.product;
+      previous.addons = item.addons;
+      previous.ingredientes = item.ingredientes;
+      previous.itemTotal = calcItemTotal(previous.product, previous.quantity, previous.addons, previous.ingredientes);
+    } else merged.push({ ...item });
+  }
+  return merged;
 };
 
 interface CartState {
@@ -25,7 +45,8 @@ interface CartState {
   distanceKm: number;
   deliveryCost: number;
 
-  addItem: (product: Product, quantity: number, addons: CartAddon[]) => void;
+  addItem: (product: Product, quantity: number, addons: CartAddon[], ingredientes?: SelectedIngredient[]) => void;
+  updateItemIngredients: (index: number, ingredientes: SelectedIngredient[], product: Product) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   updateItemAddon: (itemIndex: number, addon: Addon, delta: number) => void;
@@ -55,15 +76,30 @@ export const useCartStore = create<CartState>()(
       distanceKm: 0,
       deliveryCost: 0,
 
-      addItem: (product, quantity, addons) => set((state) => {
-        const idx = state.items.findIndex(i => i.product.id === product.id && areSameAddons(i.addons, addons));
+      addItem: (product, quantity, addons, ingredientes = []) => set((state) => {
+        const idx = state.items.findIndex(i => i.product.id === product.id && areSameAddons(i.addons, addons) && ingredientKey(i.ingredientes) === ingredientKey(ingredientes));
         if (idx >= 0) {
           const newItems = [...state.items];
-          newItems[idx].quantity += quantity;
-          newItems[idx].itemTotal = calcItemTotal(product, newItems[idx].quantity, addons);
+          const mergedQuantity = newItems[idx].quantity + quantity;
+          newItems[idx] = { ...newItems[idx], product, quantity: mergedQuantity, addons, ingredientes,
+            itemTotal: calcItemTotal(product, mergedQuantity, addons, ingredientes) };
           return { items: newItems };
         }
-        return { items: [...state.items, { product, quantity, addons, itemTotal: calcItemTotal(product, quantity, addons) }] };
+        return { items: [...state.items, { product, quantity, addons, ingredientes, itemTotal: calcItemTotal(product, quantity, addons, ingredientes) }] };
+      }),
+
+      updateItemIngredients: (index, ingredientes, product) => set(state => {
+        const items = [...state.items];
+        const original = items[index];
+        if (!original) return state;
+        const updated: CartItem = { ...original, product, quantity: 1, ingredientes,
+          itemTotal: calcItemTotal(product, 1, original.addons, ingredientes) };
+        if (original.quantity > 1) {
+          items[index] = { ...original, quantity: original.quantity - 1,
+            itemTotal: calcItemTotal(original.product, original.quantity - 1, original.addons, original.ingredientes) };
+          items.splice(index + 1, 0, updated);
+        } else items[index] = updated;
+        return { items: mergeSameItems(items) };
       }),
 
       removeItem: (index) => set((state) => ({ items: state.items.filter((_, i) => i !== index) })),
@@ -71,8 +107,10 @@ export const useCartStore = create<CartState>()(
       updateQuantity: (index, qty) => set((state) => {
         if (qty <= 0) return { items: state.items.filter((_, i) => i !== index) };
         const newItems = [...state.items];
-        newItems[index].quantity = qty;
-        newItems[index].itemTotal = calcItemTotal(newItems[index].product, qty, newItems[index].addons);
+        const original = newItems[index];
+        if (!original) return state;
+        newItems[index] = { ...original, quantity: qty,
+          itemTotal: calcItemTotal(original.product, qty, original.addons, original.ingredientes) };
         return { items: newItems };
       }),
 
@@ -85,7 +123,7 @@ export const useCartStore = create<CartState>()(
         if (item.quantity > 1) {
           const leftovers = JSON.parse(JSON.stringify(item));
           leftovers.quantity = item.quantity - 1;
-          leftovers.itemTotal = calcItemTotal(leftovers.product, leftovers.quantity, leftovers.addons);
+          leftovers.itemTotal = calcItemTotal(leftovers.product, leftovers.quantity, leftovers.addons, leftovers.ingredientes);
           
           newItems.splice(index + 1, 0, leftovers);
           
@@ -104,19 +142,9 @@ export const useCartStore = create<CartState>()(
         } else if (delta > 0) {
           target.addons.push({ addon, quantity: delta });
         }
-        target.itemTotal = calcItemTotal(target.product, target.quantity, target.addons);
+        target.itemTotal = calcItemTotal(target.product, target.quantity, target.addons, target.ingredientes);
 
-        const merged: CartItem[] = [];
-        newItems.forEach(curr => {
-          const exist = merged.find(m => m.product.id === curr.product.id && areSameAddons(m.addons, curr.addons));
-          if (exist) {
-            exist.quantity += curr.quantity;
-            exist.itemTotal += curr.itemTotal;
-          } else {
-            merged.push(curr);
-          }
-        });
-        return { items: merged };
+        return { items: mergeSameItems(newItems) };
       }),
 
       clearCart: () => set({ items: [], coupon: null, paymentMethod: null }),

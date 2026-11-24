@@ -1,5 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+import { ProductConfigurator } from '@/features/menu/components/ProductConfigurator';
+import type { Product } from '@/types';
+
 import { Plus, Minus, X, ShoppingBag, Loader2, ChevronDown, Landmark } from 'lucide-react';
 import { AddressAutocomplete } from '@/features/checkout/components/AddressAutocomplete';
 import { useQuickOrder } from '../hooks/useQuickOrder';
@@ -13,6 +17,7 @@ interface Props {
 }
 
 export function QuickOrderForm({ products, addons, onSuccess }: Props) {
+  const [configuring, setConfiguring] = useState<Product | null>(null);
   const {
     open,
     setOpen,
@@ -158,7 +163,10 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
             <select
               onChange={(e) => {
                 if (e.target.value) {
-                  addProduct(e.target.value);
+                  const selected = products.find(p => p._id === e.target.value);
+                  if (selected?.tipoProducto === 'configurable') {
+                    setConfiguring({ ...selected, id: selected._id, category: typeof selected.category === 'object' ? selected.category._id : selected.category });
+                  } else addProduct(e.target.value);
                   e.target.value = '';
                 }
               }}
@@ -192,7 +200,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                       }))
                 );
                 return (
-                  <div key={item.productId} className="bg-[#111] border border-white/5 rounded-lg p-3">
+                  <div key={item.lineId} className="bg-[#111] border border-white/5 rounded-lg p-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm text-white font-medium truncate flex-1 min-w-0">
                         {item.title}
@@ -202,26 +210,28 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                           ${item.price.toLocaleString('es-AR')}
                         </span>
                         <button
-                          onClick={() => updateQty(item.productId, -1)}
+                          onClick={() => updateQty(item.lineId, -1)}
                           className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all shrink-0"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="text-sm text-white w-4 text-center shrink-0">{item.quantity}</span>
                         <button
-                          onClick={() => updateQty(item.productId, 1)}
+                          onClick={() => updateQty(item.lineId, 1)}
                           className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all shrink-0"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
                         <button
-                          onClick={() => setItems(items.filter((i) => i.productId !== item.productId))}
+                          onClick={() => setItems(items.filter((i) => i.lineId !== item.lineId))}
                           className="w-6 h-6 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition-all shrink-0"
                         >
                           <X className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
+
+                    {item.ingredientes.length > 0 && <p className="mt-1 pl-2 text-xs text-white/50">{item.ingredientes.map(entry => `${entry.cantidad}× ${entry.ingredienteNombre}`).join(' · ')}</p>}
 
                     {/* Lista de Addons filtrada por categoría del producto */}
                     {applicableAddons.length > 0 && (
@@ -241,7 +251,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                             >
                               <span
                                 onClick={() => {
-                                  if (quantity === 0) updateAddonQty(item.productId, a, 1);
+                                  if (quantity === 0) updateAddonQty(item.lineId, a, 1);
                                 }}
                                 className={quantity === 0 ? 'cursor-pointer' : ''}
                               >
@@ -252,7 +262,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                                 <div className="flex items-center gap-1 ml-1 pl-1 border-l border-black/20">
                                   <button
                                     type="button"
-                                    onClick={() => updateAddonQty(item.productId, a, -1)}
+                                    onClick={() => updateAddonQty(item.lineId, a, -1)}
                                     className="w-3.5 h-3.5 rounded-sm bg-black/10 hover:bg-black/20 flex items-center justify-center text-black"
                                   >
                                     <Minus className="w-2 h-2" />
@@ -260,7 +270,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
                                   <span className="font-bold min-w-[8px] text-center">{quantity}</span>
                                   <button
                                     type="button"
-                                    onClick={() => updateAddonQty(item.productId, a, 1)}
+                                    onClick={() => updateAddonQty(item.lineId, a, 1)}
                                     className="w-3.5 h-3.5 rounded-sm bg-black/10 hover:bg-black/20 flex items-center justify-center text-black"
                                   >
                                     <Plus className="w-2 h-2" />
@@ -302,6 +312,7 @@ export function QuickOrderForm({ products, addons, onSuccess }: Props) {
           {error && <p className="text-red-400 text-xs">{error}</p>}
         </div>
       )}
+      {configuring && <ProductConfigurator product={configuring} onClose={() => setConfiguring(null)} onConfirm={(ingredientes, detail) => { addProduct(configuring.id, ingredientes, detail); setConfiguring(null); }} />}
     </div>
   );
 }

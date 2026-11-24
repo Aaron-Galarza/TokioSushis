@@ -4,13 +4,16 @@ import { useState, useEffect } from 'react';
 import { deliveryService } from '@/services/delivery.service';
 import { createAdminOrder } from '@/services/admin.service';
 import type { PaymentKey } from '@/constants/admin';
+import type { Product, SelectedIngredient } from '@/types';
 
 export interface LineItem {
+  lineId: string;
   productId: string;
   title: string;
   price: number;
   quantity: number;
   addons: { addonId: string; title: string; price: number; quantity: number }[];
+  ingredientes: SelectedIngredient[];
 }
 
 const BLANK_CUSTOMER = { name: '', phone: '' };
@@ -52,29 +55,30 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
     calculate();
   }, [coords, deliveryType]);
 
-  const addProduct = (productId: string) => {
+  const addProduct = (productId: string, ingredientes: SelectedIngredient[] = [], detail?: Product) => {
     const prod = products.find((p: any) => p._id === productId);
     if (!prod) return;
-    const exists = items.find(i => i.productId === productId);
-    if (exists) {
-      setItems(items.map(i => i.productId === productId ? { ...i, quantity: i.quantity + 1 } : i));
-    } else {
-      setItems([...items, { productId: prod._id, title: prod.title, price: prod.price, quantity: 1, addons: [] }]);
-    }
+    const key = JSON.stringify(ingredientes.map(i => [i.grupoId, i.ingredienteId, i.cantidad]).sort());
+    setItems(current => {
+      const exists = current.find(i => i.productId === productId && JSON.stringify(i.ingredientes.map(x => [x.grupoId, x.ingredienteId, x.cantidad]).sort()) === key && !i.addons.length);
+      return exists
+        ? current.map(i => i.lineId === exists.lineId ? { ...i, quantity: i.quantity + 1, price: detail?.price ?? prod.price, ingredientes } : i)
+        : [...current, { lineId: crypto.randomUUID(), productId, title: prod.title, price: detail?.price ?? prod.price, quantity: 1, addons: [], ingredientes }];
+    });
   };
 
-  const updateQty = (productId: string, delta: number) => {
+  const updateQty = (lineId: string, delta: number) => {
     setItems(prev =>
       prev
-        .map(i => (i.productId === productId ? { ...i, quantity: i.quantity + delta } : i))
+        .map(i => (i.lineId === lineId ? { ...i, quantity: i.quantity + delta } : i))
         .filter(i => i.quantity > 0)
     );
   };
 
-  const updateAddonQty = (productId: string, addon: any, delta: number) => {
+  const updateAddonQty = (lineId: string, addon: any, delta: number) => {
     setItems(prev =>
       prev.map(item => {
-        if (item.productId !== productId) return item;
+        if (item.lineId !== lineId) return item;
 
         const exists = item.addons.find(a => a.addonId === addon._id);
 
@@ -101,10 +105,12 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
 
   const subtotal = items.reduce((sum, i) => {
     const addonsTotal = i.addons.reduce((s, a) => s + a.price * a.quantity, 0);
-    return sum + (i.price + addonsTotal) * i.quantity;
+    const ingredientsTotal = i.ingredientes.reduce((s, entry) => s + (entry.precio ?? 0) * entry.cantidad, 0);
+    return sum + (i.price + ingredientsTotal + addonsTotal) * i.quantity;
   }, 0);
 
-  const total = subtotal + deliveryCost;
+  const baseTotal = subtotal + deliveryCost;
+  const total = baseTotal + (paymentMethod === 'credito' ? Math.round(baseTotal * 0.15) : 0);
 
   const reset = () => {
     setCustomer(BLANK_CUSTOMER);
@@ -139,6 +145,7 @@ export function useQuickOrder(products: any[], onSuccess: () => void) {
           productId: i.productId,
           quantity: i.quantity,
           addons: i.addons.map(a => ({ addonId: a.addonId, quantity: a.quantity })),
+          ingredientes: i.ingredientes.map(entry => ({ grupoId: entry.grupoId, ingredienteId: entry.ingredienteId, cantidad: entry.cantidad })),
         })),
         deliveryType,
         paymentMethod,

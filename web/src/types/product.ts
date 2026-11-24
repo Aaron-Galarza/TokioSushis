@@ -1,4 +1,5 @@
 import { Addon } from './addon'; 
+import { ProductConfiguration } from './configurable';
 
 export interface Product {
   id: string;
@@ -13,4 +14,7 @@ export interface Product {
   addons?: Addon[]; 
   controlStock?: boolean;
   stock?: number
+  tipoProducto?: 'simple' | 'configurable';
+  gruposOpciones?: Array<{ grupo: string | { _id: string }; orden: number }>;
+  configuracion?: ProductConfiguration;
 }

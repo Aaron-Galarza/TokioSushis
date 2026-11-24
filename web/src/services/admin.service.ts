@@ -35,6 +35,18 @@ export const updateAddon = (id: string, payload: Record<string, unknown>) => api
 export const toggleAddonActive = (id: string) => api.put(`/addons/admin/toggleActive/${id}`);
 export const deleteAddon = (id: string) => api.delete(`/addons/admin/${id}`);
 
+// ── Ingredientes y pasos de productos configurables ────────────────────────
+export const fetchAdminOptions = () => api.get('/options/admin').then(r => r.data.data);
+export const createOption = (payload: Record<string, unknown>) => api.post('/options/admin', payload);
+export const updateOption = (id: string, payload: Record<string, unknown>) => api.put(`/options/admin/${id}`, payload);
+export const toggleOption = (id: string) => api.put(`/options/admin/toggleActive/${id}`);
+export const deleteOption = (id: string) => api.delete(`/options/admin/${id}`);
+export const fetchAdminOptionGroups = () => api.get('/option-groups/admin').then(r => r.data.data);
+export const createOptionGroup = (payload: Record<string, unknown>) => api.post('/option-groups/admin', payload);
+export const updateOptionGroup = (id: string, payload: Record<string, unknown>) => api.put(`/option-groups/admin/${id}`, payload);
+export const toggleOptionGroup = (id: string) => api.put(`/option-groups/admin/toggleActive/${id}`);
+export const deleteOptionGroup = (id: string) => api.delete(`/option-groups/admin/${id}`);
+
 // ── Coupons ─────────────────────────────────────────────────────────────────
 export const fetchAdminCoupons = () => api.get('/coupons/admin').then(r => r.data.data);
 export const createCoupon = (payload: Record<string, unknown>) => api.post('/coupons/admin', payload);

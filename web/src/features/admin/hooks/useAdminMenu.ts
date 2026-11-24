@@ -4,12 +4,15 @@ import {
   fetchAdminProducts, createProduct, updateProduct, toggleProductActive, deleteProduct,
   fetchAdminCategories, createCategory, updateCategory, toggleCategoryActive, deleteCategory,
   fetchAdminAddons, createAddon, updateAddon, toggleAddonActive, deleteAddon,
+  fetchAdminOptions, fetchAdminOptionGroups,
 } from '@/services/admin.service';
 import { useAdminCrud } from './useAdminCrud';
+import type { IngredientOption, OptionGroup } from '@/types';
 
 const PBLANK = {
   title: '', price: '', description: '', image: '',
   category: '', active: true, controlStock: false, stock: '0',
+  tipoProducto: 'simple' as 'simple' | 'configurable', groupIds: [] as string[],
 };
 const ABLANK = { title: '', price: '', categories: [] as string[], active: true };
 const CBLANK = { name: '', order: '0', active: true, icon: '' };
@@ -18,15 +21,19 @@ export function useAdminMenu() {
   const [products, setProducts] = useState<any[]>([]);
   const [cats, setCats]         = useState<any[]>([]);
   const [addons, setAddons]     = useState<any[]>([]);
+  const [options, setOptions] = useState<IngredientOption[]>([]);
+  const [groups, setGroups] = useState<OptionGroup[]>([]);
 
   const reload = useCallback(async () => {
     try {
-      const [p, c, a] = await Promise.all([
+      const [p, c, a, o, g] = await Promise.all([
         fetchAdminProducts(),
         fetchAdminCategories(),
         fetchAdminAddons(),
+        fetchAdminOptions(), fetchAdminOptionGroups(),
       ]);
       setProducts(p); setCats(c); setAddons(a);
+      setOptions(o); setGroups(g);
     } catch {}
   }, []);
 
@@ -43,6 +50,9 @@ export function useAdminMenu() {
         title: form.title, price: Number(form.price),
         description: form.description, category: form.category,
         active: form.active, controlStock: form.controlStock,
+        tipoProducto: form.tipoProducto,
+        gruposOpciones: form.tipoProducto === 'configurable'
+          ? form.groupIds.map((grupo: string, orden: number) => ({ grupo, orden })) : [],
       };
       if (form.controlStock) pl.stock = Number(form.stock);
       if (form.image.trim()) pl.image = form.image.trim();
@@ -53,6 +63,9 @@ export function useAdminMenu() {
       image: p.image || '',
       category: typeof p.category === 'object' ? p.category._id : p.category,
       active: p.active, controlStock: p.controlStock ?? false, stock: String(p.stock ?? 0),
+      tipoProducto: p.tipoProducto ?? 'simple',
+      groupIds: [...(p.gruposOpciones ?? [])].sort((a: any, b: any) => a.orden - b.orden)
+        .map((entry: any) => typeof entry.grupo === 'object' ? entry.grupo._id : entry.grupo),
     }),
   });
 
@@ -86,7 +99,7 @@ export function useAdminMenu() {
   });
 
   return {
-    products, cats, addons, reload,
+    products, cats, addons, options, groups, reload,
     pForm: productCrud.form, setPForm: productCrud.setForm, pEditId: productCrud.editId, pErr: productCrud.err,
     saveProduct: productCrud.save, editProduct: productCrud.edit, toggleProduct: productCrud.toggle, removeProduct: productCrud.remove, cancelProduct: productCrud.cancel,
     cForm: catCrud.form, setCForm: catCrud.setForm, cEditId: catCrud.editId,

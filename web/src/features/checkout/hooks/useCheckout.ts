@@ -9,6 +9,21 @@ import api from '@/services/api';
 import type { Coupon } from '@/types';
 import { PAYMENT_LABELS, type PaymentKey } from '@/constants/admin';
 
+interface SavedOrder {
+  orderNumber?: number;
+  customer?: { name: string };
+  deliveryType: 'pickup' | 'delivery';
+  delivery?: { address?: string };
+  paymentMethod: PaymentKey;
+  notes?: string;
+  items: Array<{
+    title: string; price: number; quantity: number; precioIngredientes?: number;
+    addons?: Array<{ title?: string; name?: string; price: number; quantity: number }>;
+    ingredientes?: Array<{ ingredienteNombre: string; grupoNombre: string; cantidad: number; precio: number }>;
+  }>;
+  subtotal: number; discountPercent?: number; surcharge?: number; total: number; couponCode?: string;
+}
+
 export function useCheckout() {
   const router = useRouter();
   
@@ -89,6 +104,7 @@ export function useCheckout() {
           productId: item.product.id,
           quantity: item.quantity,
           addons: item.addons.map(a => ({ addonId: a.addon.id, quantity: a.quantity })),
+          ingredientes: (item.ingredientes ?? []).map(ingredient => ({ grupoId: ingredient.grupoId, ingredienteId: ingredient.ingredienteId, cantidad: ingredient.cantidad })),
         })),
         deliveryType,
         paymentMethod,
@@ -100,32 +116,34 @@ export function useCheckout() {
       };
 
       const res = await api.post('/orders', payload);
-      const orderNumber = res.data?.data?.orderNumber;
+      const savedOrder = res.data?.data as SavedOrder | undefined;
+      if (!savedOrder || !Array.isArray(savedOrder.items)) throw new Error('La API no devolvió el pedido confirmado');
 
       sessionStorage.setItem('order_confirmation', JSON.stringify({
-        orderNumber,
-        customerName: name.trim(),
-        deliveryType,
-        deliveryAddress: deliveryType === 'delivery' ? deliveryAddress : null,
-        paymentMethod: PAYMENT_LABELS[paymentMethod as PaymentKey] ?? paymentMethod,
-        rawPaymentMethod: paymentMethod,
-        notes: notes.trim(),
-        items: items.map(item => ({
-          title: item.product.title,
+        orderNumber: savedOrder.orderNumber,
+        customerName: savedOrder.customer?.name ?? name.trim(),
+        deliveryType: savedOrder.deliveryType,
+        deliveryAddress: savedOrder.delivery?.address ?? null,
+        paymentMethod: PAYMENT_LABELS[savedOrder.paymentMethod as PaymentKey] ?? savedOrder.paymentMethod,
+        rawPaymentMethod: savedOrder.paymentMethod,
+        notes: savedOrder.notes ?? '',
+        items: savedOrder.items.map(item => ({
+          title: item.title,
           quantity: item.quantity,
-          price: item.product.price,
-          addons: item.addons.map(a => ({
-            name: a.addon.name,
+          price: item.price,
+          addons: (item.addons ?? []).map(a => ({
+            name: a.title ?? a.name,
             quantity: a.quantity,
-            price: a.addon.price,
+            price: a.price,
           })),
-          itemTotal: item.itemTotal,
+          ingredientes: (item.ingredientes ?? []).map(entry => ({ nombre: entry.ingredienteNombre, grupo: entry.grupoNombre, cantidad: entry.cantidad, precio: entry.precio })),
+          itemTotal: (item.price + (item.precioIngredientes ?? 0) + (item.addons ?? []).reduce((sum, a) => sum + a.price * a.quantity, 0)) * item.quantity,
         })),
-        subtotal,
-        discount,
-        surcharge, // ⚡ Se persiste el recargo calculado para la pantalla final
-        total,
-        couponCode: coupon ? couponCode.trim() : null,
+        subtotal: savedOrder.subtotal,
+        discount: savedOrder.subtotal * (savedOrder.discountPercent ?? 0) / 100,
+        surcharge: savedOrder.surcharge ?? 0,
+        total: savedOrder.total,
+        couponCode: savedOrder.couponCode ?? null,
       }));
 
       router.push('/order-confirmation');

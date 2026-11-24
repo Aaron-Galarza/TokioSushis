@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, ADMIN_COOKIE_OPTIONS, adminToken, apiBaseUrl } from '@/li
 
 const ALLOWED_MODULES = new Set([
   'products', 'categories', 'addons', 'orders', 'analytics',
-  'coupons', 'gallery', 'config', 'delivery',
+  'coupons', 'gallery', 'config', 'delivery', 'options', 'option-groups',
 ]);
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

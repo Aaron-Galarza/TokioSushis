@@ -19,6 +19,7 @@ interface OrderSnapshot {
     quantity: number;
     price: number;
     addons: { name: string; quantity: number; price: number }[];
+    ingredientes?: { nombre?: string; grupo?: string; cantidad: number; precio: number }[];
     itemTotal: number;
   }[];
   subtotal: number;
@@ -205,6 +206,7 @@ export default function OrderConfirmationPage() {
                       + {item.addons.map(a => `${a.quantity}x ${a.name}`).join(', ')}
                     </p>
                   )}
+                  {!!item.ingredientes?.length && <p className="mt-0.5 pl-4 text-[11px] text-white/45">{item.ingredientes.map(entry => `${entry.cantidad}× ${entry.nombre}`).join(' · ')}</p>}
                 </div>
                 <span className="text-sm text-white/60 shrink-0 ml-3">{formatPrice(item.itemTotal)}</span>
               </div>

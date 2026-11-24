@@ -55,6 +55,7 @@ export function SummarySection({ items, subtotal, discount, surcharge, total, de
                 ))}
               </div>
             )}
+            {!!item.ingredientes?.length && <p className="pl-6 text-xs text-white/50">{item.ingredientes.map(entry => `${entry.cantidad}× ${entry.ingredienteNombre}`).join(' · ')}</p>}
           </div>
         ))}
       </div>

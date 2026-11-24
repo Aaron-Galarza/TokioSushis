@@ -10,6 +10,14 @@ type ApiAddon = { _id: string; title: string; price: number; active: boolean; ca
 
 export const menuService = {
 
+  getProductDetail: async (id: string): Promise<Product> => {
+    const response = await fetch(`${PUBLIC_API_URL}/products/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('No se pudieron cargar las opciones');
+    const json = await response.json();
+    if (!json.success || !json.data) throw new Error('Producto no disponible');
+    return { ...json.data, id: json.data._id, category: typeof json.data.category === 'object' ? json.data.category._id : json.data.category };
+  },
+
   // 1. OBTENER PRODUCTOS
   getProducts: async (): Promise<Product[]> => {
     try {
