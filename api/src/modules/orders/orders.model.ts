@@ -17,7 +17,18 @@ export interface iCartItem {
   price: number;
   quantity: number;
   addons?: iCartAddon[];
+  ingredientes?: Array<{
+    grupoId: string; grupoNombre: string; ingredienteId: string;
+    ingredienteNombre: string; precio: number; cantidad: number;
+  }>;
+  precioIngredientes?: number;
 }
+
+const CartIngredientSchema = new Schema({
+  grupoId: { type: String, required: true }, grupoNombre: { type: String, required: true },
+  ingredienteId: { type: String, required: true }, ingredienteNombre: { type: String, required: true },
+  precio: { type: Number, required: true, min: 0 }, cantidad: { type: Number, required: true, min: 1 },
+}, { _id: false });
 
 type PaymentMethod = 'cash' | 'debito' | 'credito' | 'transferencia';
 const validPaymentMethods: PaymentMethod[] = ['cash', 'debito', 'credito', 'transferencia'];
@@ -65,6 +76,8 @@ const CartItemSchema = new Schema<iCartItem>({
   price: { type: Number, required: true, min: 0 },
   quantity: { type: Number, required: true, min: 1 },
   addons: { type: [CartAddonSchema], default: [] },
+  ingredientes: { type: [CartIngredientSchema], default: [] },
+  precioIngredientes: { type: Number, default: 0, min: 0 },
 }, { _id: false });
 
 const OrderSchema = new Schema<iOrder>({

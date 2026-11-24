@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { iProducto, ProductModel } from './products.model';
 import { CategoriaModel } from '../categorias/categorias.model';
 import { makeCrud } from '../../utils/crudFactory';
+import { resolveProductConfiguration } from './productConfig.resolver';
 
 const crud = makeCrud(ProductModel);
 
@@ -38,7 +39,7 @@ const sortByCategory = (products: any[]) =>
 
 export const viewAll = async (): Promise<iProducto[]> => {
   const products = await ProductModel.find()
-    .select('title description price image category active controlStock stock createdAt updatedAt')
+    .select('title description price image category active controlStock stock tipoProducto gruposOpciones createdAt updatedAt')
     .lean();
 
   return await attachCategories(products) as iProducto[];
@@ -46,7 +47,7 @@ export const viewAll = async (): Promise<iProducto[]> => {
 
 export const viewActive = async (): Promise<iProducto[]> => {
   const products = await ProductModel.find({ active: true })
-    .select('title description price image category active controlStock stock')
+    .select('title description price image category active controlStock stock tipoProducto')
     .lean();
 
   const withCategories = await attachCategories(products);
@@ -55,6 +56,15 @@ export const viewActive = async (): Promise<iProducto[]> => {
 
 export const viewById = async (id: string): Promise<iProducto | null> => {
   return await ProductModel.findById(id);
+};
+
+export const viewDetailed = async (id: string) => {
+  const product = await ProductModel.findById(id).populate({
+    path: 'gruposOpciones.grupo',
+    populate: { path: 'ingredientes.ingrediente' },
+  });
+  if (!product) return null;
+  return { ...product.toObject(), configuracion: resolveProductConfiguration(product) };
 };
 
 export const create = async (data: Partial<iProducto>): Promise<iProducto> => {

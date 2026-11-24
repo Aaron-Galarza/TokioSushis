@@ -10,6 +10,8 @@ import { argToUTC } from '../../utils/Timezone'
 import { Range, getRangeStartDate } from '../../utils/dateRange'
 import mongoose, { type ClientSession } from 'mongoose'
 import { ProductModel } from '../productos/products.model'
+import { resolveProductConfiguration } from '../productos/productConfig.resolver'
+import { validateProductConfiguration } from '../productos/productOptions.service'
 
 // Recargo del 15% por pago con tarjeta de crédito, sobre la base neta (subtotal - descuentos + envío)
 const applyCreditSurcharge = (baseTotal: number, paymentMethod: string): { total: number; surcharge: number } => {
@@ -42,6 +44,12 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
  
       const product = await ProductService.viewById(item.productId)
       if (!product) throw new AppError(404, `Producto ${item.productId} no encontrado`)
+      if (!product.active) throw new AppError(400, `El producto "${product.title}" no está disponible`)
+
+      const detailed = product.tipoProducto === 'configurable'
+        ? await ProductService.viewDetailed(item.productId) : null
+      const configuration = detailed?.configuracion ?? resolveProductConfiguration(product)
+      const { ingredientes, precioIngredientes } = validateProductConfiguration(configuration, item.ingredientes ?? [], product.gruposOpciones?.length ?? 0)
  
       if (product.controlStock) {
         if (product.stock <= 0) {
@@ -60,10 +68,16 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
 
       let addons: iCartAddon[] = []
       if (item.addons && item.addons.length > 0) {
+        if (new Set(item.addons.map((addon: { addonId: string }) => addon.addonId)).size !== item.addons.length) {
+          throw new AppError(400, 'Un adicional está repetido en el producto')
+        }
         addons = await Promise.all(
           item.addons.map(async (a: any) => {
             const adicional = await AdicionalService.viewById(a.addonId)
             if (!adicional) throw new AppError(404, `Adicional ${a.addonId} no encontrado`)
+            if (!adicional.active || (adicional.categories?.length && !adicional.categories.some(category => String(category) === String(product.category)))) {
+              throw new AppError(400, `El adicional "${adicional.title}" no está disponible para este producto`)
+            }
             const addonName = adicional.title ?? 'Adicional'
             return {
               addonId:  a.addonId,
@@ -81,15 +95,17 @@ export const createOrder = async (orderData: any): Promise<iOrder> => {
         title:     product.title,
         price:     product.price,
         quantity:  item.quantity,
-        addons
+        addons,
+        ingredientes,
+        precioIngredientes,
       }
     })
   )
 
   const subTotal = items.reduce((acc, item) => {
-    const itemTotal   = item.price * item.quantity
+    const itemTotal   = (item.price + (item.precioIngredientes ?? 0)) * item.quantity
     const addonsTotal = (item.addons || []).reduce((a, addon) => a + addon.price * addon.quantity, 0)
-    return acc + itemTotal + addonsTotal
+    return acc + itemTotal + addonsTotal * item.quantity
   }, 0)
  
   let total = subTotal

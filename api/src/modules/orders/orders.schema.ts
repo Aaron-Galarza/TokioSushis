@@ -14,6 +14,11 @@ const CartItemSchema = z.object({
     .int()
     .min(1, 'La cantidad debe ser al menos 1'),
   addons: z.array(CartAddonSchema).optional(),
+  ingredientes: z.array(z.object({
+    grupoId: z.string().regex(/^[a-f\d]{24}$/i),
+    ingredienteId: z.string().regex(/^[a-f\d]{24}$/i),
+    cantidad: z.number().int().min(1).optional(),
+  })).optional(),
 });
 
 const CoordinatesSchema = z.object({

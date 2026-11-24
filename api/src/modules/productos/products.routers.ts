@@ -9,6 +9,7 @@ const router = Router()
 router.get('/', ProductController.getActiveProducts)
 
 router.get('/admin', isAdmin, ProductController.getProducts)
+router.get('/:id', ProductController.getDetailedProduct)
 router.post('/admin', isAdmin, validate(createProductSchema), ProductController.createNewProduct)
 router.put('/admin/:id', isAdmin, validate(updateProductSchema), ProductController.updateProduct)
 router.put('/admin/toggleActive/:id', isAdmin, ProductController.activeStatusProduct)
