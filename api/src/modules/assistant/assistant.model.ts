@@ -22,6 +22,8 @@ export const generateTurn = async (system: string, contents: GeminiContent[], to
   let reserved = false;
   let usage: Usage | undefined;
   let completed = false;
+  let retries = 0;
+  let lastStatus: number | undefined;
   const started = Date.now();
   try {
     if (db) {
@@ -52,9 +54,14 @@ export const generateTurn = async (system: string, contents: GeminiContent[], to
             completed = true;
             return result.candidates?.[0]?.content ?? null;
           }
+          lastStatus = response.status;
+          const errorBody = await response.clone().json().catch(() => ({})) as { error?: { status?: string } };
+          const quotaExhausted = response.status === 429 && errorBody.error?.status === 'RESOURCE_EXHAUSTED';
           lastError = `Gemini respondió ${response.status} con ${candidate}`;
-          if (![429, 500, 502, 503, 504].includes(response.status)) break;
-          await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+          if (quotaExhausted || ![429, 500, 502, 503, 504].includes(response.status)) break;
+          retries++;
+          const jitter = Math.floor(Math.random() * 250);
+          await new Promise((resolve) => setTimeout(resolve, Math.min(3000, 350 * 2 ** attempt + jitter)));
         }
       }
       throw new Error(lastError);
@@ -67,7 +74,7 @@ export const generateTurn = async (system: string, contents: GeminiContent[], to
       try {
         const totalTokens = completed ? usage?.totalTokenCount ?? estimate : 0;
         await db.collection('assistant_usage_budget_v2').updateOne({ date }, { $inc: { reservedTokens: -estimate, usedTokens: totalTokens } });
-        await db.collection('assistant_usage_events').insertOne({ date, model, phase: 'agent', totalTokens, inputTokens: usage?.promptTokenCount ?? 0, outputTokens: usage?.candidatesTokenCount ?? 0, latencyMs: Date.now() - started, createdAt: new Date() });
+        await db.collection('assistant_usage_events').insertOne({ date, model, phase: 'agent', totalTokens, inputTokens: usage?.promptTokenCount ?? 0, outputTokens: usage?.candidatesTokenCount ?? 0, latencyMs: Date.now() - started, retries, lastStatus, createdAt: new Date() });
       } catch (error) { console.error('[assistant] no se pudo registrar el uso de IA', error); }
     }
   }
