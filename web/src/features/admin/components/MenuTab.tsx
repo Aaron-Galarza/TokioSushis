@@ -1,6 +1,6 @@
 'use client';
 
-import { createElement, useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { AdminCard } from './ui/AdminCard';
 import { AdminInput, AdminTextarea, AdminSelect } from './ui/AdminInput';
 import { IconPickerModal } from './ui/IconPickerModal';
@@ -8,7 +8,7 @@ import { AdminActionButtons } from './ui/AdminActionButtons';
 import { AdminProductRow } from './ui/AdminProductRow';
 import { ImageUploadButton } from './ui/ImageUploadButton';
 import { useAdminMenu } from '../hooks/useAdminMenu';
-import { getCategoryIcon } from '@/lib/categoryIcons';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { cloudinaryImage } from '@/lib/image';
 import { ConfigurableCatalog } from './ConfigurableCatalog';
 
@@ -26,7 +26,6 @@ export function MenuTab() {
 
   useEffect(() => { reload(); }, [reload]);
 
-  const SelectedIcon = cForm.icon ? getCategoryIcon('', cForm.icon) : null;
 
   const filteredProducts = useMemo(() => {
     if (!selectedCatFilter) return products;
@@ -59,7 +58,7 @@ export function MenuTab() {
                 : 'bg-white/5 border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
               }`}
           >
-            {SelectedIcon ? createElement(SelectedIcon, { className: 'w-4 h-4' }) : <span className="text-xs">🖼</span>}
+            {cForm.icon ? <CategoryIcon categoryName="" iconKey={cForm.icon} className="w-4 h-4" /> : <span className="text-xs">🖼</span>}
           </button>
           
           <button
@@ -75,11 +74,10 @@ export function MenuTab() {
 
         <div className="flex flex-col gap-2 max-h-60 overflow-y-auto overscroll-contain scrollbar-none">
           {cats.map(c => {
-            const CatIcon = getCategoryIcon(c.name, c.icon);
             return (
               <div key={c._id} className="flex items-center justify-between bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <CatIcon className="w-4 h-4 text-primary shrink-0" />
+                  <CategoryIcon categoryName={c.name} iconKey={c.icon} className="w-4 h-4 text-primary shrink-0" />
                   <div>
                     <p className={`font-semibold text-sm ${c.active ? 'text-white' : 'text-white/40 line-through'}`}>{c.name}</p>
                   </div>

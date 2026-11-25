@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { Category } from '@/types';
 import { Grid3x3, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getCategoryIcon } from '@/lib/categoryIcons';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
 
 interface CategoryFilterProps {
   categories: Category[];
@@ -83,7 +83,6 @@ export const CategoryFilter = ({
 
           {categories.map((cat) => {
             const isActive = selectedCategory === cat.id;
-            const Icon = getCategoryIcon(cat.name, cat.icon);
             return (
               <button
                 key={cat.id}
@@ -94,7 +93,7 @@ export const CategoryFilter = ({
                     : 'bg-[#1A1A1A] text-white hover:bg-zinc-800'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <CategoryIcon categoryName={cat.name} iconKey={cat.icon} className="w-5 h-5" />
                 <span>{cat.name}</span>
               </button>
             );

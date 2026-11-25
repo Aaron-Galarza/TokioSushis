@@ -1,14 +1,32 @@
 'use client';
 
+import { useState } from 'react';
+import type { ComponentType } from 'react';
 import { CATEGORY_ICON_OPTIONS } from '@/lib/categoryIcons';
 
-interface IconPickerModalProps {
+export interface IconPickerModalProps {
   selected: string;
   onSelect: (name: string) => void;
   onClose: () => void;
 }
 
 export function IconPickerModal({ selected, onSelect, onClose }: IconPickerModalProps) {
+  const [FullPicker, setFullPicker] = useState<ComponentType<IconPickerModalProps> | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function openFullPicker() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { FullIconPicker } = await import('./FullIconPicker');
+      setFullPicker(() => FullIconPicker);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (FullPicker) return <FullPicker selected={selected} onSelect={onSelect} onClose={onClose} />;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
@@ -36,6 +54,14 @@ export function IconPickerModal({ selected, onSelect, onClose }: IconPickerModal
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={openFullPicker}
+          disabled={loading}
+          className="mt-4 w-full rounded-xl border border-primary/40 bg-primary/10 px-3 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
+        >
+          {loading ? 'Cargando íconos…' : 'Ver más íconos gastronómicos'}
+        </button>
       </div>
     </div>
   );
