@@ -11,6 +11,7 @@ import { useAdminMenu } from '../hooks/useAdminMenu';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { cloudinaryImage } from '@/lib/image';
 import { ConfigurableCatalog } from './ConfigurableCatalog';
+import { AddonCategoryList } from './AddonCategoryList';
 
 export function MenuTab() {
   const {
@@ -136,31 +137,7 @@ export function MenuTab() {
             })}
           </div>
         </div>
-        <div className="flex flex-col gap-2 max-h-60 overflow-y-auto overscroll-contain scrollbar-none">
-          {addons.map(a => {
-            const catLabels: string[] = (a.categories ?? []).map((c: any) =>
-              typeof c === 'object' ? c.name : (cats.find((mc: any) => mc._id === c)?.name ?? c)
-            );
-            return (
-              <div key={a._id} className="flex items-center justify-between bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3">
-                <div className="flex flex-col min-w-0">
-                  <p className={`font-semibold text-sm ${a.active ? 'text-white' : 'text-white/40 line-through'}`}>
-                    {a.title || a.name} — <span className="text-primary">${a.price?.toLocaleString('es-AR')}</span>
-                  </p>
-                  <p className="text-[11px] text-white/30 truncate">
-                    {catLabels.length > 0 ? catLabels.join(', ') : <span className="italic text-white/20">Todas las categorías</span>}
-                  </p>
-                </div>
-                <AdminActionButtons 
-                  active={a.active} 
-                  onToggle={() => toggleAddon(a._id)} 
-                  onEdit={() => editAddon(a)} 
-                  onDelete={() => removeAddon(a._id)} 
-                />
-              </div>
-            );
-          })}
-        </div>
+        <AddonCategoryList categories={cats} addons={addons} onEdit={editAddon} onToggle={toggleAddon} onDelete={removeAddon} />
       </AdminCard>
 
       {/* ── Productos ── */}
