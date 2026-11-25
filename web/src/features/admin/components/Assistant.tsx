@@ -4,7 +4,8 @@ import { useState } from 'react';
 import axios from 'axios';
 import api from '@/services/api';
 
-type Message = { role: 'user' | 'assistant'; text: string; pendingId?: string };
+type Task = { status: string; operations?: Array<{ action: string; resourceId?: string; status: string; error?: string }> };
+type Message = { role: 'user' | 'assistant'; text: string; pendingId?: string; task?: Task };
 
 export default function Assistant() {
   const [open, setOpen] = useState(false);
@@ -18,7 +19,7 @@ export default function Assistant() {
     setBusy(true);
     try {
       const response = await api.post('/assistant/' + path, body);
-      setMessages(current => [...current, { role: 'assistant', text: response.data.data.message, pendingId: response.data.data.pendingId }]);
+      setMessages(current => [...current, { role: 'assistant', text: response.data.data.message, pendingId: response.data.data.pendingId, task: response.data.data.task }]);
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
       setMessages(current => [...current, { role: 'assistant', text: message || 'No se pudo completar la solicitud. Revisá la conexión e intentá nuevamente.' }]);
@@ -58,6 +59,7 @@ export default function Assistant() {
               {messages.map((message, index) => (
                 <div key={index} className={message.role === 'user' ? 'ml-8 rounded-lg bg-primary/20 p-3' : 'mr-8 rounded-lg bg-white/10 p-3'}>
                   <p className="whitespace-pre-wrap break-words text-sm">{message.text}</p>
+                  {message.task?.operations && <div className="mt-3 space-y-1 text-xs text-white/70"><p>Estado: {message.task.status}</p>{message.task.operations.map((operation, taskIndex) => <p key={taskIndex}>{operation.resourceId || operation.action}: {operation.status}{operation.error ? ` — ${operation.error}` : ''}</p>)}</div>}
                   {message.pendingId && <div className="mt-3 flex gap-2">
                     <button type="button" disabled={busy} onClick={() => decide(message.pendingId!, 'confirm')} className="rounded bg-primary px-3 py-2 text-sm font-bold text-black disabled:opacity-50">Confirmar</button>
                     <button type="button" disabled={busy} onClick={() => decide(message.pendingId!, 'cancel')} className="rounded border border-white/30 px-3 py-2 text-sm disabled:opacity-50">Cancelar</button>

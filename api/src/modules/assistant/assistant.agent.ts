@@ -5,7 +5,7 @@ import { AssistantOperationError, prepareOperation, PreparedOperation, previewOp
 
 export type ConversationMessage = { role: 'user' | 'assistant'; text: string };
 type AssistantReply = { message: string; pendingId?: string };
-type StageAction = (operation: PreparedOperation) => Promise<string>;
+type StageAction = (operations: PreparedOperation[], objective: string) => Promise<string>;
 
 const functionName = 'use_tokyo_api';
 const tools = [{ functionDeclarations: [{
@@ -32,12 +32,17 @@ export const runAssistant = async (req: Request, message: string, history: Conve
     { role: 'user', parts: [{ text: message }] },
   ];
   let calls = 0;
+  const writes: PreparedOperation[] = [];
   for (let turn = 0; turn < 5; turn++) {
     const response = await generateTurn(system, contents, tools);
     if (!response) return { message: 'No pude consultar el modelo en este momento. Intentá nuevamente.' };
     const requested = response.parts.filter((part): part is GeminiPart & { functionCall: { name: string; args?: Record<string, unknown> } } => !!part.functionCall);
     if (!requested.length) {
       const answer = response.parts.map((part) => part.text || '').join('').trim();
+      if (writes.length) {
+        const pendingId = await stage(writes, message);
+        return { message: `${answer ? `${answer}\n\n` : ''}Preparé ${writes.length} operaciones para tu solicitud.\n\n${writes.map(previewOperation).join('\n')}`, pendingId };
+      }
       return { message: answer || 'Necesito más detalles para continuar.' };
     }
     contents.push(response);
@@ -54,16 +59,19 @@ export const runAssistant = async (req: Request, message: string, history: Conve
         if (!parseOperation(name, input)) throw new AssistantOperationError(`Parámetros inválidos: ${operationErrors(name as OperationName, input).join('; ')}`);
         const prepared = await prepareOperation(req, name, input);
         if (prepared.write) {
-          const pendingId = await stage(prepared);
-          return { message: previewOperation(prepared), pendingId };
-        }
-        result = await readOperation(req, prepared);
+          writes.push(prepared);
+          result = { prepared: true, operation: prepared.name, target: prepared.resolvedTarget };
+        } else result = await readOperation(req, prepared);
       } catch (error) {
         result = { error: error instanceof Error ? error.message : 'La operación falló.' };
       }
       results.push({ functionResponse: { name: functionName, response: { result } } });
     }
     contents.push({ role: 'user', parts: results });
+    if (turn === 4 && writes.length) {
+      const pendingId = await stage(writes, message);
+      return { message: `Preparé ${writes.length} operaciones para tu solicitud.\n\n${writes.map(previewOperation).join('\n')}`, pendingId };
+    }
   }
   return { message: 'Necesito más tiempo para resolverlo. Probá dividir la solicitud en pasos más pequeños.' };
 };

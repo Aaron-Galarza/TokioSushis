@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { isAdmin } from '../../middlewares/auth.middleware';
 import { assistantLimiter } from '../../middlewares/rateLimiter.middleware';
@@ -7,15 +7,8 @@ import { UserModel } from '../users/user.model';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { sendError, sendSucces } from '../../utils/response';
 import { runAssistant } from './assistant.agent';
-import { AssistantOperationError, executeOperation, PreparedOperation } from './assistant.executor';
-
-const pendingSchema = new Schema({
-  userId: { type: String, required: true },
-  operation: Schema.Types.Mixed,
-  status: { type: String, enum: ['pending', 'claimed', 'cancelled'], default: 'pending' },
-  expiresAt: { type: Date, required: true, index: { expires: 0 } },
-}, { timestamps: true });
-const Pending = mongoose.model('AssistantPending', pendingSchema);
+import { AssistantTask } from './assistant.task.model';
+import { cancelTask, createTask, runTask } from './assistant.task.service';
 const router = Router();
 
 router.use(isAdmin);
@@ -38,9 +31,9 @@ const idSchema = z.object({ pendingId: z.string().regex(/^[a-f\d]{24}$/i) });
 router.post('/message', asyncHandler(async (req, res) => {
   const parsed = messageSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 'Mensaje inválido', 400);
-  const reply = await runAssistant(req, parsed.data.message, parsed.data.history ?? [], async (operation) => {
-    const pending = await Pending.create({ userId: userId(req), operation, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
-    return pending.id;
+  const reply = await runAssistant(req, parsed.data.message, parsed.data.history ?? [], async (operations, objective) => {
+    const task = await createTask(userId(req), objective, operations);
+    return task.id;
   });
   return sendSucces(res, reply);
 }));
@@ -48,30 +41,32 @@ router.post('/message', asyncHandler(async (req, res) => {
 router.post('/confirm', asyncHandler(async (req, res) => {
   const parsed = idSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 'Confirmación inválida', 400);
-  const pending = await Pending.findOneAndUpdate(
-    { _id: parsed.data.pendingId, userId: userId(req), status: 'pending', expiresAt: { $gt: new Date() } },
-    { $set: { status: 'claimed' } }, { new: true },
-  );
-  if (!pending) return sendError(res, 'La acción venció, fue cancelada o ya se procesó', 409);
   try {
-    const message = await executeOperation(req, pending.operation as PreparedOperation);
-    console.info('[assistant] operación completada', { userId: userId(req), pendingId: pending.id, operation: (pending.operation as PreparedOperation).name });
-    return sendSucces(res, { message });
+    const task = await runTask(req, parsed.data.pendingId, userId(req));
+    return sendSucces(res, { message: `Tarea ${task.status}.`, task });
   } catch (error) {
-    console.error('[assistant] no se pudo confirmar la operación', { userId: userId(req), pendingId: pending.id });
-    return sendError(res, error instanceof AssistantOperationError ? `${error.message} Revisá el resultado antes de volver a intentar.` : 'No se pudo confirmar el resultado. Revisá los datos antes de volver a intentar.', error instanceof AssistantOperationError ? error.status : 500);
+    return sendError(res, error instanceof Error ? error.message : 'No se pudo confirmar la tarea.', 409);
   }
 }));
 
 router.post('/cancel', asyncHandler(async (req, res) => {
   const parsed = idSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 'Acción inválida', 400);
-  const pending = await Pending.findOneAndUpdate(
-    { _id: parsed.data.pendingId, userId: userId(req), status: 'pending', expiresAt: { $gt: new Date() } },
-    { $set: { status: 'cancelled' } },
-  );
-  if (!pending) return sendError(res, 'La acción ya no está pendiente', 409);
+  const task = await cancelTask(parsed.data.pendingId, userId(req));
+  if (!task) return sendError(res, 'La tarea ya no está pendiente', 409);
   return sendSucces(res, { message: 'Acción cancelada.' });
+}));
+
+router.get('/tasks', asyncHandler(async (req, res) => {
+  const tasks = await AssistantTask.find({ userId: userId(req) }).sort({ createdAt: -1 }).limit(20).lean();
+  return sendSucces(res, { tasks });
+}));
+
+router.get('/tasks/:id', asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 'Tarea inválida', 400);
+  const task = await AssistantTask.findOne({ _id: req.params.id, userId: userId(req) }).lean();
+  if (!task) return sendError(res, 'Tarea no encontrada', 404);
+  return sendSucces(res, { task });
 }));
 
 export default router;

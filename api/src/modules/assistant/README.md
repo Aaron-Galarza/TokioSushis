@@ -4,7 +4,7 @@ El asistente usa el catálogo de operaciones de `assistant.operations.ts` como c
 
 `assistant.agent.ts` controla un máximo de cinco turnos del modelo y ocho llamadas a operaciones por mensaje. Cada consulta devuelve datos acotados al modelo. Los pedidos se reducen a conteos por estado, sin datos del cliente. La interfaz envía hasta seis mensajes recientes para permitir preguntas de seguimiento. Gemini requiere `GEMINI_API_KEY`; si falta o no responde, el asistente lo indica en vez de fingir una respuesta.
 
-Las consultas se ejecutan de inmediato. Una operación de escritura solo genera una vista previa y un registro pendiente durante diez minutos. `/confirm` ejecuta el cambio; `/cancel` lo descarta. El registro se reclama de forma atómica para evitar una doble confirmación. No se ofrecen endpoints de eliminación, autenticación, carga de archivos ni creación pública de pedidos.
+Las consultas se ejecutan de inmediato. Las escrituras se agrupan en una tarea persistente con una vista previa durante diez minutos. `/confirm` reclama la tarea de forma atómica y ejecuta sus operaciones secuencialmente; `/cancel` la descarta. Cada operación queda en estado `pending`, `running`, `verified`, `failed`, `conflict` o `uncertain`, y el estado final de la tarea se deriva de esos resultados. `/tasks` y `/tasks/:id` permiten recuperar el progreso después de recargar la interfaz. Antes de modificar un registro se comprueban los valores que existían al preparar la propuesta; si cambiaron, la operación queda en conflicto y no se sobrescribe silenciosamente.
 
 ## Configuración
 
@@ -13,6 +13,6 @@ Las consultas se ejecutan de inmediato. Una operación de escritura solo genera 
 - `ASSISTANT_DAILY_TOKEN_BUDGET`: presupuesto diario aproximado de tokens; por defecto `100000`.
 - `ASSISTANT_API_BASE_URL`: base interna de la API, por ejemplo `http://127.0.0.1:4000/api`. Si falta, se usa `PORT` o `4000` en loopback.
 
-Para ampliar capacidades, registrar en `assistant.operations.ts` el endpoint permitido, la descripción y el esquema Zod. `assistant.executor.ts` prepara la llamada, limita los datos que vuelven al modelo y confirma las escrituras. Los cambios deben marcarse con `write: true`. No hace falta agregar ejemplos de frases ni condiciones específicas al agente.
+Para ampliar capacidades, registrar en `assistant.operations.ts` el endpoint permitido, la descripción y el schema Zod. `assistant.executor.ts` prepara, valida y verifica la llamada; `assistant.task.service.ts` ejecuta planes ya aprobados sin volver a consultar Gemini. Los cambios deben marcarse con `write: true`. No se incluyen eliminaciones masivas, credenciales, permisos ni URLs arbitrarias. Las eliminaciones individuales tampoco están expuestas todavía: requieren una política de confirmación reforzada y una verificación específica por recurso.
 
 Verificación: desde `api`, ejecutar `npm run build` y `node --test tests/assistant.operations.test.cjs`.

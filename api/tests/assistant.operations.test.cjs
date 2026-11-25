@@ -55,14 +55,18 @@ test('the model may consult categories before proposing a product, without writi
       turns++;
       return turns === 1
         ? modelReply(toolCall('categories.list'))
-        : modelReply(toolCall('products.create', { title: 'Roll de prueba', description: 'Producto inventado para probar', price: 8000, category: 'Rolls' }));
+        : turns === 2
+          ? modelReply(toolCall('products.create', { title: 'Roll de prueba', description: 'Producto inventado para probar', price: 8000, category: 'Rolls' }))
+          : modelReply([{ text: 'Listo para confirmar.' }]);
     }
     apiMethods.push(options.method);
     assert.match(String(url), /\/categories\/admin$/);
     return apiReply([{ _id: productId, name: 'Rolls', active: true }]);
   };
   try {
-    const reply = await runAssistant(req, 'Inventá un producto de ejemplo; elegí una categoría cualquiera', [], async (operation) => {
+    const reply = await runAssistant(req, 'Inventá un producto de ejemplo; elegí una categoría cualquiera', [], async (operations) => {
+      assert.equal(operations.length, 1);
+      const operation = operations[0];
       assert.equal(operation.name, 'products.create');
       assert.equal(operation.body.category, productId);
       assert.equal(operation.body.active, false);
@@ -84,6 +88,25 @@ test('orders sent to the model contain counts, not customer details', async () =
     assert.deepEqual(facts.byStatus, { pending: 1, delivered: 1 });
     assert.doesNotMatch(JSON.stringify(facts), /PRIVATE/);
   } finally { global.fetch = fetch; }
+});
+
+test('multiple writes are staged together and are not executed during planning', async () => {
+  const key = process.env.GEMINI_API_KEY;
+  const fetch = global.fetch;
+  process.env.GEMINI_API_KEY = 'test-key';
+  let modelCalls = 0;
+  global.fetch = async (url) => String(url).includes('generativelanguage')
+    ? (++modelCalls === 1 ? modelReply([{ functionCall: { name: 'use_tokyo_api', args: { operation: 'products.update', input_json: JSON.stringify({ target: productId, body: { price: 100 } }) } } }, { functionCall: { name: 'use_tokyo_api', args: { operation: 'products.update', input_json: JSON.stringify({ target: '507f1f77bcf86cd799439012', body: { price: 200 } }) } } }]) : modelReply([{ text: 'Listo para confirmar.' }]))
+    : apiReply([{ _id: productId, title: 'A', price: 50 }, { _id: '507f1f77bcf86cd799439012', title: 'B', price: 60 }]);
+  try {
+    const reply = await runAssistant(req, 'Subí los dos precios', [], async (operations) => {
+      assert.equal(operations.length, 2);
+      assert.deepEqual(operations.map((operation) => operation.name), ['products.update', 'products.update']);
+      return 'task-id';
+    });
+    assert.equal(reply.pendingId, 'task-id');
+    assert.match(reply.message, /2 operaciones/);
+  } finally { global.fetch = fetch; if (key === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = key; }
 });
 
 test('unlisted routes and unconfirmed writes cannot execute', async () => {

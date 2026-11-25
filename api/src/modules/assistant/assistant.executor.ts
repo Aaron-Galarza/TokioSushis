@@ -37,6 +37,7 @@ export const prepareOperation = async (req: Request, name: string, rawInput: unk
   if ('body' in input && Object.keys(asObject(input.body)).length === 0) throw new AssistantOperationError('Indicá al menos un dato para modificar.');
   let path = operation.path;
   let resolvedTarget: string | undefined;
+  let previousValues: Record<string, unknown> | undefined;
   let categoryName: string | undefined;
   if (path.includes(':id')) {
     const requested = String(input.target);
@@ -47,6 +48,10 @@ export const prepareOperation = async (req: Request, name: string, rawInput: unk
       if (matches.length !== 1) throw new AssistantOperationError(matches.length ? 'El nombre coincide con más de un registro. Indicá el ID.' : `No encontré ${requested}. Indicá el nombre exacto o ID.`);
       path = path.replace(':id', encodeURIComponent(String(matches[0]._id)));
       resolvedTarget = String(matches[0][field]);
+      if ('body' in input) {
+        const body = asObject(input.body);
+        previousValues = Object.fromEntries(Object.keys(body).map((key) => [key, matches[0][key]]));
+      }
     } else {
       path = path.replace(':id', encodeURIComponent(requested));
       resolvedTarget = requested;
@@ -73,7 +78,7 @@ export const prepareOperation = async (req: Request, name: string, rawInput: unk
     if (!checked.success) throw new AssistantOperationError('Los datos del producto no son válidos.');
     body = checked.data;
   }
-  return { name: parsed.name, method: operation.method, path, body, write: !!operation.write, description: operation.description, resolvedTarget, categoryName };
+  return { name: parsed.name, method: operation.method, path, body, write: !!operation.write, description: operation.description, resolvedTarget, categoryName, previousValues };
 };
 
 export type PreparedOperation = Awaited<ReturnType<typeof prepareOperation>>;
@@ -122,6 +127,28 @@ export const executeOperation = async (req: Request, operation: PreparedOperatio
   const value = asObject(result.data ?? result);
   const label = value.title || value.name || value.code || value._id || operation.resolvedTarget;
   return `${operation.description} completado${label ? `: ${label}` : ''}. La API confirmó el cambio.`;
+};
+
+export const verifyOperation = async (req: Request, operation: PreparedOperation): Promise<boolean> => {
+  if (!operation.write || !operation.resolvedTarget) return true;
+  const collection = operation.name.startsWith('products.') ? 'products' : operation.name.startsWith('categories.') ? 'categories' : operation.name.startsWith('coupons.') ? 'coupons' : null;
+  if (!collection) return true;
+  const rows = asArray(await callApi(req, 'GET', `/${collection}/admin`));
+  const field = collection === 'products' ? 'title' : collection === 'categories' ? 'name' : 'code';
+  const row = rows.find((item) => normalized(item[field]) === normalized(operation.resolvedTarget) || String(item._id) === operation.resolvedTarget);
+  if (!row) return false;
+  const body = asObject(operation.body);
+  return Object.entries(body).every(([key, value]) => String(row[key]) === String(value) || (value === undefined));
+};
+
+export const checkOperationPrecondition = async (req: Request, operation: PreparedOperation): Promise<boolean> => {
+  if (!operation.previousValues || !operation.resolvedTarget) return true;
+  const collection = operation.name.startsWith('products.') ? 'products' : operation.name.startsWith('categories.') ? 'categories' : operation.name.startsWith('coupons.') ? 'coupons' : null;
+  if (!collection) return true;
+  const rows = asArray(await callApi(req, 'GET', `/${collection}/admin`));
+  const field = collection === 'products' ? 'title' : collection === 'categories' ? 'name' : 'code';
+  const row = rows.find((item) => normalized(item[field]) === normalized(operation.resolvedTarget) || String(item._id) === operation.resolvedTarget);
+  return !!row && Object.entries(operation.previousValues).every(([key, value]) => String(row[key]) === String(value));
 };
 
 export const previewOperation = (operation: PreparedOperation) => {
