@@ -9,7 +9,8 @@ let budgetIndexReady: Promise<unknown> | undefined;
 export const generateTurn = async (system: string, contents: GeminiContent[], tools: unknown[]): Promise<GeminiContent | null> => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const model = process.env.GEMINI_MODEL || process.env.ASSISTANT_MODEL || 'gemini-3.1-flash-lite';
+  const configuredModels = [process.env.GEMINI_MODEL || process.env.ASSISTANT_MODEL || 'gemini-3.1-flash-lite', ...(process.env.ASSISTANT_MODEL_FALLBACKS || 'gemini-3.5-flash-lite,gemini-flash-lite-latest').split(',')].map((value) => value.trim()).filter((value, index, values) => value && values.indexOf(value) === index);
+  let model = configuredModels[0];
   const requestBody = {
     systemInstruction: { parts: [{ text: system }] }, contents, tools,
     generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
@@ -38,14 +39,25 @@ export const generateTurn = async (system: string, contents: GeminiContent[], to
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12_000);
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify(requestBody),
-      });
-      if (!response.ok) throw new Error(`Gemini respondió ${response.status}`);
-      const result = await response.json() as ModelResponse;
-      usage = result.usageMetadata;
-      completed = true;
-      return result.candidates?.[0]?.content ?? null;
+      let lastError = 'Gemini no disponible';
+      for (const candidate of configuredModels) {
+        model = candidate;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:generateContent?key=${encodeURIComponent(key)}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify(requestBody),
+          });
+          if (response.ok) {
+            const result = await response.json() as ModelResponse;
+            usage = result.usageMetadata;
+            completed = true;
+            return result.candidates?.[0]?.content ?? null;
+          }
+          lastError = `Gemini respondió ${response.status} con ${candidate}`;
+          if (![429, 500, 502, 503, 504].includes(response.status)) break;
+          await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+        }
+      }
+      throw new Error(lastError);
     } finally { clearTimeout(timeout); }
   } catch (error) {
     console.warn('[assistant] Gemini no disponible', error instanceof Error ? error.message : 'unknown error');

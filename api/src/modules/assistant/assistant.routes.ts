@@ -69,4 +69,14 @@ router.get('/tasks/:id', asyncHandler(async (req, res) => {
   return sendSucces(res, { task });
 }));
 
+router.get('/usage', asyncHandler(async (_req, res) => {
+  const date = new Date().toISOString().slice(0, 10);
+  const budget = Number(process.env.ASSISTANT_DAILY_TOKEN_BUDGET ?? 100_000);
+  const usage = await mongoose.connection.db?.collection('assistant_usage_budget_v2').findOne({ date });
+  const used = Number(usage?.usedTokens ?? 0);
+  const reserved = Number(usage?.reservedTokens ?? 0);
+  const remaining = Math.max(0, budget - used - reserved);
+  return sendSucces(res, { budget, used, reserved, remaining, usedPercent: Math.min(100, (used / budget) * 100), date });
+}));
+
 export default router;

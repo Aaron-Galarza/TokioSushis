@@ -6,6 +6,7 @@ import api from '@/services/api';
 
 type Task = { status: string; operations?: Array<{ action: string; resourceId?: string; status: string; error?: string }> };
 type Message = { role: 'user' | 'assistant'; text: string; pendingId?: string; task?: Task };
+type Usage = { budget: number; used: number; reserved: number; remaining: number; usedPercent: number };
 
 export default function Assistant() {
   const [open, setOpen] = useState(false);
@@ -14,12 +15,17 @@ export default function Assistant() {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', text: '¡Hola! ¿Qué querés consultar o cambiar en Tokyo? Los cambios se aplican solo después de tu confirmación.' },
   ]);
+  const [usage, setUsage] = useState<Usage | null>(null);
 
   async function call(path: string, body: object) {
     setBusy(true);
     try {
       const response = await api.post('/assistant/' + path, body);
       setMessages(current => [...current, { role: 'assistant', text: response.data.data.message, pendingId: response.data.data.pendingId, task: response.data.data.task }]);
+      try {
+        const usageResponse = await api.get('/assistant/usage');
+        setUsage(usageResponse.data.data);
+      } catch { /* El resultado del asistente no depende del indicador de consumo. */ }
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
       setMessages(current => [...current, { role: 'assistant', text: message || 'No se pudo completar la solicitud. Revisá la conexión e intentá nuevamente.' }]);
@@ -56,6 +62,7 @@ export default function Assistant() {
               <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar asistente" className="rounded p-2 text-xl">×</button>
             </header>
             <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
+              {usage && <div className="rounded border border-white/10 bg-black/30 p-2 text-xs text-white/70"><div className="mb-1 flex justify-between"><span>Presupuesto diario de Gemini</span><span>{usage.remaining.toLocaleString()} tokens restantes</span></div><div className="h-2 overflow-hidden rounded bg-white/10"><div className="h-full bg-primary transition-all" style={{ width: `${usage.usedPercent}%` }} /></div><p className="mt-1">{usage.used.toLocaleString()} usados de {usage.budget.toLocaleString()} · {usage.reserved.toLocaleString()} reservados</p></div>}
               {messages.map((message, index) => (
                 <div key={index} className={message.role === 'user' ? 'ml-8 rounded-lg bg-primary/20 p-3' : 'mr-8 rounded-lg bg-white/10 p-3'}>
                   <p className="whitespace-pre-wrap break-words text-sm">{message.text}</p>

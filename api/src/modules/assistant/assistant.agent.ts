@@ -33,7 +33,7 @@ export const runAssistant = async (req: Request, message: string, history: Conve
   ];
   let calls = 0;
   const writes: PreparedOperation[] = [];
-  for (let turn = 0; turn < 5; turn++) {
+  for (let turn = 0; turn < 10; turn++) {
     const response = await generateTurn(system, contents, tools);
     if (!response) return { message: 'No pude consultar el modelo en este momento. Intentá nuevamente.' };
     const requested = response.parts.filter((part): part is GeminiPart & { functionCall: { name: string; args?: Record<string, unknown> } } => !!part.functionCall);
@@ -48,7 +48,7 @@ export const runAssistant = async (req: Request, message: string, history: Conve
     contents.push(response);
     const results: GeminiPart[] = [];
     for (const part of requested) {
-      if (++calls > 8) return { message: 'Necesito dividir esta solicitud en pasos más pequeños. Indicame con cuál empezamos.' };
+      if (++calls > 24) return { message: 'La solicitud excede el límite operativo de esta sesión. El plan parcial no se ejecutó; dividila en grupos más pequeños.' };
       const call = part.functionCall;
       let result: unknown;
       try {
