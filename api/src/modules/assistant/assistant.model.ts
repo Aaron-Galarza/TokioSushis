@@ -37,7 +37,7 @@ export const generateTurn = async (system: string, contents: GeminiContent[], to
       reserved = true;
     }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12_000);
+    const timeout = setTimeout(() => controller.abort(), 45_000);
     try {
       let lastError = 'Gemini no disponible';
       for (const candidate of configuredModels) {
